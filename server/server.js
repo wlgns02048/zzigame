@@ -192,7 +192,7 @@ const serveStatic = (req, res, pathname) => {
   });
 };
 
-http.createServer(async (req, res) => {
+const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   if (!url.pathname.startsWith('/api/')) {
     if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); return res.end(); }
@@ -223,3 +223,14 @@ http.createServer(async (req, res) => {
     send(res, 500, { error: '서버 오류가 발생했습니다.' });
   }
 }).listen(PORT, () => console.log(`zzigame server on :${PORT} (static: ${STATIC_DIR}, data: ${DATA_DIR})`));
+
+// 배포 시 docker stop(SIGTERM): 새 연결은 받지 않고, 처리 중인 요청은 마친 뒤 DB를 닫고 종료한다.
+// (docker의 기본 유예 10초 안에 끝나도록 8초 뒤에는 강제 종료)
+const shutdown = sig => {
+  console.log(`${sig}: 종료 중`);
+  server.close(() => { try { db.close(); } catch { /* 이미 닫힘 */ } process.exit(0); });
+  server.closeIdleConnections();
+  setTimeout(() => process.exit(0), 8000).unref();
+};
+process.once('SIGTERM', shutdown);
+process.once('SIGINT', shutdown);

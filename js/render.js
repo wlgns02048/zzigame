@@ -8,10 +8,17 @@ G.R = {
     addEventListener('resize', () => this.resize());
     this.resize();
   },
+  // 시야 고정: 해상도 · 화면비와 상관없이 세상은 항상 VIEW_W × VIEW_H만 보인다 (랭킹 공정성).
+  // 화면에 맞게 확대/축소하고, 16:9보다 넓거나 좁으면 남는 띠에는 바닥만 어둡게 이어 그린다.
+  // G.W · G.H는 이 논리 시야 크기이고, 실제 화면 크기는 this.SW · this.SH다.
+  VIEW_W: 1920, VIEW_H: 1080,
   resize() {
     this.dpr = Math.min(devicePixelRatio || 1, 1.5);
-    G.W = innerWidth; G.H = innerHeight;
-    this.cv.width = Math.round(G.W * this.dpr); this.cv.height = Math.round(G.H * this.dpr);
+    this.SW = innerWidth; this.SH = innerHeight;
+    G.W = this.VIEW_W; G.H = this.VIEW_H;
+    this.s = Math.min(this.SW / G.W, this.SH / G.H);
+    this.ox = (this.SW - G.W * this.s) / 2; this.oy = (this.SH - G.H * this.s) / 2;
+    this.cv.width = Math.round(this.SW * this.dpr); this.cv.height = Math.round(this.SH * this.dpr);
     this.vig = G.Spr.make(G.W, G.H, (x, w, h) => {
       const g = x.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.75);
       g.addColorStop(0, 'rgba(0,0,10,0)'); g.addColorStop(1, 'rgba(0,4,18,0.75)');
@@ -62,18 +69,23 @@ G.R = {
   },
 
   draw(realDt) {
-    const c = this.c, W = G.W, H = G.H, cam = G.cam;
-    c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    const c = this.c, W = G.W, H = G.H, cam = G.cam, k = this.dpr * this.s;
+    c.setTransform(k, 0, 0, k, this.dpr * this.ox, this.dpr * this.oy);
     let sx = 0, sy = 0;
     if (cam.shake > 0) { sx = U.rand(-cam.shake, cam.shake); sy = U.rand(-cam.shake, cam.shake); }
     const ox = Math.round(W / 2 - cam.x + sx), oy = Math.round(H / 2 - cam.y + sy);
-    // 지형
+    // 화면 전체(띠 포함)의 논리 좌표 범위
+    const bx = this.ox / this.s, by = this.oy / this.s, sx0 = -bx, sy0 = -by, sx1 = W + bx, sy1 = H + by;
+    // 지형 (띠까지)
     const T = 512, theme = G.theme(), g = G.Spr.groundFor((G.state !== 'menu' && G.Waves.stage && G.Waves.stage.theme) || 'icecrown');
-    const gx = ((ox % T) + T) % T - T, gy = ((oy % T) + T) % T - T;
-    for (let x = gx; x < W; x += T) for (let y = gy; y < H; y += T) c.drawImage(g, x, y);
+    const gx = sx0 - ((((sx0 - ox) % T) + T) % T), gy = sy0 - ((((sy0 - oy) % T) + T) % T);
+    for (let x = gx; x < sx1; x += T) for (let y = gy; y < sy1; y += T) c.drawImage(g, x, y);
     c.save(); c.translate(ox, oy);
+    this.drawDecor(c, cam.x - W / 2 - bx - 100, cam.y - H / 2 - by - 120, cam.x + W / 2 + bx + 100, cam.y + H / 2 + by + 160);
+    c.restore();
+    // 유닛 · 효과는 시야 안에만
+    c.save(); c.beginPath(); c.rect(0, 0, W, H); c.clip(); c.translate(ox, oy);
     const vx0 = cam.x - W / 2 - 100, vy0 = cam.y - H / 2 - 120, vx1 = cam.x + W / 2 + 100, vy1 = cam.y + H / 2 + 160;
-    this.drawDecor(c, vx0, vy0, vx1, vy1);
     if (G.state !== 'menu' && G.player) {
       for (const z of G.zones) this.drawZone(c, z);
       for (const k of G.tele) this.drawTele(c, k);
@@ -89,7 +101,26 @@ G.R = {
     c.drawImage(this.vig, 0, 0);
     const p = G.player;
     if (G.state === 'play' && p && p.hp / p.maxHp < 0.3) { c.globalAlpha = 0.5 + Math.sin(performance.now() / 200) * 0.3; c.drawImage(this.lowhp, 0, 0); c.globalAlpha = 1; }
+    if (bx > 0.5 || by > 0.5) this.drawBars(c, W, H, bx, by);
   },
+  // 시야 밖 띠: 어둡게 덮고 경계는 그라데이션으로 부드럽게
+  drawBars(c, W, H, bx, by) {
+    const F = 60, dark = 'rgba(2,4,10,0.82)', clear = 'rgba(2,4,10,0)';
+    c.fillStyle = dark;
+    if (bx > 0.5) {
+      c.fillRect(-bx, -by, bx, H + by * 2); c.fillRect(W, -by, bx, H + by * 2);
+      let g = c.createLinearGradient(0, 0, F, 0); g.addColorStop(0, dark); g.addColorStop(1, clear); c.fillStyle = g; c.fillRect(0, 0, F, H);
+      g = c.createLinearGradient(W, 0, W - F, 0); g.addColorStop(0, dark); g.addColorStop(1, clear); c.fillStyle = g; c.fillRect(W - F, 0, F, H);
+    }
+    if (by > 0.5) {
+      c.fillStyle = dark;
+      c.fillRect(0, -by, W, by); c.fillRect(0, H, W, by);
+      let g = c.createLinearGradient(0, 0, 0, F); g.addColorStop(0, dark); g.addColorStop(1, clear); c.fillStyle = g; c.fillRect(0, 0, W, F);
+      g = c.createLinearGradient(0, H, 0, H - F); g.addColorStop(0, dark); g.addColorStop(1, clear); c.fillStyle = g; c.fillRect(0, H - F, W, F);
+    }
+  },
+  // 화면(CSS 픽셀) 좌표 → 논리 시야 좌표
+  toView(x, y) { return [(x - this.ox) / this.s, (y - this.oy) / this.s]; },
 
   drawDecor(c, x0, y0, x1, y1) {
     const CH = 340, D = G.Spr.decor, th = G.theme(), types = th.decor, glows = th.glow || {};

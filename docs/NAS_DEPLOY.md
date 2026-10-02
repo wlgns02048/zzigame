@@ -85,6 +85,10 @@ DATA_ROOT=/volume2/docker/zzigame-data docker compose -p zzigame -f docker-compo
 - DB는 러너 작업 폴더 밖 `/volume2/docker/zzigame-data/game.db` (체크아웃 때 작업 폴더가 정리되므로)
 - 게시판 관리자: 저장소 Settings → Secrets and variables → Actions → **Variables**에 `ADMIN_USERS`
 - 수동 배포: Actions 탭 → Deploy to NAS → Run workflow
+- **나스는 서버가 쓰는 파일이 바뀔 때만 다시 배포된다** (`server/`, `js/data/`, `Dockerfile`, compose 파일, `deploy.yml`).
+  화면만 바뀐 커밋은 Pages만 갱신 — 나스 주소(10443)에서 직접 여는 화면까지 맞추려면 수동 배포
+- 게임 중 배포해도 괜찮게: 재시작 중(연결 실패 · 502~504)이면 화면이 판 시작은 15초, 판 결과 보고는 60초까지 다시 시도한다
+  (`js/net.js` `apiRetry`). 보고는 누적값이라 다시 보내도 중복 지급되지 않는다. 서버는 SIGTERM을 받으면 처리 중인 요청을 마치고 종료한다
 
 ### 러너 (2026-10-03 설치 완료)
 

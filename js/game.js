@@ -62,7 +62,7 @@ G.Input = () => {
   });
   addEventListener('keyup', e => { G.keys[e.code] = false; });
   addEventListener('blur', () => { G.keys = {}; if (G.state === 'play' && !G.paused && !G.Bot.on) G.pause(); });
-  addEventListener('mousemove', e => { G.mouse.sx = e.clientX; G.mouse.sy = e.clientY; });
+  addEventListener('mousemove', e => { [G.mouse.sx, G.mouse.sy] = G.R.toView(e.clientX, e.clientY); });
   addEventListener('mousedown', () => G.Audio.init());
 };
 
@@ -220,7 +220,8 @@ G.endRun = victory => {
   if (victory) G.Audio.play('victory');
   G.UI.showEnd(victory, mode);
   // 보상은 서버가 계산한다. 클리어 직후(엔드리스 선택 전)는 중간 보고, 그 외는 최종 보고.
-  if (G.run) G.Net.reportRun(G.run, { victory, final: !victory || G.Waves.endless }).then(r => G.UI.setEndRewards(r)).catch(e => G.UI.setEndRewards(null, e.message));
+  const waitMsg = n => { const box = $('eRewards'); if (box) box.innerHTML = `<div class="dim">서버에 다시 연결하는 중… (${n})</div>`; };
+  if (G.run) G.Net.reportRun(G.run, { victory, final: !victory || G.Waves.endless }, waitMsg).then(r => G.UI.setEndRewards(r)).catch(e => G.UI.setEndRewards(null, e.message));
   else if (mode === 'account') G.UI.setEndRewards(null, '이 판은 서버에 등록되지 않았습니다.');
 };
 // 클리어 후 "보상 받고 종료": 최종 보고만 하고 로비로

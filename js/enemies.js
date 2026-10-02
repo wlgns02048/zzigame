@@ -19,6 +19,8 @@ G.Enemy = {
 
   update(dt) {
     const p = G.player;
+    // 재배치 한계 거리: 생성 고리(화면 대각선 절반 + 40)보다 항상 멀어야 한다. 넓은 화면에서 고정 1500이면 생성 즉시 재배치가 반복된다.
+    const leash = Math.max(1500, Math.hypot(G.W, G.H) / 2 + 300);
     G.Grid.clear();
     for (const e of G.enemies) if (!e.dead) G.Grid.add(e);
     for (const e of G.enemies) {
@@ -74,7 +76,7 @@ G.Enemy = {
         else if (Math.sqrt(U.d2(e.x, e.y, p.x, p.y)) < reach + p.r * 0.5) { G.hurtPlayer(e.dmg, e); e.atkT = 1.0; }
       }
       // 너무 멀어지면 반대편으로 재배치
-      if (!e.boss && bd > 1500 * 1500) {
+      if (!e.boss && bd > leash * leash) {
         const a = Math.atan2(p.y - e.y, p.x - e.x) + U.rand(-0.6, 0.6), R = Math.max(G.W, G.H) / 2 + 80;
         e.x = p.x + Math.cos(a) * R; e.y = p.y + Math.sin(a) * R;
       }

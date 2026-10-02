@@ -7,6 +7,15 @@ on:
   push:
     branches:
       - server
+    # 서버가 쓰는 파일이 바뀔 때만 나스를 다시 띄운다 (재시작 중에는 API가 잠깐 끊긴다).
+    # 화면(js · css · assets)만 바뀐 커밋은 Pages만 갱신되고 나스는 그대로 — 단, 나스 주소(10443)에서 직접 여는 화면은
+    # 다음 서버 배포 때 따라온다. 화면까지 바로 맞추려면 Actions에서 이 워크플로를 수동 실행(workflow_dispatch).
+    paths:
+      - 'server/**'
+      - 'js/data/**'          # 서버가 공용 데이터로 읽음 (server/game.js)
+      - 'Dockerfile'
+      - 'docker-compose*.yml'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
 concurrency:

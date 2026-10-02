@@ -14,7 +14,9 @@ G.Net = {
     if (this.token) headers.Authorization = 'Bearer ' + this.token;
     let res;
     try { res = await fetch(this.base + url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }); }
-    catch (e) { throw new Error('서버에 연결할 수 없습니다.'); }
+    catch (e) { throw Object.assign(new Error('서버에 연결할 수 없습니다.'), { down: true }); }
+    // 리버스 프록시가 대신 답하는 502~504 = 서버 재시작 중
+    if (res.status >= 502 && res.status <= 504) throw Object.assign(new Error(`서버 오류 (${res.status})`), { down: true });
     const data = await res.json().catch(() => ({}));
     if (res.status === 401 && this.token && !url.startsWith('/api/auth/')) this.dropSession();
     if (!res.ok) throw new Error(data.error || `서버 오류 (${res.status})`);
@@ -57,22 +59,38 @@ G.Net = {
     this.dropSession();
   },
 
+  // 서버가 잠깐 내려가 있을 때(배포 재시작 등)만 다시 시도한다. 4xx · 500처럼 서버가 답한 실패는 바로 던진다.
+  // 1 · 2 · 4 · 8 · 8 … 초 간격으로 limit(기본 60초)까지.
+  async apiRetry(method, url, body, onWait, limit = 60000) {
+    const t0 = Date.now();
+    for (let i = 0, wait = 1000; ; i++, wait = Math.min(wait * 2, 8000)) {
+      try { return await this.api(method, url, body); }
+      catch (e) {
+        if (!e.down || Date.now() - t0 + wait > limit) throw e;
+        if (onWait) onWait(i + 1);
+        await new Promise(r => setTimeout(r, wait));
+      }
+    }
+  },
+
   // ---------- 런 ----------
   // 시작 요청은 기다리지 않고 바로 게임을 시작한다. 보고할 때 시작 응답을 기다린다.
   startRun(cls, stage, difficulty) {
     const run = { id: null };
-    run.ready = this.api('POST', '/api/runs/start', { cls, stage, difficulty })
+    // 시작 등록이 늦어지면 서버의 시간 검증(실제 경과 + 20초 여유)에 걸리므로 15초까지만 다시 시도한다
+    run.ready = this.apiRetry('POST', '/api/runs/start', { cls, stage, difficulty }, null, 15000)
       .then(r => { run.id = r.runId; run.affixes = r.affixes; })
       .catch(e => { run.error = e.message; G.UI.toast('서버 등록 실패 — 이번 판 보상은 저장되지 않습니다. (' + e.message + ')'); });
     return run;
   },
   // 누적값 보고 → { gain, loot, endlessLv, profile }
-  async reportRun(run, { victory, final }) {
+  // 보고는 누적값이라(서버가 이미 지급한 만큼은 빼고 준다) 같은 보고를 다시 보내도 중복 지급되지 않는다.
+  async reportRun(run, { victory, final }, onWait) {
     await run.ready;
     if (!run.id) throw new Error(run.error || '서버에 기록되지 않은 판입니다.');
-    const r = await this.api('POST', '/api/runs/report', {
+    const r = await this.apiRetry('POST', '/api/runs/report', {
       runId: run.id, t: G.t, kills: G.stats.kills, gold: G.stats.gold, level: G.player.level, bossKills: G.Waves.bossKills, victory, final,
-    });
+    }, onWait);
     G.Meta.useProfile(r.profile);
     return r;
   },
