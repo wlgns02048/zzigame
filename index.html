@@ -3,70 +3,42 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>얼음왕관의 시련 - 냉기 마법사 로그라이크</title>
+<title>얼음왕관의 시련</title>
+<!-- 지금 서비스는 베타 서버(나스). 이 페이지는 3초 뒤 베타로 보내고, 구버전은 /classic/ 에 그대로 둔다. -->
+<meta http-equiv="refresh" content="3;url=https://Godlovesyou.synology.me:10443/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Noto+Serif+KR:wght@700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&family=Noto+Serif+KR:wght@900&display=swap" rel="stylesheet">
+<style>
+  :root { --gold: #ffd100; --line: #6b5420; --bg: #05070c; --text: #dfe8f5; --dim: #8a93a6; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px;
+    background: radial-gradient(ellipse at top, #13213a, var(--bg) 70%); color: var(--text); font-family: 'Noto Sans KR', sans-serif; }
+  main { width: 100%; max-width: 520px; text-align: center; padding: 32px 24px; border: 2px solid var(--line); border-radius: 8px;
+    background: linear-gradient(rgba(14,18,32,.95), rgba(6,8,16,.95)); box-shadow: 0 10px 40px #000; }
+  h1 { font-family: 'Noto Serif KR', serif; font-size: clamp(34px, 9vw, 52px); margin: 0; color: #dff3ff; text-shadow: 0 0 22px #3fa7ff, 3px 3px 0 #000; }
+  .beta { display: inline-block; margin: 10px 0 18px; font-size: 13px; font-weight: 700; letter-spacing: 1px; color: #000;
+    background: linear-gradient(var(--gold), #e08a00); border-radius: 3px; padding: 2px 10px; }
+  p { color: var(--dim); line-height: 1.6; margin: 0 0 20px; }
+  a.btn { display: block; margin: 10px auto; padding: 12px 0; max-width: 300px; font-weight: 700; color: var(--gold); text-decoration: none;
+    background: linear-gradient(#8c1a12, #4a0905); border: 2px solid #c9a24a; border-radius: 4px; }
+  a.btn:hover { filter: brightness(1.25); }
+  a.sub { color: var(--dim); font-size: 14px; }
+  #count { color: var(--gold); font-weight: 700; }
+</style>
 </head>
 <body>
-<div id="game">
-  <canvas id="cv"></canvas>
-  <div id="hud" class="hidden">
-    <div id="playerFrame">
-      <div class="portrait"><img src="assets/icons/classmage.jpg" alt=""><div id="pfLevel" class="lvbadge">1</div></div>
-      <div class="pfBody">
-        <div class="pfName">냉기 마법사</div>
-        <div class="bar hp"><div id="pfHp" class="fill"></div><div id="pfAbs" class="absorb"></div><span id="pfHpText"></span></div>
-        <div class="bar mana"><div id="pfIcicle" class="fill"></div><span id="pfIcicleText"></span></div>
-      </div>
-    </div>
-    <div id="buffs"></div>
-    <div id="topInfo"><div id="timer">00:00</div><div id="subInfo"><span id="kills">0</span> 처치 · <span id="goldTxt">0</span> 골드</div></div>
-    <div id="bossFrame" class="hidden">
-      <div class="portrait"><img id="bfIcon" src="" alt=""></div>
-      <div class="bfBody">
-        <div class="bfName"><span id="bfName"></span><span id="bfPct"></span></div>
-        <div class="bar bhp"><div id="bfHp" class="fill"></div></div>
-        <div id="bfCast" class="bcast hidden"><div class="fill"></div><span></span></div>
-      </div>
-    </div>
-    <div id="raidWarn"></div>
-    <div id="castbar" class="hidden"><div class="fill"></div><span class="name"></span><span class="time"></span><div class="spark"></div></div>
-    <div id="bottom">
-      <div id="rowTop">
-        <div id="autoBar"></div>
-        <div id="passiveBar"></div>
-      </div>
-      <div id="actionBar"></div>
-      <div id="xpBar"><div class="fill"></div><span></span></div>
-    </div>
-    <div id="meter" class="hidden">
-      <div class="mTitle">Details! <small>피해량</small><span class="mHint">TAB</span></div>
-      <div id="meterRows"></div>
-    </div>
-  </div>
-
-  <div id="modal" class="hidden"></div>
-  <div id="tooltip" class="hidden"></div>
-  <div id="flash"></div>
-</div>
-<div id="errlog"></div>
-
-<script src="js/util.js"></script>
-<script src="js/assets.js"></script>
-<script src="js/audio.js"></script>
-<script src="js/sprites.js"></script>
-<script src="js/data/skills.js"></script>
-<script src="js/data/enemies.js"></script>
-<script src="js/combat.js"></script>
-<script src="js/player.js"></script>
-<script src="js/skills.js"></script>
-<script src="js/enemies.js"></script>
-<script src="js/waves.js"></script>
-<script src="js/upgrades.js"></script>
-<script src="js/meta.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/render.js"></script>
-<script src="js/game.js"></script>
+<main>
+  <h1>얼음왕관의 시련</h1>
+  <div class="beta">BETA v2.0.0-beta.1</div>
+  <p>새 버전이 베타로 열렸습니다. 계정 · 오리지널 던전과 공격대 · 흑마법사 · 장비와 특성 · 랭킹을 즐겨 보세요.<br>
+     <span id="count">3</span>초 뒤 베타 서버로 이동합니다.</p>
+  <a class="btn" href="https://Godlovesyou.synology.me:10443/">베타 바로 플레이</a>
+  <a class="sub" href="classic/" id="classic">이전 버전(클래식) 플레이 — 기존 기록은 그대로 남아 있습니다</a>
+</main>
+<script>
+  // 클래식을 누르면 자동 이동을 멈춘다
+  let n = 3, timer = setInterval(() => { n--; document.getElementById('count').textContent = Math.max(0, n); }, 1000);
+  document.getElementById('classic').addEventListener('click', () => { clearInterval(timer); window.stop && window.stop(); });
+</script>
 </body>
 </html>
