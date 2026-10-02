@@ -4,15 +4,17 @@
 
 | 브랜치 / 태그 | 내용 | 서비스 |
 |---|---|---|
-| `main` | 정적 게임 (로컬 저장만) | GitHub Pages — `icecrown-trial.duckdns.org` |
-| `v1.0.0` 태그 | 서버 작업 시작 전 main 스냅샷 | — |
-| `server` | 계정 · 세이브 동기화 · 건의사항 게시판 | NAS Docker (포트 13100) |
+| `server` | 현재 서비스 버전 (베타) — 계정 · 스테이지 · 흑마법사 · 장비 · 가챠 · 랭킹 · 퀘스트 · 금고 | NAS Docker → `https://Godlovesyou.synology.me:10443` |
+| `v2.0.0-beta.1` 태그 | 첫 베타 (GitHub 프리릴리스) | — |
+| `main` | 입구 페이지(베타로 3초 뒤 이동) + 이전 게임 `/classic/` | GitHub Pages — `icecrown-trial.duckdns.org` |
+| `v1.0.0` 태그 | 서버 작업 시작 전 원래 게임 | `/classic/`과 같은 내용 |
 
-`server`에서 개발하고, 충분히 검증되면 main에 합치고 도메인을 NAS로 옮긴다.
-게임 쪽 수정(밸런스 등)은 main에 먼저 하고 `git merge main`으로 server에 가져오면 된다.
+- 화면 표시 버전은 `js/util.js`의 `G.VERSION` — 새 베타를 낼 때 태그(`v2.0.0-beta.N`)와 같이 올린다
+- 공개 주소 `icecrown-trial.duckdns.org`는 GitHub Pages라 서버를 돌릴 수 없어서, 입구 페이지가 베타 서버로 보낸다
+- 되돌리기(원래 게임을 다시 루트로): main의 "베타 서비스 전환" 커밋을 revert
 
-> 주의: `Z:\docker\zzigame`은 RaiDrive로 연결된 NAS 폴더 그 자체라서, 로컬에서 `git checkout main`을 하면
-> NAS 쪽 파일도 main으로 바뀐다. NAS 컨테이너를 다시 빌드할 때는 반드시 `server` 브랜치가 체크아웃된 상태여야 한다.
+> `Z:\docker\zzigame`은 RaiDrive로 연결된 NAS 폴더 그 자체다. 배포는 러너가 push된 커밋을 따로 받아서 하므로
+> 로컬에서 어느 브랜치를 체크아웃해도 서비스에는 영향이 없다. main을 고칠 때는 `git worktree`로 다른 폴더에서 작업하는 것을 권장.
 
 ## 구조
 
