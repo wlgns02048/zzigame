@@ -13,6 +13,7 @@ const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(__dirname, '..',
 const ADMINS = new Set((process.env.ADMIN_USERS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean));
 const SESSION_TTL = 90 * 86400 * 1000; // 마지막 사용 후 90일
 const STATUSES = ['open', 'planned', 'done', 'rejected'];
+const CORS_ORIGINS = new Set((process.env.CORS_ORIGINS || 'https://icecrown-trial.duckdns.org').split(',').map(s => s.trim()).filter(Boolean));
 
 const db = require('./db')(DATA_DIR);
 
@@ -198,6 +199,15 @@ http.createServer(async (req, res) => {
     let p;
     try { p = decodeURIComponent(url.pathname); } catch { res.writeHead(400); return res.end(); }
     return serveStatic(req, res, p);
+  }
+  // 공개 주소(GitHub Pages)에서 연 화면이 이 서버의 API를 부를 수 있게 허용 (그 출처만)
+  if (CORS_ORIGINS.has(req.headers.origin)) {
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE');
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+    res.setHeader('Access-Control-Max-Age', '86400');
+    if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
   }
   try {
     for (const r of routes) {

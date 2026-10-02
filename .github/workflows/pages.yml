@@ -1,0 +1,48 @@
+name: Publish public site (GitHub Pages)
+
+# 공개 주소 https://icecrown-trial.duckdns.org 에 베타 화면을 올린다.
+# - 루트: server 브랜치의 게임 화면 (로그인 · 저장 등 서버 기능은 나스 베타 서버 API를 부름 — js/net.js의 base)
+# - /classic/: v1.0.0 태그의 원래 게임
+on:
+  push:
+    branches:
+      - server
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Checkout beta (server)
+        uses: actions/checkout@v4
+        with:
+          path: beta
+      - name: Checkout classic (v1.0.0)
+        uses: actions/checkout@v4
+        with:
+          ref: v1.0.0
+          path: classic
+      - name: Assemble site
+        run: |
+          mkdir -p site/classic
+          cp -r beta/index.html beta/css beta/js beta/assets site/
+          cp -r classic/index.html classic/css classic/js classic/assets site/classic/
+          echo "icecrown-trial.duckdns.org" > site/CNAME
+          touch site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

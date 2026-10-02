@@ -5,12 +5,15 @@ G.Net = {
   user: null,         // { username, admin } — 로그인 중일 때만
   online: false,      // 서버에 연결되었는지
 
+  // 공개 주소(GitHub Pages)에서 열리면 화면은 Pages가, 서버 기능은 나스 베타 서버가 맡는다
+  base: location.hostname === 'icecrown-trial.duckdns.org' ? 'https://Godlovesyou.synology.me:10443' : '',
+
   async api(method, url, body) {
     const headers = {};
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     if (this.token) headers.Authorization = 'Bearer ' + this.token;
     let res;
-    try { res = await fetch(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }); }
+    try { res = await fetch(this.base + url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }); }
     catch (e) { throw new Error('서버에 연결할 수 없습니다.'); }
     const data = await res.json().catch(() => ({}));
     if (res.status === 401 && this.token && !url.startsWith('/api/auth/')) this.dropSession();
@@ -22,7 +25,7 @@ G.Net = {
   async init() {
     try { this.token = localStorage.getItem('frostmage_token'); } catch (e) { /* 저장소 사용 불가 */ }
     let res;
-    try { res = await fetch('/api/me', { headers: this.token ? { Authorization: 'Bearer ' + this.token } : {} }); }
+    try { res = await fetch(this.base + '/api/me', { headers: this.token ? { Authorization: 'Bearer ' + this.token } : {} }); }
     catch (e) { return; }
     this.online = res.status === 200 || res.status === 401;
     if (res.status === 200) { const r = await res.json(); this.setSession(this.token, r.user, r.profile); }
