@@ -9,35 +9,32 @@ G.RARITY = [
   { name: '유물', color: '#e6cc80', mult: 1 },
 ];
 
-const DEFENSIVE = ['iceblock', 'coldsnap', 'icebarrier', 'blink', 'mirrorimage', 'shiftingpower', 'icyveins'];
 G.Upg = {
   count(kind) { return G.player.order.filter(id => G.SKILLS[id].kind === kind).length; },
 
   pool(chest) {
-    const p = G.player, out = [];
+    const p = G.player, C = G.cls(p), out = [];
     const npass = Object.keys(p.passives).length;
+    const add = o => { o.w = C.upgWeight(o, p) ?? o.w ?? 1; out.push(o); };
     for (const id in G.SKILLS) {
-      const def = G.SKILLS[id], ok = !def.req || def.req(p);
+      const def = G.SKILLS[id], ok = def.cls === p.cls && (!def.req || def.req(p));
       if (!ok) continue;
       if ((def.kind === 'auto' || def.kind === 'active') && !p.skills[id] && this.count(def.kind) < G.LIMITS[def.kind]) {
-        out.push({ type: 'new', id, w: def.kind === 'auto' ? 1.15 : DEFENSIVE.includes(id) && p.level < 8 ? 0.35 : 0.95 });
+        add({ type: 'new', id });
       } else if (def.kind === 'passive') {
         const r = p.passives[id] ? p.passives[id].rank : 0;
-        if (r < def.max && (r > 0 || npass < G.LIMITS.passive)) out.push({ type: 'passive', id, w: id === 'fingersoffrost' || id === 'brainfreeze' ? 1.2 : 0.75 });
+        if (r < def.max && (r > 0 || npass < G.LIMITS.passive)) add({ type: 'passive', id });
       } else if (def.kind === 'legendary' && !p.legend[id] && (p.level >= 8 || chest)) {
-        out.push({ type: 'legendary', id, w: chest ? 1.4 : 0.1 + p.stats.luck * 0.4 });
+        add({ type: 'legendary', id, w: chest ? 1.4 : 0.1 + p.stats.luck * 0.4 });
       } else if (def.kind === 'evolution' && !p.evo[id]) {
-        out.push({ type: 'evolution', id, w: chest ? 8 : 3 });
+        add({ type: 'evolution', id, w: chest ? 8 : 3 });
       }
     }
     for (const id of p.order) {
       const sk = p.skills[id];
       for (const n of sk.def.nodes || []) {
         if ((sk.ranks[n.id] || 0) >= n.max) continue;
-        let w = 1.2;
-        if (id === 'frostbolt' && p.level < 8) w = 2.2;
-        if (id === 'frostbolt' && (n.id === 'count' || n.id === 'cast') && p.level < 12) w += 0.8;
-        out.push({ type: 'node', id, nodeId: n.id, w });
+        add({ type: 'node', id, nodeId: n.id });
       }
     }
     return out;

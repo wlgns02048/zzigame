@@ -265,6 +265,9 @@ G.SOURCES = {
   iceblock: ['산산조각 나는 얼음', 'iceblock', '#bfe8ff'],
 };
 
+// 지금까지의 주문은 모두 냉기 마법사 것. 다른 직업 파일은 cls를 직접 지정한다.
+for (const id in G.SKILLS) G.SKILLS[id].cls ||= 'mage';
+
 G.ACTION_KEYS = ['Q', 'E', 'R', 'F', 'T', 'SPACE', '1', '2', '3', '4', '5', '6'];
 G.KEY_LABEL = { SPACE: 'Spc' };
 G.LIMITS = { auto: 6, active: 6, passive: 8 };

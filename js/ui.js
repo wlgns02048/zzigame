@@ -57,7 +57,7 @@ G.UI = {
       return `<div class="tt-title" style="color:${c}">${def.name}</div><div class="tt-row"><span>${def.kind === 'legendary' ? '전설 효과' : '진화'}</span></div><div class="tt-desc">${def.desc()}</div>`;
     }
     const sk = p.skills[id]; if (!sk) return '';
-    const isFF = id === 'frostbolt' && p.evo.frostfire;
+    const isFF = id === 'frostbolt' && p.evo && p.evo.frostfire;
     const ranks = (def.nodes || []).filter(n => sk.ranks[n.id]).map(n => `<span class="tt-green">${n.name} ${sk.ranks[n.id]}/${n.max}</span>`).join(' · ');
     return `<div class="tt-title" style="${isFF ? 'color:#e6cc80' : ''}">${isFF ? '서리불꽃 화살' : def.name}</div>
       <div class="tt-row"><span>${def.castInfo(sk.s)}</span><span>${p.skillLevel(id)}레벨</span></div>
@@ -77,7 +77,7 @@ G.UI = {
     for (const id of p.order) {
       const def = G.SKILLS[id]; if (def.kind !== 'auto') continue;
       const d = document.createElement('div'); d.className = 'slot small'; d.dataset.skill = id;
-      const icon = id === 'frostbolt' && p.evo.frostfire ? 'frostfire' : def.icon;
+      const icon = G.cls(p).skillIcon(id, p);
       d.innerHTML = `<img src="${G.icon(icon)}"><div class="cd"></div><div class="cdt"></div><span class="lv">${p.skillLevel(id)}</span><span class="chg"></span>`;
       ab.appendChild(d); this.autoEls.push([id, d]);
     }
@@ -111,9 +111,9 @@ G.UI = {
     el.pfHp.style.width = (p.hp / p.maxHp * 100).toFixed(1) + '%';
     el.pfAbs.style.width = Math.min(100, p.absorb / p.maxHp * 100).toFixed(1) + '%';
     el.pfHpText.textContent = `${Math.ceil(Math.max(0, p.hp))} / ${p.maxHp}` + (p.absorb > 0 ? ` (+${Math.round(p.absorb)})` : '');
-    const ic = p.skills.icicles;
-    el.pfIcicle.style.width = ic ? (p.icicles.length / ic.s.max * 100) + '%' : '0%';
-    el.pfIcicleText.textContent = ic ? `고드름 ${p.icicles.length} / ${ic.s.max}` : '';
+    const C = G.cls(p), res = C.resource(p);
+    el.pfIcicle.style.width = res ? (res.cur / res.max * 100) + '%' : '0%';
+    el.pfIcicleText.textContent = res ? `${res.label} ${res.cur} / ${res.max}` : '';
     el.timer.textContent = U.fmtTime(G.t);
     el.kills.textContent = G.stats.kills.toLocaleString();
     el.goldTxt.textContent = Math.floor(G.stats.gold);
@@ -121,18 +121,17 @@ G.UI = {
     el.xpBar.lastElementChild.textContent = `레벨 ${p.level} · 경험치 ${Math.floor(p.xp)} / ${p.xpNeed}`;
 
     // 시전바
-    const cb = el.castbar, fb = p.skills.frostbolt;
+    const cb = el.castbar, cast = C.castbar(p);
     if (p.channel) {
       cb.classList.remove('hidden'); cb.classList.add('channel');
       const f = 1 - p.channel.t / p.channel.dur;
       cb.firstElementChild.style.width = (f * 100) + '%'; cb.querySelector('.spark').style.left = (f * 100) + '%';
       cb.querySelector('.name').textContent = p.channel.name; cb.querySelector('.time').textContent = (p.channel.dur - p.channel.t).toFixed(1);
-    } else if (fb && p.iceblockT <= 0 && fb.castT > 0 && fb.castT < 1) {
+    } else if (cast) {
       cb.classList.remove('hidden', 'channel');
-      cb.firstElementChild.style.width = (fb.castT * 100) + '%'; cb.querySelector('.spark').style.left = (fb.castT * 100) + '%';
-      cb.querySelector('.name').textContent = p.evo.frostfire ? '서리불꽃 화살' : '얼음화살';
-      const tot = fb.s.cast / (1 + G.P.haste());
-      cb.querySelector('.time').textContent = `${((1 - fb.castT) * tot).toFixed(1)} / ${tot.toFixed(1)}`;
+      cb.firstElementChild.style.width = (cast.f * 100) + '%'; cb.querySelector('.spark').style.left = (cast.f * 100) + '%';
+      cb.querySelector('.name').textContent = cast.name;
+      cb.querySelector('.time').textContent = `${((1 - cast.f) * cast.total).toFixed(1)} / ${cast.total.toFixed(1)}`;
     } else cb.classList.add('hidden');
 
     // 액션바 쿨다운
@@ -142,24 +141,19 @@ G.UI = {
       const sk = p.skills[id];
       this.setCd(d, sk);
       const impl = G.SKILL_IMPL[id];
-      d.classList.toggle('unusable', !!(impl.usable && !impl.usable(sk)) || p.iceblockT > 0 && id !== 'iceblock');
-      d.classList.toggle('glow', id === 'glacialspike' && impl.usable(sk));
-      d.classList.toggle('active', !!(p.channel && p.channel.id === id) || (id === 'iceblock' && p.iceblockT > 0));
+      const ss = C.slotState(id, p, impl, sk);
+      d.classList.toggle('unusable', !!(impl.usable && !impl.usable(sk)) || ss.unusable);
+      d.classList.toggle('glow', !!ss.glow);
+      d.classList.toggle('active', !!(p.channel && p.channel.id === id) || ss.active);
     }
     for (const [id, d] of this.autoEls) {
       const sk = p.skills[id];
       if (sk.s.cd) this.setCd(d, sk);
-      d.classList.toggle('glow', (id === 'icelance' && p.fof > 0) || (id === 'flurry' && p.bf > 0));
+      d.classList.toggle('glow', !!C.autoGlow(id, p));
     }
 
     // 버프
-    const buffs = [];
-    if (p.ivT > 0) buffs.push(['icyveins', p.ivT, '', '얼음 핏줄', '가속 증가']);
-    if (p.fof > 0) buffs.push(['fingersoffrost', p.fofT, p.fof > 1 ? p.fof : '', '서리의 손가락', '다음 얼음창이 얼어붙은 대상처럼 취급']);
-    if (p.bf > 0) buffs.push(['brainfreeze', p.bfT, '', '두뇌 빙결', '다음 진눈깨비 강화']);
-    if (p.absorb > 0) buffs.push(['icebarrier', -1, Math.round(p.absorb), '얼음 보호막', '피해 흡수']);
-    if (p.iceblockT > 0) buffs.push(['iceblock', p.iceblockT, '', '얼음 방패', '모든 피해 면역']);
-    if (G.images.length) buffs.push(['mirrorimage', G.images[0].life, G.images.length, '환영 복제', '환영이 적의 주의를 끕니다']);
+    const buffs = C.buffs(p);
     if (p.rootT > 0) buffs.push(['freeze', p.rootT, '', '서리 폭발', '이동 불가', true]);
     const sig = buffs.map(b => b[0]).join();
     if (sig !== this.buffSig) {
@@ -389,7 +383,7 @@ G.UI = {
 
   buildSummary() {
     const p = G.player;
-    const icons = p.order.map(id => `<div class="pslot" data-skill="${id}"><img src="${G.icon(id === 'frostbolt' && p.evo.frostfire ? 'frostfire' : G.SKILLS[id].icon)}"><span class="lv">${p.skillLevel(id)}</span></div>`)
+    const icons = p.order.map(id => `<div class="pslot" data-skill="${id}"><img src="${G.icon(G.cls(p).skillIcon(id, p))}"><span class="lv">${p.skillLevel(id)}</span></div>`)
       .concat(Object.keys(p.passives).map(id => `<div class="pslot" data-skill="${id}"><img src="${G.icon(G.SKILLS[id].icon)}"><span class="lv">${p.passives[id].rank}</span></div>`))
       .concat(Object.keys(p.legend).concat(Object.keys(p.evo)).map(id => `<div class="pslot legend" data-skill="${id}"><img src="${G.icon(G.SKILLS[id].icon)}"></div>`));
     return `<div class="buildRow">${icons.join('')}</div>`;

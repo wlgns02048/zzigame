@@ -25,7 +25,7 @@ G.init = async () => {
     try {
       if (G.state === 'play' && !G.paused && !G.simulating) { for (let i = 0; i < G.timeScale; i++) G.update(dt); }
       else if (G.state === 'menu') { G.cam.x += dt * 25; G.cam.y += dt * 8; }
-      G.R.draw(dt);
+      if (!G.simulating) G.R.draw(dt);
       G.UI.update(dt);
     } catch (err) {
       // 한 프레임의 오류로 게임 전체가 멈추지 않도록
@@ -65,15 +65,15 @@ G.Input = () => {
   addEventListener('mousedown', () => G.Audio.init());
 };
 
-G.startRun = () => {
+G.startRun = (cls = G.selectedClass || 'mage') => {
   Object.assign(G, { t: 0, enemies: [], projs: [], eprojs: [], zones: [], tele: [], pickups: [], parts: [], texts: [], rings: [], pets: [], images: [], delayed: [], chests: [] });
   G.stats = { kills: 0, gold: 0, banked: 0 };
   G.state = 'play'; G.paused = false;
-  G.player = G.P.create();
+  G.player = G.P.create(cls);
   G.meter.reset(); G.Waves.reset();
   G.P.recalc();
-  G.P.learn('frostbolt');
-  if (G.params.get('all')) for (const id in G.SKILLS) { const k = G.SKILLS[id].kind; if ((k === 'auto' || k === 'active') && !G.player.skills[id]) G.P.learn(id); }
+  G.P.learn(G.CLASSES[cls].starter);
+  if (G.params.get('all')) for (const id in G.SKILLS) { const d = G.SKILLS[id]; if (d.cls === cls && (d.kind === 'auto' || d.kind === 'active') && !G.player.skills[id]) G.P.learn(id); }
   if (G.params.get('t')) G.t = +G.params.get('t');
   G.cam.x = 0; G.cam.y = 0;
   G.UI.close();
@@ -228,28 +228,13 @@ G.Bot = {
     this.actT -= dt; if (this.actT > 0) return; this.actT = 0.3;
     for (const id of p.order) {
       const def = G.SKILLS[id]; if (def.kind !== 'active') continue;
-      if (id === 'iceblock' && (p.hp > p.maxHp * 0.25 || p.iceblockT > 0)) continue;
-      if (id === 'coldsnap' && p.hp > p.maxHp * 0.5) continue;
-      if (id === 'blink' && p.hp > p.maxHp * 0.6) continue;
+      if (!G.cls(p).botUse(id, p)) continue;
       const sk = p.skills[id], impl = G.SKILL_IMPL[id];
       if (sk.charges > 0 && (!impl.usable || impl.usable(sk)) && !(p.channel && p.channel.id === id)) G.Skills.activate(id);
     }
   },
   pick() {
-    // 사람처럼: 진화 > 전설 > 얼음화살 핵심 강화 > 공격 주문 > 피해 강화 > 능력치 > 기타
-    const p = G.player, o = G.UI.lvOpts;
-    const score = x => {
-      if (x.type === 'evolution') return 100;
-      if (x.type === 'legendary') return 80;
-      if (x.type === 'node' && x.id === 'frostbolt' && (x.nodeId === 'count' || x.nodeId === 'cast')) return 60;
-      if (x.type === 'new' && G.SKILLS[x.id].kind === 'auto') return p.order.length < 6 ? 55 : 20;
-      if (x.type === 'node' && x.nodeId === 'dmg') return 45;
-      if (x.type === 'passive' && ['arcaneint', 'haste', 'crit', 'projectile', 'fingersoffrost', 'brainfreeze'].includes(x.id)) return 40 + x.rarity * 5;
-      if (x.type === 'new' && ['frozenorb', 'frostnova', 'coneofcold', 'glacialspike', 'icebarrier'].includes(x.id)) return 35;
-      if (x.type === 'node') return 30;
-      if (x.type === 'passive') return 25 + x.rarity * 5;
-      return 10;
-    };
+    const p = G.player, o = G.UI.lvOpts, score = x => G.cls(p).botScore(x, p);
     let bi = 0, bs = -1; o.forEach((x, i) => { const s = score(x) + Math.random() * 12; if (s > bs) { bs = s; bi = i; } });
     return bi;
   },

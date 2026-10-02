@@ -13,6 +13,10 @@ const G = window.G = {
   params: new URLSearchParams(location.search),
 };
 
+// 직업 레지스트리 (js/classes/*.js 에서 채움)
+G.CLASSES = {};
+G.cls = (p = G.player) => G.CLASSES[p.cls];
+
 window.addEventListener('error', e => {
   const el = document.getElementById('errlog');
   if (el) el.textContent += `ERR ${e.message} @ ${(e.filename || '').split('/').pop()}:${e.lineno}\n`;

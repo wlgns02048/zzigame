@@ -92,7 +92,7 @@ G.Skills = {
 
   update(dt) {
     const p = G.player; if (p.dead) return;
-    const hs = 1 + G.P.haste(), busy = p.iceblockT > 0;
+    const C = G.cls(p), hs = 1 + G.P.haste(), busy = C.busy(p);
     for (const id of p.order) {
       const sk = p.skills[id], s = sk.s;
       sk.t += dt;
@@ -114,25 +114,14 @@ G.Skills = {
       const impl = IMPL[c.id]; if (impl.channel) impl.channel(p.skills[c.id], c, dt);
       if (c.t >= c.dur || busy) p.channel = null;
     }
-    // 전설: 얼어붙은 바람
-    if (p.legend.freezingwinds && G.projs.some(q => q.kind === 'orb')) {
-      p.fwT -= dt; if (p.fwT <= 0) { p.fwT = 2; G.Skills.procBF(); }
-    }
-    // 진화: 파편 폭풍
-    if (p.evo.splinterstorm && p.skills.icelance) {
-      p.splinterT -= dt;
-      if (p.splinterT <= 0 && G.enemies.length) {
-        p.splinterT = 8; G.fx.ring(p.x, p.y, 10, 120, 0.5, '190,110,255', 4);
-        G.Skills.splinters(14, true);
-      }
-    }
+    C.skillsUpdate(p, dt);
   },
 
   activate(id) {
     const p = G.player, sk = p.skills[id];
     if (!sk || p.dead || G.state !== 'play' || G.paused) return false;
-    if (id === 'iceblock' && p.iceblockT > 0) { p.iceblockT = 0; this.endIceBlock(); return true; }
-    if (p.iceblockT > 0) return false;
+    const pre = G.cls(p).activate(id, p);
+    if (pre !== undefined) return pre;
     if (p.channel && p.channel.id === id) { p.channel = null; return true; }
     const impl = IMPL[id];
     if ((sk.s.cd && sk.charges <= 0) || (impl.usable && !impl.usable(sk))) { G.UI.error('아직 사용할 수 없습니다.'); return false; }

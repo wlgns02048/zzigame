@@ -193,7 +193,7 @@ G.R = {
       c.fillStyle = 'rgba(120,190,255,0.06)'; c.fill(); c.restore();
     }
     for (const q of G.pets) this.drawWater(c, q);
-    for (const im of G.images) this.drawMage(c, im.x, im.y, im.face, 0.5, true, im.t);
+    for (const im of G.images) G.cls().drawBody(c, im.x, im.y, im.face, 0.5, true, im.t);
     this.drawPlayer(c);
     // 체력바 (피해 입은 적, 정예)
     for (const e of list) {
@@ -235,78 +235,12 @@ G.R = {
     }
   },
 
-  drawMage(c, x, y, face, alpha, image, t) {
-    const p = G.player, spr = !image && p.hurtT > 0 ? G.Spr.playerFlash : G.Spr.player;
-    const bob = (image || p.moving) ? Math.abs(Math.sin((t ?? G.t) * 10)) * -2.5 : Math.sin(G.t * 2) * 0.8;
-    c.save(); c.globalAlpha = alpha;
-    c.translate(x, y + 14 + bob); if (face < 0) c.scale(-1, 1);
-    c.drawImage(spr, -32, -74);
-    c.restore();
-    // 지팡이 수정 빛
-    c.globalCompositeOperation = 'lighter';
-    c.globalAlpha = (image ? 0.5 : 0.8) + Math.sin(G.t * 6) * 0.15;
-    const sx = x + face * 16, sy = y + 14 + bob - 66;
-    c.drawImage(G.Spr.glow(image ? '190,120,255' : '120,210,255', 64), sx - 20, sy - 20, 40, 40);
-    if (image) { c.globalAlpha = 0.35; c.drawImage(G.Spr.glow('170,100,255', 64), x - 30, y - 40, 60, 70); }
-    c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
-  },
-
   drawPlayer(c) {
     const p = G.player; if (p.dead) return;
-    if (p.ivT > 0) {
-      c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.45 + Math.sin(G.t * 8) * 0.15;
-      c.drawImage(G.Spr.glow('60,140,255', 128), p.x - 46, p.y - 64, 92, 100);
-      c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
-    }
-    // 정신 집중 효과
-    if (p.channel && p.channel.id === 'rayoffrost' && p.channel.len) {
-      const ch = p.channel, sx = p.x + Math.cos(ch.a) * 18, sy = p.y - 16 + Math.sin(ch.a) * 18;
-      const ex = p.x + Math.cos(ch.a) * ch.len, ey = p.y - 16 + Math.sin(ch.a) * ch.len;
-      c.globalCompositeOperation = 'lighter'; c.lineCap = 'round';
-      const wob = Math.sin(G.t * 40) * 2;
-      [[ch.w * 2.2 + wob, 'rgba(60,130,255,0.25)'], [ch.w * 1.2 + wob, 'rgba(120,200,255,0.5)'], [ch.w * 0.45, 'rgba(235,250,255,0.95)']].forEach(([w, col]) => {
-        c.strokeStyle = col; c.lineWidth = w; c.beginPath(); c.moveTo(sx, sy); c.lineTo(ex, ey); c.stroke();
-      });
-      c.drawImage(G.Spr.glow('150,220,255', 128), ex - 50, ey - 50, 100, 100);
-      c.drawImage(G.Spr.glow('200,240,255', 64), sx - 26, sy - 26, 52, 52);
-      c.globalCompositeOperation = 'source-over';
-    }
-    if (p.channel && p.channel.id === 'shiftingpower') {
-      c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.6;
-      c.drawImage(G.Spr.glow('80,230,150', 128), p.x - 60, p.y - 70, 120, 120);
-      c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
-    }
-    this.drawMage(c, p.x, p.y, p.face, 1, false);
-    // 고드름
-    if (p.icicles.length) {
-      for (let i = 0; i < p.icicles.length; i++) {
-        const [x, y, a] = G.Skills.icPos(i);
-        c.save(); c.translate(x, y); c.rotate(-Math.PI / 2 + Math.cos(a) * 0.3);
-        c.drawImage(G.Spr.icicle, -20, -7); c.restore();
-        c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.5; c.drawImage(G.Spr.glow('130,200,255', 32), x - 12, y - 12, 24, 24);
-        c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
-      }
-    }
-    // 얼음 보호막
-    if (p.absorb > 0) {
-      const r = 34 + Math.sin(G.t * 3) * 1.5;
-      const g = c.createRadialGradient(p.x - 8, p.y - 22, 4, p.x, p.y - 12, r);
-      g.addColorStop(0, 'rgba(255,255,255,0.25)'); g.addColorStop(0.7, 'rgba(150,210,255,0.12)'); g.addColorStop(1, 'rgba(180,230,255,0.45)');
-      c.fillStyle = g; c.beginPath(); c.arc(p.x, p.y - 12, r, 0, 7); c.fill();
-      c.strokeStyle = 'rgba(220,245,255,0.7)'; c.lineWidth = 1.5; c.stroke();
-      c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = 1;
-      for (let i = 0; i < 6; i++) { const a = i * 1.047 + G.t * 0.3; c.beginPath(); c.moveTo(p.x + Math.cos(a) * r * 0.4, p.y - 12 + Math.sin(a) * r * 0.4); c.lineTo(p.x + Math.cos(a + 0.4) * r * 0.95, p.y - 12 + Math.sin(a + 0.4) * r * 0.95); c.stroke(); }
-    }
-    // 얼음 방패
-    if (p.iceblockT > 0) {
-      const x = p.x, y = p.y - 22;
-      c.beginPath(); c.moveTo(x - 30, y - 44); c.lineTo(x + 26, y - 50); c.lineTo(x + 36, y + 2); c.lineTo(x + 28, y + 44); c.lineTo(x - 28, y + 46); c.lineTo(x - 38, y - 4); c.closePath();
-      const g = c.createLinearGradient(x - 30, y - 50, x + 30, y + 46);
-      g.addColorStop(0, 'rgba(230,248,255,0.75)'); g.addColorStop(0.5, 'rgba(120,190,255,0.45)'); g.addColorStop(1, 'rgba(200,235,255,0.7)');
-      c.fillStyle = g; c.fill(); c.strokeStyle = '#ffffff'; c.lineWidth = 2; c.stroke();
-      c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 1.2;
-      c.beginPath(); c.moveTo(x - 20, y - 30); c.lineTo(x - 4, y - 8); c.lineTo(x + 12, y - 30); c.moveTo(x + 18, y + 10); c.lineTo(x + 4, y + 30); c.stroke();
-    }
+    const C = G.cls(p);
+    C.drawUnder(c, p);
+    C.drawBody(c, p.x, p.y, p.face, 1, false);
+    C.drawOver(c, p);
   },
 
   drawWater(c, q) {

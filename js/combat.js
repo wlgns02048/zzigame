@@ -76,7 +76,7 @@ G.hit = (e, base, src, o = {}) => {
     const col = o.school === 'fire' ? (crit ? '#ffb347' : '#ff8a3c') : o.school === 'arcane' ? (crit ? '#ff9cff' : '#e4a6ff') : (crit ? '#ffe14d' : '#ffffff');
     G.fx.text(e.x, e.y - e.r - 6, crit ? U.num(d) + '!' : U.num(d), col, crit ? 24 : 15, crit);
   }
-  if (crit && p.legend.coldhearted && Math.random() < 0.05) G.freeze(e, 2);
+  if (crit) G.cls(p).onCrit(e, p);
   if (e.hp <= 0) G.killEnemy(e, frozen);
   return d;
 };
@@ -129,7 +129,7 @@ G.dropPickup = (kind, x, y, v) => {
 // ================= 플레이어 피격 =================
 G.hurtPlayer = (dmg, src) => {
   const p = G.player;
-  if (p.dead || p.iceblockT > 0 || G.params.get('god')) return;
+  if (p.dead || G.cls(p).immune(p) || G.params.get('god')) return;
   dmg *= (1 - Math.min(0.6, p.stats.armor)) * G.Waves.dmgMul();
   dmg = Math.round(dmg);
   if (p.absorb > 0) {

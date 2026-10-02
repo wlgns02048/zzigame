@@ -1,18 +1,18 @@
 'use strict';
 // ================= 플레이어 =================
 G.P = {
-  create() {
+  create(cls = 'mage') {
     const m = G.Meta;
     const p = {
+      cls,
       x: 0, y: 0, r: 14, hp: 1, maxHp: 1, absorb: 0, level: 1, xp: 0, xpNeed: G.P.xpNeed(1), pendingLv: 0,
       skills: {}, passives: {}, legend: {}, evo: {}, order: [],
       stats: {}, face: 1, moving: false, mvx: 0, mvy: 0, dead: false,
-      icicles: [], icAngle: 0,
-      fof: 0, fofT: 0, bf: 0, bfT: 0, ivT: 0, iceblockT: 0, channel: null, rootT: 0, hurtT: 0,
-      fbCast: 0, fbCount: 0, swT: 0, fwT: 0, splinterT: 8,
+      channel: null, rootT: 0, hurtT: 0,
       rerolls: 2 + m.rank('reroll'), revives: m.rank('revive'),
       skillLevel(id) { const sk = this.skills[id]; if (!sk) return 0; let l = 1; for (const k in sk.ranks) l += sk.ranks[k]; return l; },
     };
+    G.CLASSES[cls].init(p);
     return p;
   },
   xpNeed: l => Math.floor(2 + (l - 1) * 3 + Math.pow(l - 1, 1.6)),
@@ -25,8 +25,7 @@ G.P = {
       movePenalty: 0.15, fof: 0, bf: 0, shatterCrit: 0.35, speedMul: 1 + m.rank('speed') * 0.04, xpMul: 1 + m.rank('xp') * 0.06,
     };
     for (const id in p.passives) { const def = G.SKILLS[id]; def.apply(st, p.passives[id].total); }
-    if (p.legend.coldhearted) st.critMul += 0.25;
-    if (p.legend.timewarp) { st.haste += 0.2; st.speedMul += 0.1; }
+    G.cls(p).recalc(st, p);
     const oldMax = p.maxHp;
     p.stats = st;
     p.maxHp = Math.round(150 * st.hpMul);
@@ -44,9 +43,7 @@ G.P = {
       if (s.count !== undefined) s.count += p.stats.proj;
       else if (s.targets !== undefined) s.targets += p.stats.proj;
     }
-    if (sk.id === 'icicles' && p.legend.giantheart) { s.max += 3; s.dmg *= 1.6; }
-    if (sk.id === 'frostbolt' && p.evo.frostfire) { s.dmg *= 1.6; s.explode = Math.max(1, s.explode) + 1; s.ff = 1; }
-    if (sk.id === 'icelance' && p.evo.splinterstorm) s.splinters = 1;
+    G.cls(p).computeSkill(sk, s, p);
     sk.s = s;
     const mc = s.charges || 1;
     if (sk.charges === undefined) sk.charges = mc;
@@ -86,7 +83,7 @@ G.P = {
     p.hp += h; G.fx.text(p.x, p.y - 34, '+' + Math.round(h), '#40ff60', 15);
   },
 
-  haste() { const p = G.player; return p.stats.haste + (p.ivT > 0 && p.skills.icyveins ? p.skills.icyveins.s.haste : 0); },
+  haste() { const p = G.player; return p.stats.haste + G.cls(p).haste(p); },
 
   inputDir() {
     if (G.Bot.on) return G.Bot.dir();
@@ -100,28 +97,19 @@ G.P = {
     const p = G.player, st = p.stats;
     if (p.dead) return;
     p.hurtT -= dt; p.rootT -= dt;
-    if (p.fofT > 0 && (p.fofT -= dt) <= 0) p.fof = 0;
-    if (p.bfT > 0 && (p.bfT -= dt) <= 0) p.bf = 0;
-    if (p.ivT > 0) { p.ivT -= dt; if (Math.random() < 0.6) G.fx.part({ x: p.x + U.rand(-14, 14), y: p.y + U.rand(-8, 22), vy: U.rand(-90, -40), life: 0.6, size: U.rand(5, 10), rgb: '90,170,255' }); }
-    if (p.iceblockT > 0) {
-      p.iceblockT -= dt;
-      const ib = p.skills.iceblock; if (ib && ib.s.heal) G.P.heal(p.maxHp * ib.s.heal * dt);
-      if (p.iceblockT <= 0) G.Skills.endIceBlock();
-    }
+    const C = G.cls(p);
+    C.update(p, dt);
     // 이동
     let [dx, dy] = G.P.inputDir();
     let sp = st.speed;
     if (p.channel) sp *= 0.45;
-    if (p.rootT > 0 || p.iceblockT > 0) sp = 0;
+    if (p.rootT > 0 || C.busy(p)) sp = 0;
     p.mvx = dx; p.mvy = dy;
     p.moving = sp > 0 && (dx || dy);
     p.x += dx * sp * dt; p.y += dy * sp * dt;
     p.face = G.mouse.x >= p.x ? 1 : -1;
     // 회복
     if (st.regen > 0) p.hp = Math.min(p.maxHp, p.hp + st.regen * dt);
-    p.icAngle += dt * 2.2;
-    // 고드름 최대치 유지
-    const ic = p.skills.icicles; if (ic) while (p.icicles.length > ic.s.max) p.icicles.shift();
   },
 };
 
