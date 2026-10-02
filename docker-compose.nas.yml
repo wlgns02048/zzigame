@@ -1,8 +1,9 @@
-# 나스 전용 오버레이. 사용법: docker compose -f docker-compose.yml -f docker-compose.nas.yml up --build -d
+# 나스 전용 오버레이. 사용법: docker compose -p zzigame -f docker-compose.yml -f docker-compose.nas.yml up --build -d
+# (보통은 GitHub Actions 셀프호스티드 러너가 실행한다 — .github/workflows/deploy.yml)
 #
 # 이 나스의 docker bridge는 문제가 있어서(photoshare/docker-compose.nas.yml 참고) 다른 프로젝트처럼 host 네트워크로 돌린다.
 # 포트 13100: 나스에서 이미 쓰는 포트(qdrop 3000/3001, photoshare 13000/13001/15432/16379/8000/8090, DSM 80/443/5432/8080/8443)와 겹치지 않게 고름.
-# DB는 나스 로컬 경로 ./data/game.db 에 저장된다 (파일 복사로 백업 가능).
+# DB는 DATA_ROOT(배포 시 /volume2/docker/zzigame-data)의 game.db — 파일 복사로 백업 가능.
 services:
   game:
     network_mode: host
@@ -10,4 +11,4 @@ services:
     environment:
       PORT: "13100"
     volumes: !override
-      - ./data:/app/data
+      - ${DATA_ROOT:-./data}:/app/data

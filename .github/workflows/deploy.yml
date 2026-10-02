@@ -1,24 +1,43 @@
 name: Deploy to NAS
 
 # 서버 버전(server 브랜치)만 나스에 배포한다. main은 지금처럼 GitHub Pages로 서비스.
+# 나스의 셀프호스티드 러너(nas-runner-zzigame, 라벨 nas)가 push된 커밋을 받아 그대로 빌드한다.
+# (qdrop과 같은 방식 — SSH 비밀값이 필요 없다. 러너 설치는 docs/NAS_DEPLOY.md 참고)
 on:
   push:
     branches:
       - server
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-nas
+  cancel-in-progress: false
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    name: Deploy to NAS
+    runs-on: [self-hosted, nas]
+    env:
+      # DB는 러너 작업 폴더 밖에 둔다 (체크아웃 때 작업 폴더가 정리되므로)
+      DATA_ROOT: /volume2/docker/zzigame-data
+      # 게시판 관리자 아이디 (저장소 Settings → Variables → ADMIN_USERS, 없으면 관리자 없음)
+      ADMIN_USERS: ${{ vars.ADMIN_USERS }}
+      COMPOSE: docker compose -p zzigame -f docker-compose.yml -f docker-compose.nas.yml
 
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.NAS_HOST }}
-          username: ${{ secrets.NAS_USER }}
-          key: ${{ secrets.NAS_SSH_KEY }}
-          port: ${{ secrets.NAS_PORT }}
-          script: |
-            cd ${{ secrets.NAS_PROJECT_PATH }}
-            /usr/local/bin/docker compose -f docker-compose.yml -f docker-compose.nas.yml up --build -d
-            /usr/local/bin/docker compose -f docker-compose.yml -f docker-compose.nas.yml ps
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy
+        run: |
+          export PATH=$PATH:/usr/local/bin
+          mkdir -p "$DATA_ROOT"
+          $COMPOSE up --build -d
+          docker image prune -f
+
+      - name: Verify deployment
+        run: |
+          export PATH=$PATH:/usr/local/bin
+          sleep 5
+          $COMPOSE ps
+          curl -fsS -o /dev/null http://localhost:13100/ && echo "게임 페이지 응답 OK"

@@ -67,14 +67,34 @@ NAS의 프로젝트 폴더에 `.env`를 만들어 `ADMIN_USERS=원하는아이�
 
 ## 배포
 
-`server` 브랜치에 push하면 `.github/workflows/deploy.yml`이 SSH로 NAS에서 아래를 실행한다.
+`server` 브랜치에 push하면 `.github/workflows/deploy.yml`이 **나스의 셀프호스티드 러너**에서 실행된다
+(qdrop과 같은 방식, SSH 비밀값 불필요). 러너는 push된 커밋을 자기 작업 폴더에 받아 아래를 실행한다.
 
 ```sh
-docker compose -f docker-compose.yml -f docker-compose.nas.yml up --build -d
+DATA_ROOT=/volume2/docker/zzigame-data docker compose -p zzigame -f docker-compose.yml -f docker-compose.nas.yml up --build -d
 ```
 
-필요한 GitHub Secrets (zziraidbot과 동일한 이름): `NAS_HOST`, `NAS_USER`, `NAS_SSH_KEY`, `NAS_PORT`,
-`NAS_PROJECT_PATH`(예: `/volume2/docker/zzigame`).
+- 로컬 `Z:\docker\zzigame`이 어느 브랜치든 상관없이 **push한 커밋**이 배포된다
+- DB는 러너 작업 폴더 밖 `/volume2/docker/zzigame-data/game.db` (체크아웃 때 작업 폴더가 정리되므로)
+- 게시판 관리자: 저장소 Settings → Secrets and variables → Actions → **Variables**에 `ADMIN_USERS`
+- 수동 배포: Actions 탭 → Deploy to NAS → Run workflow
+
+### 러너 설치 (한 번만)
+
+러너는 저장소마다 따로 등록해야 해서 기존 `nas-runner`(qdrop) · `nas-runner-photoshare`는 쓸 수 없다.
+`Z:\docker\github-runner-zzigame\`에 설치 스크립트가 있다.
+
+```sh
+# PC에서 등록 토큰 받기 (1시간 유효)
+gh api -X POST repos/wlgns02048/zzigame/actions/runners/registration-token --jq .token
+
+# 나스에 SSH 접속 후
+sudo sh /volume2/docker/github-runner-zzigame/setup.sh <토큰>
+```
+
+그다음 DSM → 제어판 → 작업 스케줄러 → 생성 → 트리거된 작업 → 사용자 정의 스크립트
+(사용자 root, 이벤트 부트업, 명령 `sh /volume2/docker/github-runner-zzigame/start-runner.sh`)를 추가한다.
+기존 러너들과 같은 구성이다.
 
 ## 외부 접속
 
