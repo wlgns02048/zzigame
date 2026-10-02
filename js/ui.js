@@ -216,7 +216,7 @@ G.UI = {
     this.el.hud.classList.add('hidden');
     const account = !net.online ? ''
       : net.user ? `<div class="acctLine"><b>${esc(net.user.username)}</b> 님으로 접속 중 · 진행도가 계정에 저장됩니다 <button class="btn small" id="mLogout">로그아웃</button></div>`
-        : `<div class="acctLine">게스트로 플레이 중 (이 브라우저에만 저장) <button class="btn small" id="mLogin">로그인 / 회원가입</button></div>`;
+        : `<div class="acctLine">게스트로 플레이 중 · 골드와 강화는 로그인해야 저장됩니다 <button class="btn small" id="mLogin">로그인 / 회원가입</button></div>`;
     this.open('menu', `<div class="menuWrap">
       <div class="logo">얼음왕관의 시련</div>
       <div class="logo2">냉기 마법사 로그라이크</div>
@@ -355,9 +355,14 @@ G.UI = {
       <div class="metaGrid">${G.META_DEFS.map(d => {
         const r = m.rank(d.id), max = r >= d.max, c = m.cost(d);
         return `<div class="metaItem"><img src="${G.icon(d.icon)}"><div class="mi"><b>${d.name}</b> <span class="r">${r}/${d.max}</span><br>${d.desc(Math.max(1, r))}</div>
-          <button class="btn small" data-buy="${d.id}" ${max || m.data.gold < c ? 'disabled' : ''}>${max ? '최대' : c + 'G'}</button></div>`;
-      }).join('')}</div><button class="btn" id="metaBack">돌아가기</button></div>`);
-    this.el.modal.querySelectorAll('[data-buy]').forEach(b => (b.onclick = () => { if (m.buy(b.dataset.buy)) { G.Audio.play('gold'); this.showMeta(); } }));
+          <button class="btn small" data-buy="${d.id}" ${m.canBuy(d) ? '' : 'disabled'}>${max ? '최대' : c + 'G'}</button></div>`;
+      }).join('')}</div>${m.mode() === 'guest' ? '<div class="sgLogin">영구 강화는 <a href="#" id="metaLogin">로그인</a>해야 사용할 수 있습니다.</div>' : ''}<button class="btn" id="metaBack">돌아가기</button></div>`);
+    this.el.modal.querySelectorAll('[data-buy]').forEach(b => (b.onclick = async () => {
+      b.disabled = true;
+      try { if (await m.buy(b.dataset.buy)) G.Audio.play('gold'); } catch (e) { this.toast(e.message); }
+      if (this.modalKind === 'meta') this.showMeta();
+    }));
+    if ($('metaLogin')) $('metaLogin').onclick = e => { e.preventDefault(); this.showAuth(); };
     $('metaBack').onclick = () => this.showMenu();
   },
 
@@ -400,13 +405,20 @@ G.UI = {
     $('pQuit').onclick = () => G.endRun(false);
   },
 
-  showEnd(victory, goldGain) {
+  // 서버 정산 결과로 종료 화면의 골드를 확정
+  setEndGain(gain, err) {
+    const g = $('eGain'), n = $('eGainNote'); if (!g) return;
+    if (err) { n.textContent = err; n.classList.add('err'); return; }
+    g.textContent = '+' + gain; n.textContent = '계정에 저장됨';
+  },
+
+  showEnd(victory, goldGain, mode) {
     const rows = Object.entries(G.meter.d).sort((a, b) => b[1] - a[1]);
     const tot = G.meter.total || 1, dur = Math.max(1, G.t);
     this.open('end', `<div class="panel" style="max-height:92vh;overflow:auto">
       <h1 style="color:${victory ? '#ffd100' : '#ff4b3a'}">${victory ? '승리!' : '당신은 죽었습니다'}</h1>
       <div class="sub">${victory ? '리치 왕이 쓰러졌습니다. 얼음왕관 성채에 평화가 찾아옵니다.' : '영혼이 망령으로 떠돌고 있습니다...'}</div>
-      <div class="summary"><div>생존 시간<b>${U.fmtTime(G.t)}</b></div><div>레벨<b>${G.player.level}</b></div><div>처치<b>${G.stats.kills.toLocaleString()}</b></div><div>획득 골드<b>+${goldGain}</b></div><div>총 피해<b>${U.num(tot)}</b></div></div>
+      <div class="summary"><div>생존 시간<b>${U.fmtTime(G.t)}</b></div><div>레벨<b>${G.player.level}</b></div><div>처치<b>${G.stats.kills.toLocaleString()}</b></div><div>획득 골드<b id="eGain">+${goldGain}</b><small id="eGainNote">${mode === 'account' ? '정산 중…' : mode === 'guest' ? '로그인하면 저장됩니다' : ''}</small></div><div>총 피해<b>${U.num(tot)}</b></div></div>
       ${this.buildSummary()}
       <table class="statTable"><tr><th>주문</th><th>피해량</th><th>DPS</th><th>비율</th></tr>
       ${rows.map(([s, v]) => { const [n, ic] = G.SOURCES[s] || [s, 'frostbolt']; return `<tr><td><img src="${G.icon(ic)}">${n}</td><td>${U.num(v)}</td><td>${U.num(v / dur)}</td><td>${(v / tot * 100).toFixed(1)}%</td></tr>`; }).join('')}</table>

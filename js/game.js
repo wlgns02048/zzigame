@@ -79,6 +79,8 @@ G.startRun = (cls = G.selectedClass || 'mage') => {
   G.UI.close();
   G.UI.el.hud.classList.remove('hidden');
   G.UI.buffSig = null; G.UI.bfTgt = null;
+  // 로그인 중이면 서버에 런 등록 (봇/시뮬레이션 제외)
+  G.run = G.Meta.mode() === 'account' && !G.Bot.on ? G.Net.startRun(cls, 'icecrown') : null;
 };
 
 G.pause = () => { G.paused = true; G.UI.showPause(); };
@@ -183,14 +185,19 @@ G.playerDeath = () => {
 };
 G.endRun = victory => {
   if (G.state !== 'play') return;
-  const m = G.Meta.data;
+  const m = G.Meta.data, mode = G.Meta.mode();
+  // 화면에 먼저 보여줄 예상치. 로그인 중이면 서버가 같은 식으로 다시 계산해 확정한다.
   const gain = Math.floor(G.stats.gold - G.stats.banked + (G.stats.banked ? 0 : G.t / 6) + (victory ? 500 : 0));
   G.stats.banked = G.stats.gold;
-  m.gold += gain; m.best = Math.max(m.best, G.t); if (victory) m.wins++;
-  G.Meta.save();
+  if (mode === 'local') { m.gold += gain; m.best = Math.max(m.best, G.t); if (victory) m.wins++; G.Meta.save(); }
   G.state = 'over'; G.paused = true;
   if (victory) G.Audio.play('victory');
-  G.UI.showEnd(victory, gain);
+  G.UI.showEnd(victory, gain, mode);
+  if (G.run) {
+    G.Net.reportRun(G.run, { victory, final: !victory || G.Waves.endless })
+      .then(g => G.UI.setEndGain(g))
+      .catch(e => G.UI.setEndGain(null, e.message));
+  } else if (mode === 'account') G.UI.setEndGain(null, '이 판은 서버에 등록되지 않았습니다.');
 };
 
 // ================= 자동 플레이 봇 (테스트용 ?test=1) =================

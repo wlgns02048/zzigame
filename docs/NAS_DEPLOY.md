@@ -18,9 +18,24 @@
 
 - `server/server.js` — Node 22 내장 모듈만 사용 (npm 패키지 없음, DB는 `node:sqlite`)
   - 정적 파일(`index.html`, `css/`, `js/`, `assets/`) + `/api/*`
-  - 데이터: `data/game.db` (users, sessions, suggestions, votes)
-- 클라이언트: `js/net.js`. 서버가 없으면(GitHub Pages 등) 자동으로 게스트 전용 모드로 동작
-- 게스트 진행도는 브라우저 localStorage, 로그인하면 계정(서버)에 저장. 가입 시 게스트 진행도를 계정으로 가져감
+  - 데이터: `data/game.db`
+- 재화와 특성은 **서버만 바꾼다**. 브라우저는 결과를 받아 보여줄 뿐
+  - 특성 구매: `POST /api/talents/buy` — 비용 계산과 골드 차감을 서버에서
+  - 판 보상: `POST /api/runs/start` → `POST /api/runs/report`(누적값). 서버가 실제 경과 시간 · 처치/골드 상한으로
+    검증하고 이전 지급분과의 차액만 지급. 거부된 판은 서버 로그에 `run rejected ... reasons=` 로 남는다
+  - 특성 정의(`js/data/talents.js`)는 서버와 브라우저가 같은 파일을 쓴다
+- 저장 방식: 로그인 = 서버 / 서버는 있는데 게스트 = 저장 안 함 / 서버 없음(정적 호스팅) = 브라우저 저장
+- 직업별 로직은 `js/classes/<직업>.js` 훅으로 분리 (`G.cls(p).훅`)
+
+## 밸런스 시뮬레이터
+
+```sh
+node tools/sim.cjs                    # 8판, 고정 시드
+node tools/sim.cjs --runs 16 --secs 600 --query "&all=1"
+```
+
+서버를 임시 포트 · 임시 DB로 직접 띄우고 봇으로 여러 판을 돌려 표로 출력한다. 시드가 고정이라
+코드가 같으면 결과도 같으므로, 수치를 바꾸기 전후로 돌려 비교한다. Playwright가 필요하다.
 
 ## 환경 변수
 

@@ -4,7 +4,6 @@ G.Net = {
   token: null,
   user: null,         // { username, admin } — 로그인 중일 때만
   online: false,      // 서버에 연결되었는지
-  dirty: false, flushing: false, retryT: null,
 
   async api(method, url, body) {
     const headers = {};
@@ -26,48 +25,49 @@ G.Net = {
     try { res = await fetch('/api/me', { headers: this.token ? { Authorization: 'Bearer ' + this.token } : {} }); }
     catch (e) { return; }
     this.online = res.status === 200 || res.status === 401;
-    if (res.status === 200) { const r = await res.json(); this.setSession(this.token, r.user, r.save); }
+    if (res.status === 200) { const r = await res.json(); this.setSession(this.token, r.user, r.profile); }
     else if (this.token && res.status === 401) this.dropSession();
+    else if (this.online) G.Meta.reset(); // 서버가 있으면 게스트는 저장 없음
   },
 
-  setSession(token, user, save) {
+  setSession(token, user, profile) {
     this.token = token; this.user = user;
     try { localStorage.setItem('frostmage_token', token); } catch (e) { /* 무시 */ }
-    G.Meta.useAccount(save);
+    G.Meta.useProfile(profile);
   },
   dropSession() {
-    this.token = null; this.user = null; this.dirty = false;
+    this.token = null; this.user = null;
     try { localStorage.removeItem('frostmage_token'); } catch (e) { /* 무시 */ }
-    G.Meta.load();
+    if (this.online) G.Meta.reset(); else G.Meta.load();
   },
 
   async login(username, password) {
     const r = await this.api('POST', '/api/auth/login', { username, password });
-    this.setSession(r.token, r.user, r.save);
+    this.setSession(r.token, r.user, r.profile);
   },
   async register(username, password) {
-    // 게스트로 모은 골드/강화를 새 계정으로 가져간다
-    const r = await this.api('POST', '/api/auth/register', { username, password, save: G.Meta.guestData() });
-    this.setSession(r.token, r.user, r.save);
+    const r = await this.api('POST', '/api/auth/register', { username, password });
+    this.setSession(r.token, r.user, r.profile);
   },
   async logout() {
     try { await this.api('POST', '/api/auth/logout'); } catch (e) { /* 이미 만료되어도 로컬에서는 로그아웃 */ }
     this.dropSession();
   },
 
-  // 세이브: 가장 최신 데이터만 순서대로 올리고, 실패하면 잠시 후 재시도
-  pushSave() { this.dirty = true; this.flush(); },
-  async flush() {
-    if (this.flushing || !this.dirty || !this.user) return;
-    this.flushing = true; this.dirty = false;
-    try { await this.api('PUT', '/api/save', { save: G.Meta.data }); }
-    catch (e) {
-      if (this.user) {
-        this.dirty = true;
-        G.UI.toast('세이브 동기화 실패 — 잠시 후 다시 시도합니다.');
-        clearTimeout(this.retryT); this.retryT = setTimeout(() => { this.retryT = null; this.flush(); }, 10000);
-      }
-    } finally { this.flushing = false; }
-    if (this.dirty && !this.retryT) this.flush();
+  // ---------- 런 ----------
+  // 시작 요청은 기다리지 않고 바로 게임을 시작한다. 보고할 때 시작 응답을 기다린다.
+  startRun(cls, stage) {
+    const run = { id: null };
+    run.ready = this.api('POST', '/api/runs/start', { cls, stage }).then(r => (run.id = r.runId)).catch(e => { run.error = e.message; });
+    return run;
+  },
+  async reportRun(run, { victory, final }) {
+    await run.ready;
+    if (!run.id) throw new Error(run.error || '서버에 기록되지 않은 판입니다.');
+    const r = await this.api('POST', '/api/runs/report', {
+      runId: run.id, t: G.t, kills: G.stats.kills, gold: G.stats.gold, level: G.player.level, victory, final,
+    });
+    G.Meta.useProfile(r.profile);
+    return r.gain;
   },
 };

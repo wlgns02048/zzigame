@@ -13,6 +13,12 @@ const G = window.G = {
   params: new URLSearchParams(location.search),
 };
 
+// ?seed=N: 난수를 고정해 같은 조건이면 같은 결과가 나오게 한다 (밸런스 시뮬레이터용)
+if (G.params.get('seed')) {
+  let a = (+G.params.get('seed')) >>> 0;
+  Math.random = () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+
 // 직업 레지스트리 (js/classes/*.js 에서 채움)
 G.CLASSES = {};
 G.cls = (p = G.player) => G.CLASSES[p.cls];

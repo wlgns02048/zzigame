@@ -232,3 +232,5 @@ a { color: #6cf; }
 .st-rejected { color: #888; border-color: #444; }
 #toast { position: absolute; left: 50%; bottom: 40px; transform: translate(-50%, 20px); z-index: 40; padding: 10px 20px; background: var(--tt-bg); border: 1px solid var(--gold); border-radius: 4px; color: #fff; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; }
 #toast.show { opacity: 1; transform: translate(-50%, 0); }
+.summary small { display: block; font-size: 11px; color: #889; }
+.summary small.err { color: #ff4b3a; }
