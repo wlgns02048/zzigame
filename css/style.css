@@ -380,3 +380,4 @@ select { cursor: pointer; }
   .lbTop { flex-wrap: wrap; } .qBar { width: 180px; }
 }
 .bar.mana.shards .fill { background: linear-gradient(#c060ff, #5a1a9a); }
+.lbLogo .beta { font-family: var(--font); font-size: 11px; font-weight: 900; letter-spacing: 1px; color: #000; background: linear-gradient(#ffd100, #e08a00); border-radius: 3px; padding: 1px 6px; margin-left: 8px; vertical-align: middle; text-shadow: none; box-shadow: 0 0 8px rgba(255,180,0,.6); }

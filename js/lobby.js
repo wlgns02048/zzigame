@@ -25,7 +25,7 @@ G.Lobby = {
     G.UI.el.hud.classList.add('hidden');
     G.UI.open('lobby', `<div class="lobby">
       <div class="lbTop">
-        <div class="lbLogo">얼음왕관의 시련<small>달라란</small></div>
+        <div class="lbLogo">얼음왕관의 시련<span class="beta" title="v${G.VERSION}">BETA</span><small>달라란 · v${G.VERSION}</small></div>
         <div class="lbCur">${this.currencyBar()}</div>
         <div class="lbAcct">${this.account()}</div>
       </div>
