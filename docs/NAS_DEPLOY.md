@@ -6,12 +6,17 @@
 |---|---|---|
 | `server` | 현재 서비스 버전 (베타) — 계정 · 스테이지 · 흑마법사 · 장비 · 가챠 · 랭킹 · 퀘스트 · 금고 | NAS Docker → `https://Godlovesyou.synology.me:10443` |
 | `v2.0.0-beta.1` 태그 | 첫 베타 (GitHub 프리릴리스) | — |
-| `main` | 입구 페이지(베타로 3초 뒤 이동) + 이전 게임 `/classic/` | GitHub Pages — `icecrown-trial.duckdns.org` |
-| `v1.0.0` 태그 | 서버 작업 시작 전 원래 게임 | `/classic/`과 같은 내용 |
+| `v1.0.0` 태그 | 서버 작업 시작 전 원래 게임 | 공개 주소의 `/classic/` |
+| `main` | (더 이상 배포에 쓰지 않음) 입구 페이지 + classic 사본 | — |
+
+**공개 주소 `https://icecrown-trial.duckdns.org`** = GitHub Pages. `server`에 push할 때마다 `.github/workflows/pages.yml`이
+루트에 베타 화면, `/classic/`에 v1.0.0 원래 게임을 올린다 (Pages 설정: 원본 = GitHub Actions, `github-pages` 환경에 `server` 브랜치 허용).
+Pages는 서버를 돌릴 수 없으므로 공개 주소에서 열린 화면은 로그인 · 저장 · 랭킹 등 API를 나스 베타 서버
+(`https://Godlovesyou.synology.me:10443`)로 보낸다 — `js/net.js`의 `base`, 서버는 그 출처만 CORS 허용(`CORS_ORIGINS`).
+두 주소 어디로 들어와도 같은 계정 · 같은 DB를 쓴다.
 
 - 화면 표시 버전은 `js/util.js`의 `G.VERSION` — 새 베타를 낼 때 태그(`v2.0.0-beta.N`)와 같이 올린다
-- 공개 주소 `icecrown-trial.duckdns.org`는 GitHub Pages라 서버를 돌릴 수 없어서, 입구 페이지가 베타 서버로 보낸다
-- 되돌리기(원래 게임을 다시 루트로): main의 "베타 서비스 전환" 커밋을 revert
+- 되돌리기(원래 게임을 다시 루트로): Pages 설정 원본을 "Deploy from a branch → main"으로 바꾸고 main을 v1.0.0 내용으로
 
 > `Z:\docker\zzigame`은 RaiDrive로 연결된 NAS 폴더 그 자체다. 배포는 러너가 push된 커밋을 따로 받아서 하므로
 > 로컬에서 어느 브랜치를 체크아웃해도 서비스에는 영향이 없다. main을 고칠 때는 `git worktree`로 다른 폴더에서 작업하는 것을 권장.
