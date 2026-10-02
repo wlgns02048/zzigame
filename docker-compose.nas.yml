@@ -12,3 +12,18 @@ services:
       PORT: "13100"
     volumes:  # 같은 대상 경로(/app/data)라 기본 compose의 named volume을 대체 (나스 compose 2.20은 !override 미지원)
       - ${DATA_ROOT:-./data}:/app/data
+
+  # 외부 접속: https://Godlovesyou.synology.me:10443 → DSM 리버스 프록시(10443) → localhost:13100
+  # 공유기 포트포워딩(외부 10443 → 192.168.50.2:10443)은 UPnP로 등록한다. 공유기를 재부팅하면 UPnP 규칙이
+  # 사라지므로 30분마다 다시 등록한다. (DSM 리버스 프록시 · 방화벽 설정은 docs/NAS_DEPLOY.md 참고)
+  upnp:
+    image: alpine:3.20
+    container_name: zzigame-upnp
+    restart: unless-stopped
+    network_mode: host
+    command: >
+      sh -c "apk add -q --no-cache miniupnpc &&
+             while true; do
+               upnpc -e zzigame -a 192.168.50.2 10443 10443 TCP 0 > /dev/null 2>&1 && echo \"$$(date) 10443 매핑 확인\" || echo \"$$(date) UPnP 등록 실패\";
+               sleep 1800;
+             done"

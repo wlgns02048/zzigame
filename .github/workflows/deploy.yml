@@ -41,3 +41,19 @@ jobs:
           sleep 5
           $COMPOSE ps
           curl -fsS -o /dev/null http://localhost:13100/ && echo "게임 페이지 응답 OK"
+
+  # 집 밖(GitHub 서버)에서 외부 주소로 접속되는지 확인
+  external-check:
+    name: External access check
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: https://Godlovesyou.synology.me:10443
+        run: |
+          for i in 1 2 3; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 https://Godlovesyou.synology.me:10443/ || true)
+            echo "시도 $i: HTTP $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 10
+          done
+          exit 1
