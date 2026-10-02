@@ -1,6 +1,7 @@
 'use strict';
 // ================= HUD / 메뉴 =================
 const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 G.UI = {
   el: {}, slotEls: {}, autoEls: [], meterT: 0, warnT: 0, errT: 0, modalKind: null,
@@ -217,20 +218,133 @@ G.UI = {
   close() { document.body.classList.remove('modal-open'); this.modalKind = null; this.el.modal.classList.add('hidden'); this.el.modal.innerHTML = ''; this.hideTip(); },
 
   showMenu() {
-    const m = G.Meta.data;
+    const m = G.Meta.data, net = G.Net;
     this.el.hud.classList.add('hidden');
+    const account = !net.online ? ''
+      : net.user ? `<div class="acctLine"><b>${esc(net.user.username)}</b> 님으로 접속 중 · 진행도가 계정에 저장됩니다 <button class="btn small" id="mLogout">로그아웃</button></div>`
+        : `<div class="acctLine">게스트로 플레이 중 (이 브라우저에만 저장) <button class="btn small" id="mLogin">로그인 / 회원가입</button></div>`;
     this.open('menu', `<div class="menuWrap">
       <div class="logo">얼음왕관의 시련</div>
       <div class="logo2">냉기 마법사 로그라이크</div>
+      ${account}
       <button class="btn" id="mStart">전투 시작</button>
       <button class="btn" id="mMeta">영구 강화 (달라란 도서관)</button>
       <button class="btn" id="mHelp">조작법</button>
+      ${net.online ? '<button class="btn" id="mBoard">건의사항 게시판</button>' : ''}
       <div class="goldLine">보유 골드: ${Math.floor(m.gold)} · 최고 기록: ${U.fmtTime(m.best)} · 리치 왕 처치: ${m.wins}회</div>
       <div class="tt-sub">15분 동안 살아남아 리치 왕을 쓰러뜨리세요.</div></div>`);
     $('mStart').onclick = () => { G.Audio.init(); G.startRun(); };
     $('mMeta').onclick = () => { G.Audio.init(); this.showMeta(); };
     $('mHelp').onclick = () => this.showHelp();
+    if ($('mBoard')) $('mBoard').onclick = () => this.showBoard();
+    if ($('mLogin')) $('mLogin').onclick = () => this.showAuth();
+    if ($('mLogout')) $('mLogout').onclick = async () => { await G.Net.logout(); this.toast('로그아웃했습니다.'); this.showMenu(); };
   },
+
+  // ---------- 계정 ----------
+  showAuth() {
+    this.open('auth', `<div class="panel authPanel"><h2>계정</h2>
+      <div class="sub">아이디와 비밀번호만으로 가입합니다. 가입하면 지금까지 모은 골드와 강화가 계정으로 옮겨집니다.</div>
+      <form id="authForm">
+        <label>아이디<input id="aUser" name="username" maxlength="16" autocomplete="username" placeholder="2~16자 (한글/영문/숫자/_)"></label>
+        <label>비밀번호<input id="aPw" name="password" type="password" maxlength="64" autocomplete="current-password" placeholder="4자 이상"></label>
+        <div class="formErr" id="aErr"></div>
+        <button class="btn" type="submit" id="aLogin">로그인</button>
+        <button class="btn" type="button" id="aReg">회원가입</button>
+      </form>
+      <button class="btn" id="aBack">돌아가기</button></div>`);
+    const submit = async register => {
+      const u = $('aUser').value.trim(), pw = $('aPw').value;
+      $('aErr').textContent = '';
+      $('aLogin').disabled = $('aReg').disabled = true;
+      try {
+        if (register) await G.Net.register(u, pw); else await G.Net.login(u, pw);
+        this.toast(register ? `환영합니다, ${u} 님!` : `${G.Net.user.username} 님, 다시 오신 걸 환영합니다.`);
+        this.showMenu();
+      } catch (e) {
+        $('aErr').textContent = e.message;
+        $('aLogin').disabled = $('aReg').disabled = false;
+      }
+    };
+    $('authForm').onsubmit = e => { e.preventDefault(); submit(false); };
+    $('aReg').onclick = () => submit(true);
+    $('aBack').onclick = () => this.showMenu();
+    $('aUser').focus();
+  },
+
+  // ---------- 건의사항 게시판 ----------
+  board: { sort: 'new', items: [], more: false },
+  async showBoard(reload = true) {
+    const b = this.board, net = G.Net;
+    if (reload) {
+      try { const r = await net.api('GET', `/api/suggestions?sort=${b.sort}`); b.items = r.items; b.more = r.more; }
+      catch (e) { this.toast(e.message); return; }
+    }
+    if (this.modalKind !== 'menu' && this.modalKind !== 'board') return; // 불러오는 사이 다른 화면으로 이동함
+    const STATUS = { open: '접수', planned: '반영 예정', done: '반영 완료', rejected: '보류' };
+    const admin = net.user && net.user.admin;
+    const item = s => `<div class="sgItem">
+        <button class="vote ${s.voted ? 'on' : ''}" data-vote="${s.id}" ${net.user ? '' : 'disabled'} title="${net.user ? '추천' : '로그인하면 추천할 수 있습니다'}">▲<span>${s.votes}</span></button>
+        <div class="sgMain">
+          <div class="sgHead"><span class="st st-${s.status}">${STATUS[s.status] || s.status}</span><b class="sgTitle">${esc(s.title)}</b></div>
+          <div class="sgMeta">${esc(s.author)} · ${new Date(s.created_at).toLocaleDateString('ko-KR')}
+            ${admin ? `<select data-status="${s.id}">${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${k === s.status ? 'selected' : ''}>${v}</option>`).join('')}</select>` : ''}
+            ${s.mine || admin ? `<a href="#" data-del="${s.id}">삭제</a>` : ''}</div>
+          <div class="sgBody">${esc(s.body)}</div>
+        </div></div>`;
+    this.open('board', `<div class="panel boardPanel"><h2>건의사항 게시판</h2>
+      <div class="sub">원하는 기능이나 개선점을 남겨 주세요. 공감하는 건의는 추천해 주세요.</div>
+      ${net.user ? `<form id="sgForm" class="sgForm">
+          <input id="sgTitle" maxlength="80" placeholder="제목">
+          <textarea id="sgBody" maxlength="2000" rows="3" placeholder="내용 (어떤 점이 불편했는지, 어떻게 바뀌면 좋을지)"></textarea>
+          <div class="formErr" id="sgErr"></div>
+          <button class="btn small" type="submit">건의하기</button></form>`
+        : `<div class="sgLogin">글을 쓰거나 추천하려면 <a href="#" id="sgLogin">로그인</a>하세요.</div>`}
+      <div class="sgTabs"><a href="#" data-sort="new" class="${b.sort === 'new' ? 'on' : ''}">최신순</a><a href="#" data-sort="top" class="${b.sort === 'top' ? 'on' : ''}">추천순</a></div>
+      <div class="sgList">${b.items.map(item).join('') || '<div class="sgEmpty">아직 건의사항이 없습니다. 첫 번째 의견을 남겨 주세요!</div>'}</div>
+      ${b.more ? '<button class="btn small" id="sgMore">더 보기</button>' : ''}
+      <button class="btn" id="sgBack">돌아가기</button></div>`);
+    const root = this.el.modal;
+    $('sgBack').onclick = () => this.showMenu();
+    if ($('sgLogin')) $('sgLogin').onclick = e => { e.preventDefault(); this.showAuth(); };
+    root.querySelectorAll('[data-sort]').forEach(a => (a.onclick = e => { e.preventDefault(); b.sort = a.dataset.sort; this.showBoard(); }));
+    root.querySelectorAll('.sgMain').forEach(el => (el.onclick = e => { if (!e.target.closest('a, select')) el.parentNode.classList.toggle('open'); }));
+    if ($('sgMore')) $('sgMore').onclick = async () => {
+      try { const r = await net.api('GET', `/api/suggestions?sort=${b.sort}&offset=${b.items.length}`); b.items = b.items.concat(r.items); b.more = r.more; this.showBoard(false); }
+      catch (e) { this.toast(e.message); }
+    };
+    if ($('sgForm')) $('sgForm').onsubmit = async e => {
+      e.preventDefault();
+      const btn = e.target.querySelector('button'); btn.disabled = true;
+      try {
+        await net.api('POST', '/api/suggestions', { title: $('sgTitle').value, body: $('sgBody').value });
+        b.sort = 'new'; this.toast('건의사항이 등록되었습니다. 감사합니다!'); this.showBoard();
+      } catch (err) { $('sgErr').textContent = err.message; btn.disabled = false; }
+    };
+    root.querySelectorAll('[data-vote]').forEach(btn => (btn.onclick = async () => {
+      try {
+        const r = await net.api('POST', `/api/suggestions/${btn.dataset.vote}/vote`);
+        const s = b.items.find(x => x.id === +btn.dataset.vote); s.votes = r.votes; s.voted = r.voted;
+        btn.classList.toggle('on', r.voted); btn.querySelector('span').textContent = r.votes;
+      } catch (e) { this.toast(e.message); }
+    }));
+    root.querySelectorAll('[data-del]').forEach(a => (a.onclick = async e => {
+      e.preventDefault();
+      if (!confirm('이 건의사항을 삭제할까요?')) return;
+      try { await net.api('DELETE', `/api/suggestions/${a.dataset.del}`); this.showBoard(); } catch (err) { this.toast(err.message); }
+    }));
+    root.querySelectorAll('[data-status]').forEach(sel => (sel.onchange = async () => {
+      try { await net.api('PATCH', `/api/suggestions/${sel.dataset.status}`, { status: sel.value }); this.showBoard(); } catch (e) { this.toast(e.message); }
+    }));
+  },
+
+  toast(text) {
+    let t = $('toast');
+    if (!t) { t = document.createElement('div'); t.id = 'toast'; $('game').appendChild(t); }
+    t.textContent = text; t.classList.add('show');
+    clearTimeout(this.toastT); this.toastT = setTimeout(() => t.classList.remove('show'), 2800);
+  },
+
   showHelp() {
     const keys = [['WASD / 방향키', '이동'], ['마우스', '조준 (단축키 주문 방향)'], ['자동 주문', '얼음화살·얼음창·진눈깨비 등은 자동 시전'],
       ['Q', '얼어붙은 구슬'], ['E', '냉기 돌풍'], ['R', '빙하 가시 (고드름 최대치)'], ['F', '서리 회오리'], ['T', '서리 광선'], ['Space', '점멸'],

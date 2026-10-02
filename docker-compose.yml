@@ -1,0 +1,16 @@
+# 로컬(Docker Desktop)용. 나스에서는 docker-compose.nas.yml을 함께 얹어서 실행한다.
+# 데이터는 named volume — Z:(RaiDrive)에 bind mount하면 조용히 엉뚱한 곳에 저장됨 (../DOCKER_VOLUMES.md)
+services:
+  game:
+    build: .
+    container_name: zzigame
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ADMIN_USERS: ${ADMIN_USERS:-}
+    volumes:
+      - zzigame-data:/app/data
+
+volumes:
+  zzigame-data:

@@ -1,0 +1,24 @@
+name: Deploy to NAS
+
+# 서버 버전(server 브랜치)만 나스에 배포한다. main은 지금처럼 GitHub Pages로 서비스.
+on:
+  push:
+    branches:
+      - server
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.NAS_HOST }}
+          username: ${{ secrets.NAS_USER }}
+          key: ${{ secrets.NAS_SSH_KEY }}
+          port: ${{ secrets.NAS_PORT }}
+          script: |
+            cd ${{ secrets.NAS_PROJECT_PATH }}
+            /usr/local/bin/docker compose -f docker-compose.yml -f docker-compose.nas.yml up --build -d
+            /usr/local/bin/docker compose -f docker-compose.yml -f docker-compose.nas.yml ps

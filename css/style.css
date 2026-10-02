@@ -190,3 +190,45 @@ b.v, .v { color: #fff; font-weight: 700; }
 .buildRow .pslot { width: 36px; height: 36px; }
 
 #flash { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, rgba(255,0,0,0) 50%, rgba(255,0,0,.45)); opacity: 0; transition: opacity .25s; }
+
+/* ---------- 계정 / 건의사항 게시판 ---------- */
+.menuWrap .acctLine { color: #bcd; font-size: 14px; margin: -10px 0 14px; }
+.menuWrap .acctLine b { color: var(--wow-yellow); }
+input, textarea, select { font: 14px var(--font); color: #fff; background: rgba(0,0,0,.55); border: 1px solid #6b5420; border-radius: 4px; padding: 8px 10px; user-select: text; outline: none; }
+input:focus, textarea:focus { border-color: var(--gold-hi); box-shadow: 0 0 8px rgba(255,200,80,.35); }
+.authPanel { width: 400px; }
+.authPanel .sub { font-size: 13px; }
+.authPanel label { display: block; margin: 0 0 12px; font-size: 13px; color: #bcd; }
+.authPanel label input { display: block; width: 100%; margin-top: 4px; }
+.formErr { min-height: 18px; color: #ff4b3a; font-size: 13px; text-align: center; }
+.boardPanel { width: min(720px, 94vw); max-height: 92vh; overflow: auto; }
+.sgForm { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.sgForm textarea { resize: vertical; min-height: 60px; }
+.sgForm .btn { align-self: flex-end; }
+.sgLogin { text-align: center; color: #bcd; margin-bottom: 12px; }
+a { color: #6cf; }
+.sgTabs { display: flex; gap: 14px; border-bottom: 1px solid #333; margin-bottom: 6px; padding-bottom: 4px; font-size: 14px; }
+.sgTabs a { color: #889; text-decoration: none; }
+.sgTabs a.on { color: var(--wow-yellow); font-weight: 700; }
+.sgItem { display: flex; gap: 10px; padding: 8px 4px; border-bottom: 1px solid #222; }
+.sgItem .vote { flex: none; width: 44px; height: 46px; display: flex; flex-direction: column; align-items: center; justify-content: center; font: 700 12px var(--font); color: #889; background: rgba(0,0,0,.4); border: 1px solid #333; border-radius: 4px; cursor: pointer; }
+.sgItem .vote span { font-size: 15px; color: #fff; }
+.sgItem .vote.on { color: var(--wow-yellow); border-color: var(--gold); }
+.sgItem .vote:disabled { cursor: default; }
+.sgMain { flex: 1; min-width: 0; cursor: pointer; }
+.sgHead { display: flex; gap: 8px; align-items: center; }
+.sgTitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sgMeta { font-size: 12px; color: #778; margin-top: 2px; }
+.sgMeta a { margin-left: 8px; color: #c66; }
+.sgMeta select { margin-left: 8px; padding: 1px 4px; font-size: 12px; }
+.sgBody { display: none; margin-top: 6px; font-size: 14px; color: #dde; white-space: pre-wrap; word-break: break-word; user-select: text; }
+.sgItem.open .sgBody { display: block; }
+.sgItem.open .sgTitle { white-space: normal; }
+.sgEmpty { text-align: center; color: #778; padding: 24px 0; }
+.st { flex: none; font-size: 11px; padding: 1px 6px; border-radius: 3px; border: 1px solid; }
+.st-open { color: #9fc6ff; border-color: #3a5a8a; }
+.st-planned { color: var(--wow-yellow); border-color: #8a6a1a; }
+.st-done { color: #1eff00; border-color: #2a7a1a; }
+.st-rejected { color: #888; border-color: #444; }
+#toast { position: absolute; left: 50%; bottom: 40px; transform: translate(-50%, 20px); z-index: 40; padding: 10px 20px; background: var(--tt-bg); border: 1px solid var(--gold); border-radius: 4px; color: #fff; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; }
+#toast.show { opacity: 1; transform: translate(-50%, 0); }

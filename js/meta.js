@@ -12,12 +12,22 @@ G.META_DEFS = [
   { id: 'revive', name: '영혼석', icon: 'soulstone', max: 1, base: 1500, desc: r => (r ? '사망 시 1회 부활 (50% 생명력)' : '사망 시 1회 부활') },
 ];
 
+const META_KEY = 'frostmage_meta';
+const metaDefaults = () => ({ gold: 0, ranks: {}, best: 0, wins: 0 });
+
+// 로그인 중이면 계정(서버)에, 아니면 게스트 진행도로 브라우저에 저장
 G.Meta = {
-  data: { gold: 0, ranks: {}, best: 0, wins: 0 },
-  load() {
-    try { const s = localStorage.getItem('frostmage_meta'); if (s) this.data = Object.assign(this.data, JSON.parse(s)); } catch (e) { /* 저장소 사용 불가 */ }
+  data: metaDefaults(),
+  guestData() {
+    try { const s = localStorage.getItem(META_KEY); if (s) return Object.assign(metaDefaults(), JSON.parse(s)); } catch (e) { /* 저장소 사용 불가 */ }
+    return metaDefaults();
   },
-  save() { try { localStorage.setItem('frostmage_meta', JSON.stringify(this.data)); } catch (e) { /* 무시 */ } },
+  load() { this.data = this.guestData(); },
+  useAccount(save) { this.data = Object.assign(metaDefaults(), save || {}); },
+  save() {
+    if (G.Net.user) { G.Net.pushSave(); return; }
+    try { localStorage.setItem(META_KEY, JSON.stringify(this.data)); } catch (e) { /* 무시 */ }
+  },
   rank(id) { return this.data.ranks[id] || 0; },
   cost(def) { return Math.round(def.base * Math.pow(1.6, this.rank(def.id))); },
   buy(id) {

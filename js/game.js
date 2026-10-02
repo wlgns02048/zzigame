@@ -10,6 +10,7 @@ G.init = async () => {
   await G.loadAssets();
   G.Spr.build();
   G.Meta.load();
+  await G.Net.init();
   G.UI.init();
   G.R.init();
   G.Input();
@@ -37,6 +38,7 @@ G.init = async () => {
 
 G.Input = () => {
   addEventListener('keydown', e => {
+    if (e.target.closest && e.target.closest('input, textarea, select')) return; // 입력창 타이핑은 게임 키로 쓰지 않음
     G.Audio.init();
     if (e.code === 'Tab') { e.preventDefault(); if (G.state === 'play') G.UI.toggleMeter(); return; }
     if (e.code === 'KeyM') { G.Audio.toggle(); return; }
