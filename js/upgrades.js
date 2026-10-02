@@ -105,7 +105,7 @@ G.Upg = {
       const r = p.passives[o.id] ? p.passives[o.id].rank : 0;
       const rar = def.fixed ? (def.rarity || 2) : this.rollRarity();
       const v = def.fixed ? def.val : +(def.val * G.RARITY[rar].mult).toFixed(1);
-      return Object.assign(o, { rarity: rar, value: v, icon: def.icon, name: def.name, label: KIND.passive, nodeDesc: def.desc(v), desc: r ? `현재: ${def.desc(p.passives[o.id].total)}` : '', lv: `등급 ${r} → ${r + 1} / ${def.max}` });
+      return Object.assign(o, { rarity: rar, value: v, icon: G.skIcon(def), name: G.skName(def), label: KIND.passive, nodeDesc: def.desc(v), desc: r ? `현재: ${def.desc(p.passives[o.id].total)}` : '', lv: `등급 ${r} → ${r + 1} / ${def.max}` });
     }
     if (o.type === 'legendary') return Object.assign(o, { rarity: 4, icon: def.icon, name: def.name, label: KIND.legendary, desc: def.desc(), lv: '' });
     if (o.type === 'evolution') return Object.assign(o, { rarity: 5, icon: def.icon, name: def.name, label: KIND.evolution, desc: def.desc(), lv: def.reqText });

@@ -11,6 +11,7 @@
     n('reroll', '운명의 주사위', 'reroll', 0, 0, 3, r => `다시 굴리기 +${r}회`),
     n('pickup', '마력 끌어당김', 'pickup', 0, 1, 3, r => `획득 반경 +${r * 15}%`, { stat: (st, r) => (st.pickupMul += r * 0.15) }),
     n('xp', '대마법사의 지식', 'xp', 0, 2, 5, r => `경험치 획득 +${r * 5}%`, { stat: (st, r) => (st.xpMul += r * 0.05) }),
+    n('autoCast', '자동 시전 숙련', 'autocast', 0, 3, 3, r => `자동 시전한 핵심 주문의 재사용 대기시간 증가 ${40 - r * 10}% (기본 40%)`),
     n('luck', '행운의 동전', 'luck', 1, 0, 3, r => `높은 등급 선택지 확률 +${r * 6}%, 골드 획득 +${r * 10}%`, { stat: (st, r) => (st.luck += r * 0.06) }),
     n('schoolAuto', '학파 연구: 자동 시전', 'schoolauto', 1, 1, 2, r => `자동 시전 주문 선택지 출현 +${r * 30}%`),
     n('schoolActive', '학파 연구: 핵심 주문', 'schoolactive', 1, 2, 2, r => `핵심 주문 선택지 출현 +${r * 30}%`),
@@ -54,7 +55,7 @@
     n('grimReach', '음산한 손길', 'grimreach', 2, 0, 2, r => `주문 범위 +${r * 5}%`, { stat: (st, r) => (st.area += r * 0.05) }),
     n('nightfallT', '해질녘 숙련', 'nightfall', 2, 1, 2, r => `해질녘 발동 확률 +${r * 2}%`, { stat: (st, r) => (st.nightfall += r * 0.02) }),
     n('felConcentration', '지옥 집중', 'felconcentration', 2, 2, 2, r => `이동 중 시전 속도 감소 -${r * 25}%`, { stat: (st, r) => (st.movePenalty *= 1 - r * 0.25) }),
-    n('siphonLife', '생명력 착취', 'siphonlife', 3, 0, 2, r => `지속 피해의 ${r}%만큼 생명력 회복`, { stat: (st, r) => (st.dotLeech += r * 0.01) }),
+    n('siphonLife', '영혼 흡수 숙련', 'soulleech', 3, 0, 2, r => `지속 피해의 ${r}%만큼 생명력 회복`, { stat: (st, r) => (st.dotLeech += r * 0.01) }),
     n('shadowMastery', '어둠의 숙련', 'shadowmastery', 3, 1, 5, r => `모든 주문 피해 +${r * 2}%`, { stat: (st, r) => (st.dmg += r * 0.02) }),
     n('demonArmor', '향상된 악마의 갑옷', 'demonarmor', 3, 2, 2, r => `받는 피해 -${r * 3}%`, { stat: (st, r) => (st.armor += r * 0.03) }),
     n('impShards', '영혼 착취', 'soulshard', 4, 0, 2, r => `영혼의 조각 최대 +${r}`, { stat: (st, r) => (st.shardMax += r) }),
@@ -64,7 +65,7 @@
   ];
 
   const TREES = {
-    library: { name: '달라란 도서관', desc: '계정 공용 · 레벨업 선택지를 바꾸는 이 게임만의 특성', nodes: LIBRARY, maxPoints: 26, pointBase: 150, pointGrowth: 1.14 },
+    library: { name: '달라란 도서관', desc: '계정 공용 · 레벨업 선택지를 바꾸는 이 게임만의 특성', nodes: LIBRARY, maxPoints: 29, pointBase: 150, pointGrowth: 1.14 },
     mage: { name: '냉기 특성', desc: '냉기 마법사 직업 특성', nodes: MAGE, maxPoints: 31, pointBase: 80, pointGrowth: 1.12 },
     warlock: { name: '고통 특성', desc: '고통 흑마법사 직업 특성', nodes: WARLOCK, maxPoints: 31, pointBase: 80, pointGrowth: 1.12 },
   };

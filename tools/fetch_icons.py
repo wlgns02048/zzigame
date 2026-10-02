@@ -150,6 +150,9 @@ ICONS = {
     'widevision': ['spell_holy_mindvision'], 'banish': ['spell_shadow_cripple'], 'seal': ['spell_holy_sealofwisdom'],
     'scroll': ['inv_scroll_11'], 'treasure': ['inv_misc_coin_02'], 'legendcall': ['inv_misc_rune_09', 'spell_arcane_arcane04'],
     'schoolauto': ['spell_arcane_blink'], 'schoolactive': ['spell_arcane_arcanepotency'], 'schoolpassive': ['spell_holy_magicalsentry'],
+    'autocast': ['inv_misc_pocketwatch_01'],
+    # ---- 고통 흑마법사 개편 ----
+    'darkglare': ['inv_beholderwarlock'], 'viletaint': ['sha_spell_shadow_shadesofdarkness_nightborne'], 'phantomsingularity': ['inv_enchant_voidsphere'],
 }
 
 def main():

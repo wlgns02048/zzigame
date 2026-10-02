@@ -43,7 +43,8 @@ G.P = {
     for (const n of def.nodes || []) { const r = sk.ranks[n.id] || 0; for (let i = 0; i < r; i++) n.apply(s); }
     G.Meta.applySkillTalents(sk.id, s, p.cls);
     if (s.proj) {
-      if (s.count !== undefined) s.count += p.stats.proj;
+      // 기본 주문(얼음화살 · 어둠의 화살)은 '주문 분열'을 1개까지만 받는다
+      if (s.count !== undefined) s.count += s.basic ? Math.min(1, p.stats.proj) : p.stats.proj;
       else if (s.targets !== undefined) s.targets += p.stats.proj;
     }
     G.cls(p).computeSkill(sk, s, p);
@@ -57,6 +58,8 @@ G.P = {
   learn(id) {
     const p = G.player, def = G.SKILLS[id];
     const sk = { id, def, ranks: {}, cdT: 0, cdFull: 1, charges: undefined, castT: 0, t: 0 };
+    // 이전 판에서 자동 시전으로 둔 핵심 주문은 그대로 자동 시전 (봇 제외, 시뮬레이터는 ?auto=1이면 전부 자동)
+    sk.autoCast = G.Skills.canAuto(id) && (G.params.get('auto') ? true : !G.Bot.on && G.Skills.autoPref(p.cls).includes(id));
     p.skills[id] = sk; p.order.push(id);
     G.P.recalc();
     return sk;
@@ -107,7 +110,7 @@ G.P = {
     // 이동
     let [dx, dy] = G.P.inputDir();
     let sp = st.speed;
-    if (p.channel) sp *= 0.45;
+    if (p.channel) sp *= p.channel.id === 'rayoffrost' ? 0.7 : 0.45;
     if (p.rootT > 0 || C.busy(p)) sp = 0;
     p.mvx = dx; p.mvy = dy;
     p.moving = sp > 0 && (dx || dy);
@@ -118,7 +121,7 @@ G.P = {
   },
 };
 
-// ================= 소환수 (물의 정령 / 환영) =================
+// ================= 소환수 (물의 정령) =================
 G.Pets = {
   sync() {
     const p = G.player, we = p.skills.waterelemental;
@@ -159,23 +162,8 @@ G.Pets = {
         }
       }
     }
-    // 환영
-    for (const im of G.images) {
-      if (im.update) { im.update(im, dt); if (im.hp <= 0 || im.life <= 0) im.dead = true; continue; } // 직업별 소환수 (공허방랑자 등)
-      im.t += dt; im.life -= dt;
-      const a = im.idx / im.n * Math.PI * 2 + im.t * 0.8;
-      im.x += (p.x + Math.cos(a) * 70 - im.x) * Math.min(1, dt * 5); im.y += (p.y + Math.sin(a) * 50 - im.y) * Math.min(1, dt * 5);
-      im.atkT -= dt;
-      const tgt = G.nearestEnemy(im.x, im.y, 520);
-      if (tgt) {
-        im.face = tgt.x > im.x ? 1 : -1;
-        if (im.atkT <= 0) {
-          im.atkT = 1.4;
-          G.Proj.spawn({ x: im.x, y: im.y - 10, a: Math.atan2(tgt.y - im.y, tgt.x - im.x), speed: 520, r: 8, kind: 'frostbolt', scale: 0.7, src: 'mirrorimage', life: 1.4, onHit: e => G.hit(e, im.dmg, 'mirrorimage') });
-        }
-      }
-      if (im.hp <= 0 || im.life <= 0) { im.dead = true; G.fx.burst(im.x, im.y, 14, { rgb: '190,140,255', sp: 120, size: 8 }); }
-    }
+    // 직업별 임시 소환수
+    for (const im of G.images) { im.update(im, dt); if (im.hp <= 0 || im.life <= 0) im.dead = true; }
     G.images = G.images.filter(im => !im.dead);
   },
 };

@@ -380,10 +380,15 @@ G.Lobby = {
       <select id="rkKind"><option value="clear">최단 클리어</option><option value="endless">엔드리스 최고 단계</option></select>
       <select id="rkScope"><option value="week">이번 주</option><option value="all">전체</option></select>
       <select id="rkCls"><option value="">모든 직업</option>${Object.values(G.CLASSES).map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select></div>
+      <div class="dim small" id="rkNote"></div>
       <div id="rkTable" class="dim">불러오는 중…</div></div>`;
     for (const [id, k] of [['rkStage', 'stage'], ['rkDiff', 'difficulty'], ['rkKind', 'kind'], ['rkScope', 'scope'], ['rkCls', 'cls']]) {
       $(id).value = R[k]; $(id).onchange = e => { R[k] = e.target.value; this.render(); };
     }
+    // 순위 기준 안내 (늦게 다시 깬다고 순위가 오르지 않는다)
+    $('rkNote').textContent = R.kind === 'clear'
+      ? '순위 기준: 이 스테이지를 가장 빨리 클리어한 시간. 사람마다 최고 기록 하나만 올라가며, 더 빨리 깨야 순위가 오릅니다.'
+      : '순위 기준: 클리어 후 엔드리스로 도달한 가장 높은 단계. 사람마다 최고 기록 하나만 올라갑니다.';
     try {
       const q = new URLSearchParams(Object.entries(R).filter(([, v]) => v)).toString();
       const r = await this.api('GET', '/api/rankings?' + q);

@@ -12,7 +12,8 @@ G.Proj = {
       pr.t += dt; pr.life -= dt;
       if (pr.homing) {
         let tg = pr.homing;
-        if (tg.dead) tg = pr.homing = G.nearestEnemy(pr.x, pr.y, 420, e => !pr.hits.has(e));
+        // noRetarget(기본 주문): 대상이 죽으면 다른 적을 쫓지 않고 그대로 날아간다
+        if (tg.dead) tg = pr.homing = pr.noRetarget ? null : G.nearestEnemy(pr.x, pr.y, 420, e => !pr.hits.has(e));
         if (tg) {
           const cur = Math.atan2(pr.vy, pr.vx), want = Math.atan2(tg.y - pr.y, tg.x - pr.x);
           const na = cur + U.clamp(U.angDiff(cur, want), -pr.turn * dt, pr.turn * dt), sp = Math.hypot(pr.vx, pr.vy);
@@ -74,7 +75,10 @@ G.Zones = {
 };
 
 // ================= 주문 시스템 =================
-const aimAngle = () => { const p = G.player; return Math.atan2(G.mouse.y - p.y, G.mouse.x - p.x); };
+// 자동 시전 중에는 G.autoAim(적 밀집 지점)을 마우스 대신 조준점으로 쓴다
+const aimPoint = () => G.autoAim || G.mouse;
+const aimAngle = () => { const p = G.player, m = aimPoint(); return Math.atan2(m.y - p.y, m.x - p.x); };
+G.aimPoint = aimPoint;
 const nearestN = (x, y, n, range, prefer) => {
   const r2 = range * range;
   const list = [];
@@ -89,29 +93,67 @@ G.Skills = {
     if (sk.cdT <= 0) { sk.cdFull = sk.s.cd; sk.cdT = sk.cdFull; }
   },
   resetCd(sk) { sk.charges = sk.maxCharges; sk.cdT = 0; },
+  // 재사용 대기시간 감소 (힘의 전환 등). 실제로 줄어든 초를 돌려준다
+  reduceCd(sk, sec) {
+    if (!sk.s.cd || sk.charges >= sk.maxCharges) return 0;
+    const before = sk.cdT; sk.cdT = Math.max(0.01, sk.cdT - sec);
+    return before - sk.cdT;
+  },
+
+  // ---------- 핵심 주문 자동 시전 ----------
+  // 자동 시전한 주문은 재사용 대기시간이 느리게 돈다. 달라란 도서관 '자동 시전 숙련'으로 줄인다.
+  autoPen() { return Math.max(0, 0.4 - 0.1 * G.Meta.lib('autoCast')); },
+  autoPrefKey(cls) { return 'zz.autocast.' + cls; },
+  autoPref(cls) { try { return JSON.parse(localStorage.getItem(this.autoPrefKey(cls)) || '[]'); } catch { return []; } },
+  canAuto(id) { const d = G.SKILLS[id]; return d.kind === 'active' && !d.noAuto; },
+  toggleAuto(id) {
+    const p = G.player, sk = p && p.skills[id];
+    if (!sk || !this.canAuto(id)) return;
+    sk.autoCast = !sk.autoCast;
+    const pref = new Set(this.autoPref(p.cls)); if (sk.autoCast) pref.add(id); else pref.delete(id);
+    try { localStorage.setItem(this.autoPrefKey(p.cls), JSON.stringify([...pref])); } catch { /* 저장 실패해도 이번 판은 적용 */ }
+    G.Audio.play('click');
+  },
+  // 자동 시전 조준점: 적이 가장 몰린 곳, 없으면 가장 가까운 적
+  autoTarget(range = 450) { const p = G.player; return G.densestPoint(p.x, p.y, range, 110) || G.nearestEnemy(p.x, p.y, range); },
+  autoUpdate(sk, dt, busy) {
+    const p = G.player, impl = IMPL[sk.id];
+    if ((sk.autoT = (sk.autoT || 0) - dt) > 0) return;
+    sk.autoT = 0.25;
+    if (busy || p.channel || (sk.s.cd && sk.charges <= 0) || (impl.usable && !impl.usable(sk))) return;
+    const rule = G.cls(p).autoRule(sk.id, p, sk);
+    if (rule === false) return;
+    const tgt = this.autoTarget(rule === true ? 700 : 450);
+    if (!tgt && rule !== true) return;
+    G.autoAim = tgt ? { x: tgt.x, y: tgt.y } : null; G.autoCasting = true;
+    try { if (this.activate(sk.id) && p.channel && p.channel.id === sk.id) p.channel.auto = true; } finally { G.autoAim = null; G.autoCasting = false; }
+  },
 
   update(dt) {
     const p = G.player; if (p.dead) return;
-    const C = G.cls(p), hs = 1 + G.P.haste(), busy = C.busy(p);
+    const C = G.cls(p), hs = 1 + G.P.haste(), busy = C.busy(p), autoSlow = 1 / (1 + this.autoPen());
     for (const id of p.order) {
       const sk = p.skills[id], s = sk.s;
       sk.t += dt;
       if (s.cd && sk.charges < sk.maxCharges) {
-        sk.cdT -= dt * hs;
+        sk.cdT -= dt * hs * (sk.autoCast ? autoSlow : 1);
         if (sk.cdT <= 0) {
           sk.charges++;
           if (sk.charges < sk.maxCharges) { sk.cdFull = s.cd; sk.cdT = sk.cdFull; } else sk.cdT = 0;
-          if (sk.def.kind === 'active') G.UI.flashReady(id);
+          if (sk.def.kind === 'active' && !sk.autoCast) G.UI.flashReady(id);
         }
       }
       const impl = IMPL[id]; if (!impl) continue;
       if (impl.update) impl.update(sk, dt, busy);
       if (sk.def.kind === 'auto' && !busy && impl.auto && s.cd && sk.charges > 0) { if (impl.auto(sk)) this.startCd(sk); }
+      if (sk.autoCast && impl.cast) this.autoUpdate(sk, dt, busy);
     }
-    // 정신 집중
+    // 정신 집중 (자동 시전한 정신 집중은 적 밀집 지점을 계속 조준)
     if (p.channel) {
       const c = p.channel; c.t += dt;
-      const impl = IMPL[c.id]; if (impl.channel) impl.channel(p.skills[c.id], c, dt);
+      const impl = IMPL[c.id];
+      if (c.auto) { const t = this.autoTarget(600); G.autoAim = t ? { x: t.x, y: t.y } : null; }
+      try { if (impl.channel) impl.channel(p.skills[c.id], c, dt); } finally { G.autoAim = null; }
       if (c.t >= c.dur || busy) p.channel = null;
     }
     C.skillsUpdate(p, dt);
@@ -235,21 +277,22 @@ const IMPL = G.SKILL_IMPL = {
       for (let i = 0; i < n; i++) {
         const t = tg[i % tg.length];
         const a = Math.atan2(t.y - p.y, t.x - p.x) + (i >= tg.length ? (i - tg.length + 1) * 0.15 : 0);
+        const dmg = s.dmg * (i ? G.EXTRA_BOLT : 1); // 추가 투사체는 약하게
         G.Proj.spawn({
-          x: p.x + p.face * 14, y: p.y - 22, a, speed: s.speed, r: 9, kind: ff ? 'frostfire' : 'frostbolt', homing: t, turn: 3.5, src, life: 1.6, pierce: s.pierce, scale: ff ? 1.25 : 1,
+          x: p.x + p.face * 14, y: p.y - 22, a, speed: s.speed, r: 9, kind: ff ? 'frostfire' : 'frostbolt', homing: t, turn: 1.5, noRetarget: true, src, life: 1.6, pierce: s.pierce, scale: ff ? 1.25 : 1,
           onHit: e => {
-            G.hit(e, s.dmg, src);
+            G.hit(e, dmg, src);
             G.chill(e, s.slow, 2);
             G.Skills.addIcicle();
             if (!cast.fof && p.stats.fof && Math.random() < p.stats.fof) { cast.fof = true; G.Skills.procFoF(); }
             if (s.freezeCh && Math.random() < s.freezeCh) G.freeze(e, 2);
             if (s.explode) {
               const R = (25 + 18 * s.explode) * p.stats.area;
-              G.Grid.query(e.x, e.y, R).forEach(o => { if (o !== e) G.hit(o, s.dmg * (ff ? 0.6 : 0.4), src, { noText: !ff }); });
+              G.Grid.query(e.x, e.y, R).forEach(o => { if (o !== e) G.hit(o, dmg * (ff ? 0.4 : 0.25), src, { noText: !ff }); });
               G.fx.ring(e.x, e.y, 5, R, 0.3, ff ? '230,130,255' : '150,210,255', 3, 0.2);
             }
             if (ff) {
-              G.Zones.add({ kind: 'burn', x: e.x, y: e.y, r: 0, life: 3, tick: 0.5, tickT: 0.5, target: e, onTick: z => { if (!z.target.dead) G.hit(z.target, s.dmg * 0.08, 'burn', { school: 'fire' }); else z.life = 0; } });
+              G.Zones.add({ kind: 'burn', x: e.x, y: e.y, r: 0, life: 3, tick: 0.5, tickT: 0.5, target: e, onTick: z => { if (!z.target.dead) G.hit(z.target, dmg * 0.08, 'burn', { school: 'fire' }); else z.life = 0; } });
               G.fx.burst(e.x, e.y, 10, { rgb: Math.random() < 0.5 ? '255,140,60' : '200,100,255', sp: 140, size: 10 });
             } else G.fx.burst(e.x, e.y, 7, { rgb: '150,215,255', sp: 120, size: 9 });
             G.fx.shards(e.x, e.y, 3, 140);
@@ -418,14 +461,14 @@ const IMPL = G.SKILL_IMPL = {
     usable(sk) { const p = G.player, ic = p.skills.icicles; return ic && p.icicles.length >= ic.s.max; },
     cast(sk) {
       const p = G.player, s = sk.s, ic = p.skills.icicles, a = aimAngle();
-      const dmg = s.dmg + p.icicles.length * ic.s.dmg * 0.8;
+      const dmg = s.dmg + p.icicles.length * ic.s.dmg * 1.2;
       p.icicles = [];
       G.Proj.spawn({
         x: p.x + Math.cos(a) * 20, y: p.y - 16 + Math.sin(a) * 20, a, speed: 760, r: 18, kind: 'spike', src: 'glacialspike', life: 1.3, pierce: s.pierce,
         onHit: e => {
           G.hit(e, dmg, 'glacialspike', { consumeWC: true }); G.freeze(e, s.freeze);
           const R = s.splash * p.stats.area;
-          G.Grid.query(e.x, e.y, R).forEach(o => { if (o !== e) { G.hit(o, dmg * 0.35, 'glacialspike'); G.freeze(o, 2); } });
+          G.Grid.query(e.x, e.y, R).forEach(o => { if (o !== e) { G.hit(o, dmg * 0.6, 'glacialspike'); G.freeze(o, 2); } });
           G.fx.ring(e.x, e.y, 5, R, 0.4, '200,240,255', 6, 0.3);
           G.fx.shards(e.x, e.y, 26, 360); G.fx.burst(e.x, e.y, 18, { rgb: '170,225,255', sp: 220, size: 16 });
           G.fx.shake(6); G.Audio.play('shatter'); G.Audio.play('explode', 0.6);
@@ -515,24 +558,6 @@ const IMPL = G.SKILL_IMPL = {
       G.fx.shards(p.x, p.y, 16, 180); G.Audio.play('freeze');
     },
   },
-  coldsnap: {
-    cast(sk) {
-      const p = G.player;
-      for (const id of ['coneofcold', 'frostnova', 'icebarrier', 'iceblock']) if (p.skills[id]) G.Skills.resetCd(p.skills[id]);
-      G.P.heal(p.maxHp * sk.s.heal);
-      G.fx.burst(p.x, p.y, 40, { rgb: '220,245,255', sp: 220, size: 10 });
-      G.fx.ring(p.x, p.y, 10, 120, 0.5, '220,245,255', 4);
-      G.Audio.play('buff');
-    },
-  },
-  mirrorimage: {
-    cast(sk) {
-      const p = G.player, s = sk.s;
-      for (let i = 0; i < s.count; i++) G.images.push({ x: p.x, y: p.y, idx: i, n: s.count, t: 0, life: s.dur * p.stats.dur, hp: 40, atkT: U.rand(0.2, 1), dmg: s.dmg, face: 1 });
-      G.fx.burst(p.x, p.y, 30, { rgb: '190,140,255', sp: 160, size: 10 });
-      G.Audio.play('blink'); G.Audio.play('buff', 0.4);
-    },
-  },
   shiftingpower: {
     cast(sk) { const p = G.player; p.channel = { id: 'shiftingpower', name: sk.def.name, t: 0, dur: sk.s.dur, tickT: 0, ticks: 0 }; },
     channel(sk, c, dt) {
@@ -541,7 +566,9 @@ const IMPL = G.SKILL_IMPL = {
       if (c.tickT <= 0) {
         c.tickT = 1; c.ticks++;
         G.aoe(p.x, p.y, R, s.dmg, 'shiftingpower');
-        for (const id of p.order) { const o = p.skills[id]; if (id !== 'shiftingpower' && o.charges < o.maxCharges) o.cdT = Math.max(0.01, o.cdT - s.reduce); }
+        let cut = 0;
+        for (const id of p.order) if (id !== 'shiftingpower') cut = Math.max(cut, G.Skills.reduceCd(p.skills[id], s.reduce));
+        if (cut > 0) G.fx.text(p.x, p.y - 60, `재사용 -${s.reduce.toFixed(1)}초`, '#58e0a0', 14);
         G.fx.ring(p.x, p.y, R, 10, 0.6, '90,230,160', 5, 0.15);
         G.Audio.play('tick', 0.8);
       }

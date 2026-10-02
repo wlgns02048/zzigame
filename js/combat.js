@@ -38,12 +38,23 @@ G.meter = {
 };
 
 // ================= 상태 =================
-G.frozenLike = e => e.frozenT > 0 || e.wc > 0;
+// 보스는 빙결되지 않는 대신 잠깐 '얼어붙은 것으로 간주'(shatterT)된다
+G.frozenLike = e => e.frozenT > 0 || e.wc > 0 || e.shatterT > G.t;
 
 G.freeze = (e, dur) => {
   if (e.dead) return;
   dur *= G.player.stats.dur;
-  if (e.boss) { G.chill(e, 0.3, dur); return; }
+  if (e.boss) {
+    G.chill(e, 0.3, dur);
+    // 8초에 한 번, 2초 동안 얼음창 · 산산조각이 통하는 상태
+    if (G.t >= (e.shatterCd || 0)) {
+      e.shatterT = G.t + 2; e.shatterCd = G.t + 8;
+      G.fx.text(e.x, e.y - e.r * 2.4, '얼어붙음', '#bfe8ff', 16, true);
+      G.fx.burst(e.x, e.y, 14, { rgb: '200,240,255', sp: 140, size: 12 });
+      G.Audio.play('freeze', 0.6);
+    }
+    return;
+  }
   if (e.elite) dur *= 0.5;
   if (e.frozenT <= 0) { G.Audio.play('freeze', 0.5); G.fx.burst(e.x, e.y, 6, { rgb: '200,240,255', sp: 80, size: 8 }); }
   e.frozenT = Math.max(e.frozenT, dur);
@@ -111,8 +122,8 @@ G.killEnemy = (e, frozen) => {
     for (let i = 0; i < (e.boss ? 12 : 4); i++) G.dropPickup('gold', e.x + U.rand(-40, 40), e.y + U.rand(-40, 40), U.randi(3, 6));
   } else {
     if (Math.random() < 0.025 * gm) G.dropPickup('gold', e.x, e.y, U.randi(1, 3));
-    if (Math.random() < 0.008) G.dropPickup('food', e.x, e.y, 1);
-    if (Math.random() < 0.0012) G.dropPickup('magnet', e.x, e.y, 1);
+    if (Math.random() < 0.005) G.dropPickup('food', e.x, e.y, 1);
+    if (Math.random() < 0.0035) G.dropPickup('magnet', e.x, e.y, 1);
   }
   G.cls().onKill(e, G.player);
   G.Waves.onKill(e);
@@ -150,5 +161,5 @@ G.hurtPlayer = (dmg, src) => {
   G.fx.text(p.x, p.y - 34, '-' + dmg, '#ff4040', 17);
   G.Audio.play('hurt', 0.7);
   G.UI.hurtFlash();
-  if (p.hp <= 0) G.playerDeath();
+  if (p.hp <= 0 && !G.cls(p).preventDeath(p)) G.playerDeath();
 };

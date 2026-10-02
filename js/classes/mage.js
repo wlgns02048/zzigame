@@ -2,7 +2,7 @@
 // ================= 직업: 냉기 마법사 =================
 // 직업별로 다른 부분(자원, 전설/진화 효과, HUD, 그리기, 봇)을 훅으로 모아둔다.
 // 코어(player/skills/ui/render/combat)는 G.cls(p).훅(...) 만 호출한다.
-const MAGE_DEFENSIVE = ['iceblock', 'coldsnap', 'icebarrier', 'blink', 'mirrorimage', 'shiftingpower', 'icyveins'];
+const MAGE_DEFENSIVE = ['iceblock', 'icebarrier', 'blink', 'shiftingpower', 'icyveins'];
 
 G.CLASSES.mage = {
   id: 'mage', name: '냉기 마법사', className: '마법사', spec: '냉기', color: '#3fc7eb', icon: 'classmage',
@@ -23,7 +23,7 @@ G.CLASSES.mage = {
   },
   computeSkill(sk, s, p) {
     if (sk.id === 'icicles' && p.legend.giantheart) { s.max += 3; s.dmg *= 1.6; }
-    if (sk.id === 'frostbolt' && p.evo.frostfire) { s.dmg *= 1.6; s.explode = Math.max(1, s.explode) + 1; s.ff = 1; }
+    if (sk.id === 'frostbolt' && p.evo.frostfire) { s.dmg *= 1.4; s.explode = Math.max(1, s.explode) + 1; s.ff = 1; }
     if (sk.id === 'icelance' && p.evo.splinterstorm) s.splinters = 1;
     // 특화: 고드름 · 얼음창 피해
     if ((sk.id === 'icicles' || sk.id === 'icelance') && p.stats.mastery) s.dmg *= 1 + p.stats.mastery * 0.02;
@@ -38,6 +38,25 @@ G.CLASSES.mage = {
   activate(id, p) {
     if (id === 'iceblock' && p.iceblockT > 0) { p.iceblockT = 0; G.Skills.endIceBlock(); return true; }
     if (p.iceblockT > 0) return false;
+  },
+  // 치명상: 얼음 방패가 준비돼 있으면 자동으로 발동하고 생명력 1로 버틴다
+  preventDeath(p) {
+    const ib = p.skills.iceblock;
+    if (!ib || ib.charges <= 0 || p.iceblockT > 0) return false;
+    p.hp = 1;
+    G.SKILL_IMPL.iceblock.cast(ib); G.Skills.startCd(ib);
+    G.fx.text(p.x, p.y - 60, '얼음 방패!', '#bfe8ff', 22, true);
+    return true;
+  },
+  // 핵심 주문 자동 시전 조건: false = 지금은 쓰지 않음, true = 적이 없어도 사용, undefined = 사거리 안에 적이 있으면 사용
+  autoRule(id, p) {
+    const hp = p.hp / p.maxHp, near = G.nearestEnemy(p.x, p.y, 160);
+    if (id === 'iceblock') return hp < 0.25 && p.iceblockT <= 0 ? true : false;
+    if (id === 'icebarrier') return p.absorb <= 0 && !!near ? true : false;
+    if (id === 'blink') return hp < 0.4 && !!near ? true : false;
+    if (id === 'frostnova') return !!near;
+    if (id === 'icyveins') return G.enemies.length >= 25 || !!(G.Waves.boss && !G.Waves.boss.dead) ? true : false;
+    if (id === 'shiftingpower') return p.order.filter(k => k !== 'shiftingpower' && p.skills[k].s.cd >= 8 && p.skills[k].charges < p.skills[k].maxCharges).length >= 2 ? true : false;
   },
 
   update(p, dt) {
@@ -92,7 +111,6 @@ G.CLASSES.mage = {
     if (p.bf > 0) b.push(['brainfreeze', p.bfT, '', '두뇌 빙결', '다음 진눈깨비 강화']);
     if (p.absorb > 0) b.push(['icebarrier', -1, Math.round(p.absorb), '얼음 보호막', '피해 흡수']);
     if (p.iceblockT > 0) b.push(['iceblock', p.iceblockT, '', '얼음 방패', '모든 피해 면역']);
-    if (G.images.length) b.push(['mirrorimage', G.images[0].life, G.images.length, '환영 복제', '환영이 적의 주의를 끕니다']);
     return b;
   },
 
@@ -182,15 +200,14 @@ G.CLASSES.mage = {
   // ---------- 자동 플레이 봇 ----------
   botUse(id, p) {
     if (id === 'iceblock' && (p.hp > p.maxHp * 0.25 || p.iceblockT > 0)) return false;
-    if (id === 'coldsnap' && p.hp > p.maxHp * 0.5) return false;
     if (id === 'blink' && p.hp > p.maxHp * 0.6) return false;
     return true;
   },
-  // 사람처럼: 진화 > 전설 > 얼음화살 핵심 강화 > 공격 주문 > 피해 강화 > 능력치 > 기타
+  // 사람처럼: 진화 > 전설 > 공격 주문 > 피해 강화 > 얼음화살 핵심 강화 > 능력치 > 기타
   botScore(x, p) {
     if (x.type === 'evolution') return 100;
     if (x.type === 'legendary') return 80;
-    if (x.type === 'node' && x.id === 'frostbolt' && (x.nodeId === 'count' || x.nodeId === 'cast')) return 60;
+    if (x.type === 'node' && x.id === 'frostbolt' && (x.nodeId === 'count' || x.nodeId === 'cast')) return 42;
     if (x.type === 'new' && G.SKILLS[x.id].kind === 'auto') return p.order.length < 6 ? 55 : 20;
     if (x.type === 'node' && x.nodeId === 'dmg') return 45;
     if (x.type === 'passive' && ['arcaneint', 'haste', 'crit', 'projectile', 'fingersoffrost', 'brainfreeze'].includes(x.id)) return 40 + x.rarity * 5;

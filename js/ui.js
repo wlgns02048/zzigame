@@ -19,9 +19,11 @@ G.UI = {
     for (const k of G.ACTION_KEYS) {
       const d = document.createElement('div');
       d.className = 'slot empty'; d.dataset.key = k;
-      d.innerHTML = `<img class="hidden"><div class="cd"></div><div class="cdt"></div><span class="key">${G.KEY_LABEL[k] || k}</span><span class="chg"></span>`;
+      d.innerHTML = `<img class="hidden"><div class="cd"></div><div class="cdt"></div><span class="key">${G.KEY_LABEL[k] || k}</span><span class="chg"></span><span class="ac">자동</span>`;
       ab.appendChild(d); this.slotEls[k] = d;
-      d.addEventListener('mousedown', e => { e.stopPropagation(); const id = this.skillForKey(k); if (id) G.Skills.activate(id); });
+      // 왼쪽 클릭: 시전 · 오른쪽 클릭: 자동 시전 켜기/끄기
+      d.addEventListener('mousedown', e => { e.stopPropagation(); if (e.button !== 0) return; const id = this.skillForKey(k); if (id) G.Skills.activate(id); });
+      d.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); const id = this.skillForKey(k); if (id) { G.Skills.toggleAuto(id); this.showTip(this.skillTip(id), e); } });
     }
     // 툴팁 (위임)
     document.addEventListener('mouseover', e => {
@@ -50,7 +52,7 @@ G.UI = {
     const p = G.player, def = G.SKILLS[id];
     if (def.kind === 'passive') {
       const ps = p.passives[id];
-      return `<div class="tt-title">${def.name}</div><div class="tt-row"><span>능력치</span><span>등급 ${ps.rank}/${def.max}</span></div><div class="tt-desc">${def.desc(ps.total)}</div>`;
+      return `<div class="tt-title">${G.skName(def)}</div><div class="tt-row"><span>능력치</span><span>등급 ${ps.rank}/${def.max}</span></div><div class="tt-desc">${def.desc(ps.total)}</div>`;
     }
     if (def.kind === 'legendary' || def.kind === 'evolution') {
       const c = def.kind === 'legendary' ? '#ff8000' : '#e6cc80';
@@ -62,6 +64,7 @@ G.UI = {
     return `<div class="tt-title" style="${isFF ? 'color:#e6cc80' : ''}">${isFF ? '서리불꽃 화살' : def.name}</div>
       <div class="tt-row"><span>${def.castInfo(sk.s)}</span><span>${p.skillLevel(id)}레벨</span></div>
       ${def.key ? `<div class="tt-row"><span>단축키: ${G.KEY_LABEL[def.key] || def.key}</span></div>` : ''}
+      ${def.kind === 'active' ? `<div class="tt-sub">${def.noAuto ? '자동 시전할 수 없는 주문입니다.' : sk.autoCast ? `<span class="tt-green">자동 시전 중</span> · 재사용 대기시간 +${Math.round(G.Skills.autoPen() * 100)}% · 오른쪽 클릭으로 끄기` : `오른쪽 클릭: 자동 시전 (재사용 대기시간 +${Math.round(G.Skills.autoPen() * 100)}%)`}</div>` : ''}
       <div class="tt-desc">${def.tip(sk.s)}</div>${ranks ? `<div class="tt-sub">${ranks}</div>` : ''}`;
   },
 
@@ -83,7 +86,7 @@ G.UI = {
     }
     for (let i = this.autoEls.length; i < G.LIMITS.auto; i++) { const d = document.createElement('div'); d.className = 'slot small empty'; ab.appendChild(d); }
     const pb = this.el.passiveBar; pb.innerHTML = '';
-    const addP = (id, lv, cls = '') => { const d = document.createElement('div'); d.className = 'pslot ' + cls; d.dataset.skill = id; d.innerHTML = `<img src="${G.icon(G.SKILLS[id].icon)}"><span class="lv">${lv}</span>`; pb.appendChild(d); };
+    const addP = (id, lv, cls = '') => { const d = document.createElement('div'); d.className = 'pslot ' + cls; d.dataset.skill = id; d.innerHTML = `<img src="${G.icon(G.skIcon(G.SKILLS[id]))}"><span class="lv">${lv}</span>`; pb.appendChild(d); };
     for (const id in p.passives) addP(id, p.passives[id].rank);
     for (const id in p.legend) addP(id, '', 'legend');
     for (const id in p.evo) addP(id, '', 'legend');
@@ -95,7 +98,7 @@ G.UI = {
     let frac = 0, txt = '';
     if (sk.s.cd && sk.charges <= 0 && sk.cdT > 0) {
       frac = Math.min(1, sk.cdT / sk.cdFull);
-      const rem = sk.cdT / hs; txt = rem >= 1 ? Math.ceil(rem) : rem >= 0.05 ? rem.toFixed(1) : '';
+      const rem = sk.cdT / hs * (sk.autoCast ? 1 + G.Skills.autoPen() : 1); txt = rem >= 1 ? Math.ceil(rem) : rem >= 0.05 ? rem.toFixed(1) : '';
     }
     cdEl.style.setProperty('--p', frac.toFixed(3));
     if (tEl.textContent !== String(txt)) tEl.textContent = txt;
@@ -145,6 +148,7 @@ G.UI = {
       d.classList.toggle('unusable', !!(impl.usable && !impl.usable(sk)) || ss.unusable);
       d.classList.toggle('glow', !!ss.glow);
       d.classList.toggle('active', !!(p.channel && p.channel.id === id) || ss.active);
+      d.classList.toggle('autocast', !!sk.autoCast);
     }
     for (const [id, d] of this.autoEls) {
       const sk = p.skills[id];
@@ -201,7 +205,7 @@ G.UI = {
 
   // ---------- 알림 ----------
   warn(text, color = '#ff6a1a', dur = 3) { const w = this.el.raidWarn; w.textContent = text; w.style.color = color; w.classList.add('show'); this.warnT = dur; },
-  error(text) { this.el.err.textContent = text; this.el.err.style.opacity = 1; this.errT = 1.2; },
+  error(text) { if (G.autoCasting) return; this.el.err.textContent = text; this.el.err.style.opacity = 1; this.errT = 1.2; },
   hurtFlash() { const f = this.el.flash; f.style.transition = 'none'; f.style.opacity = 1; requestAnimationFrame(() => { f.style.transition = 'opacity .4s'; f.style.opacity = 0; }); },
   flashReady(id) { const k = G.SKILLS[id].key, d = k && this.slotEls[k]; if (!d) return; d.classList.remove('flashready'); void d.offsetWidth; d.classList.add('flashready'); },
   pressed(id) { const k = G.SKILLS[id].key, d = k && this.slotEls[k]; if (!d) return; d.classList.add('pressed'); setTimeout(() => d.classList.remove('pressed'), 90); },
@@ -323,11 +327,11 @@ G.UI = {
     const actives = Object.values(G.SKILLS).filter(d => d.cls === cls && d.kind === 'active' && d.key).sort((a, b) => G.ACTION_KEYS.indexOf(a.key) - G.ACTION_KEYS.indexOf(b.key));
     const autos = Object.values(G.SKILLS).filter(d => d.cls === cls && d.kind === 'auto').map(d => d.name);
     const tips = {
-      mage: '얼어붙은 적(빙결/겨울의 한기)은 얼음창에 3배 피해를 받고, 모든 냉기 주문의 치명타 확률이 높아집니다(산산조각).',
-      warlock: '부패 · 고통 · 불안정한 고통 같은 지속 피해를 여러 적에게 걸고, 고통이 만드는 영혼의 조각 3개 이상을 악의적인 환희(R)로 한 번에 터뜨리세요. 악마의 마법진(Space)은 처음엔 마법진을 그리고, 다시 누르면 그곳으로 돌아갑니다.',
+      mage: '얼어붙은 적(빙결/겨울의 한기)은 얼음창에 3배 피해를 받고, 모든 냉기 주문의 치명타 확률이 높아집니다(산산조각). 보스는 빙결되지 않는 대신 8초에 한 번, 2초 동안 얼어붙은 것으로 간주됩니다. 얼음 방패는 치명적인 피해를 받으면 자동으로 발동합니다.',
+      warlock: '부패 · 고통 · 생명력 착취 · 불안정한 고통 같은 지속 피해를 여러 적에게 걸고(적 발밑 고리와 머리 위 아이콘으로 표시), 어둠의 화살은 지속 피해가 많이 걸린 적에게 더 아픕니다. 고통이 만드는 영혼의 조각 3개 이상을 악의적인 환희(R)로 한 번에 터뜨리세요. 악마의 마법진(Space)은 처음엔 마법진을 그리고, 다시 누르면 그곳으로 돌아갑니다.',
     };
     const keys = [['WASD / 방향키', '이동'], ['마우스', '조준 (단축키 주문 방향)'], ['자동 주문', autos.join(' · ')],
-      ...actives.map(d => [G.KEY_LABEL[d.key] || d.key, d.name]), ['TAB', '피해 미터 (Details!)'], ['ESC', '일시 정지'], ['M', '소리 켜기/끄기'],
+      ...actives.map(d => [G.KEY_LABEL[d.key] || d.key, d.name]), ['액션바 오른쪽 클릭', `자동 시전 켜기/끄기 (재사용 대기시간 +${Math.round(G.Skills.autoPen() * 100)}%, 달라란 도서관에서 줄일 수 있음)`], ['TAB', '피해 미터 (Details!)'], ['ESC', '일시 정지'], ['M', '소리 켜기/끄기'],
       ['레벨업', '숫자 키 또는 클릭으로 선택']];
     this.open('help', `<div class="panel"><h2>조작법 · ${C.name}</h2><div class="helpGrid">${keys.map(([k, v]) => `<div class="k">${k}</div><div>${v}</div>`).join('')}</div>
       <p class="tt-sub" style="max-width:560px">단축키 주문은 레벨업에서 배워야 액션바에 나타납니다. ${tips[cls] || ''}</p>
@@ -361,7 +365,7 @@ G.UI = {
   buildSummary() {
     const p = G.player;
     const icons = p.order.map(id => `<div class="pslot" data-skill="${id}"><img src="${G.icon(G.cls(p).skillIcon(id, p))}"><span class="lv">${p.skillLevel(id)}</span></div>`)
-      .concat(Object.keys(p.passives).map(id => `<div class="pslot" data-skill="${id}"><img src="${G.icon(G.SKILLS[id].icon)}"><span class="lv">${p.passives[id].rank}</span></div>`))
+      .concat(Object.keys(p.passives).map(id => `<div class="pslot" data-skill="${id}"><img src="${G.icon(G.skIcon(G.SKILLS[id]))}"><span class="lv">${p.passives[id].rank}</span></div>`))
       .concat(Object.keys(p.legend).concat(Object.keys(p.evo)).map(id => `<div class="pslot legend" data-skill="${id}"><img src="${G.icon(G.SKILLS[id].icon)}"></div>`));
     return `<div class="buildRow">${icons.join('')}</div>`;
   },

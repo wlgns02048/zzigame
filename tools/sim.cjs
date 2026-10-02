@@ -10,6 +10,7 @@
 //   node tools/sim.cjs --seed 100            시드 시작값 (판 i는 seed+i)
 //   node tools/sim.cjs --query "&stage=naxxramas&cls=warlock&diff=heroic&gear=92&talents=1"
 //                                            스테이지 · 직업 · 난이도, 가상 장비(영웅 풀세트 아이템 레벨) · 직업 특성 31점
+//   node tools/sim.cjs --query "&auto=1"     핵심 주문을 모두 자동 시전으로 (재사용 대기시간 페널티 적용)
 //   node tools/sim.cjs --json                결과를 JSON으로
 //
 // 필요: Playwright (npm i -g playwright 후 npx playwright install chromium)
@@ -61,7 +62,7 @@ const runOne = async (browser, url, seed) => {
       t: Math.round(G.t), dead: p.dead, victory: !p.dead && G.state === 'over', level: p.level, kills: G.stats.kills,
       dps: Math.round(G.meter.total / Math.max(1, G.t)), gold: Math.round(G.stats.gold),
       boss: G.Waves.boss ? `${G.Waves.boss.id}:${Math.max(0, Math.round(G.Waves.boss.hp / G.Waves.boss.maxHp * 100))}%` : '-',
-      top: Object.entries(G.meter.d).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k]) => k).join(','),
+      top: Object.entries(G.meter.d).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => k + ' ' + Math.round(v / Math.max(1, G.meter.total) * 100) + '%').join(','),
       errs: log.split('\n').filter(l => l.startsWith('ERR')),
     };
   });

@@ -53,10 +53,11 @@ G.R = {
       }
     } else if (z.kind === 'burn' && z.target && !z.target.dead && Math.random() < 0.5) {
       G.fx.part({ x: z.target.x + U.rand(-8, 8), y: z.target.y - U.rand(0, 20), vy: -60, life: 0.4, size: U.rand(6, 11), rgb: Math.random() < 0.5 ? '255,130,40' : '200,90,255' });
-    } else if (z.kind === 'rainoffire') {
+    } else if (z.kind === 'singularity') {
+      // 바깥에서 중심으로 빨려 들어가는 입자
       for (let i = 0; i < 2; i++) {
-        const a = Math.random() * 6.28, r = Math.sqrt(Math.random()) * z.r, x = z.x + Math.cos(a) * r, y = z.y + Math.sin(a) * r * 0.75;
-        G.fx.part({ x: x - 50, y: y - 170, vx: 250, vy: 850, life: 0.2, size: U.rand(6, 10), rgb: Math.random() < 0.5 ? '255,140,40' : '255,200,80' });
+        const a = Math.random() * 6.28, r = z.r * U.rand(0.7, 1), x = z.x + Math.cos(a) * r, y = z.y + Math.sin(a) * r * 0.75;
+        G.fx.part({ x, y, vx: (z.x - x) * 2.2 - Math.sin(a) * 60, vy: (z.y - y) * 2.2 + Math.cos(a) * 45, life: 0.45, size: U.rand(5, 9), size1: 1, rgb: Math.random() < 0.5 ? '140,80,230' : '200,160,255' });
       }
     } else if (z.kind === 'tinted' && Math.random() < 0.3) {
       G.fx.part({ x: z.x + U.rand(-z.r, z.r) * 0.7, y: z.y + U.rand(-z.r, z.r) * 0.5, vy: -30, life: 0.8, size: U.rand(4, 8), rgb: z.color });
@@ -167,15 +168,21 @@ G.R = {
         c.fillStyle = 'rgba(210,240,255,0.85)'; c.fill(); c.strokeStyle = 'rgba(80,150,230,0.8)'; c.lineWidth = 1; c.stroke();
       }
       c.globalAlpha = 1;
-    } else if (z.kind === 'tinted' || z.kind === 'rainoffire') {
-      // 범용 장판 (보스 기술 · 접두어 · 불의 비)
-      const col = z.kind === 'rainoffire' ? '255,110,30' : z.color;
+    } else if (z.kind === 'tinted' || z.kind === 'singularity') {
+      // 범용 장판 (보스 기술 · 접두어 · 유령 특이점)
+      const col = z.kind === 'singularity' ? '110,60,200' : z.color;
       c.save(); c.translate(z.x, z.y); c.scale(1, 0.75);
       const g = c.createRadialGradient(0, 0, 0, 0, 0, z.r);
       g.addColorStop(0, `rgba(${col},${0.42 * life})`); g.addColorStop(0.8, `rgba(${col},${0.25 * life})`); g.addColorStop(1, `rgba(${col},0)`);
       c.fillStyle = g; c.beginPath(); c.arc(0, 0, z.r, 0, 7); c.fill();
       c.strokeStyle = `rgba(${col},${0.6 * life})`; c.lineWidth = 2; c.setLineDash([12, 10]); c.lineDashOffset = -z.t * 30;
       c.beginPath(); c.arc(0, 0, z.r * 0.95, 0, 7); c.stroke(); c.setLineDash([]); c.restore();
+      if (z.kind === 'singularity') {
+        const cy = z.y - 16 + Math.sin(z.t * 3) * 3, cr = 11 + Math.sin(z.t * 8) * 1.5;
+        c.globalCompositeOperation = 'lighter'; c.globalAlpha = life; c.drawImage(G.Spr.glow('150,80,255', 128), z.x - 38, cy - 38, 76, 76); c.globalCompositeOperation = 'source-over';
+        c.fillStyle = '#12051f'; c.beginPath(); c.arc(z.x, cy, cr, 0, 7); c.fill();
+        c.strokeStyle = 'rgba(210,170,255,0.8)'; c.lineWidth = 1.5; c.stroke(); c.globalAlpha = 1;
+      }
     } else if (z.kind === 'poison') {
       c.save(); c.translate(z.x, z.y); c.scale(1, 0.75);
       const g = c.createRadialGradient(0, 0, 0, 0, 0, z.r);
@@ -250,10 +257,12 @@ G.R = {
       c.fillStyle = '#000'; c.fillRect(e.x - w / 2 - 1, y - 1, w + 2, 6);
       c.fillStyle = e.elite ? '#e0a020' : '#c81e1e'; c.fillRect(e.x - w / 2, y, w * Math.max(0, e.hp / e.maxHp), 4);
     }
+    // 지속 피해 아이콘 (체력바 위)
+    for (const e of list) if (e.dots || e.haunted > G.t) G.Dots.drawIcons(c, e, e.y - e.r * 2.6 * e.scale / 1.2 - 26 + (e.def.fly ? -10 : 0));
   },
 
   drawEnemy(c, e) {
-    const set = G.Spr.enemy[e.id], img = e.frozenT > 0 ? set.frozen : e.slowT > 0 ? set.chill : set.n;
+    const set = G.Spr.enemy[e.id], img = e.frozenT > 0 || e.shatterT > G.t ? set.frozen : e.slowT > 0 ? set.chill : set.n;
     const s = e.scale, w = img.width * s, h = img.height * s;
     const moving = e.frozenT <= 0;
     const fly = e.def.fly ? -10 + Math.sin(e.t * 3) * 4 : 0;
@@ -265,6 +274,7 @@ G.R = {
       c.drawImage(G.Spr.glow(gr, 128), e.x - e.r * 2.2, e.y - e.r * 2.2 + fly, e.r * 4.4, e.r * 4.4);
       c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
     }
+    if (e.dots) G.Dots.drawRing(c, e);
     c.save();
     c.translate(e.x, e.y + e.r * 0.85 + fly + bob);
     if (e.face < 0) c.scale(-1, 1);

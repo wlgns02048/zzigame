@@ -267,6 +267,7 @@ G.Bot = {
       const def = G.SKILLS[id]; if (def.kind !== 'active') continue;
       if (!G.cls(p).botUse(id, p)) continue;
       const sk = p.skills[id], impl = G.SKILL_IMPL[id];
+      if (sk.autoCast) continue; // 자동 시전에 맡김
       if (sk.charges > 0 && (!impl.usable || impl.usable(sk)) && !(p.channel && p.channel.id === id)) G.Skills.activate(id);
     }
   },

@@ -8,6 +8,8 @@ G.ICON_KEYS = [
   'icenova', 'icicles', 'icyveins', 'kelthuzad', 'lichking', 'luck', 'magnet', 'mirrorimage', 'necromancer', 'patchwerk', 'permafrost',
   'pickup', 'projectile', 'rayoffrost', 'regen', 'reroll', 'shatter', 'shiftingpower', 'skeleton', 'soulstone', 'speed', 'splinter',
   'splinterstorm', 'splittingice', 'stamina', 'thermalvoid', 'timewarp', 'waterelemental', 'winterschill', 'xp', 'zombie',
+  // 지속 피해 표시 (적 머리 위)
+  'corruption', 'agony', 'unstableaffliction', 'siphonlife', 'haunt',
 ];
 G.icon = k => `assets/icons/${k}.jpg`;
 G.IMG = {};
