@@ -92,17 +92,24 @@ DATA_ROOT=/volume2/docker/zzigame-data docker compose -p zzigame -f docker-compo
 - 컨테이너는 `restart: unless-stopped`라 나스를 재시작해도 다시 뜬다
 - 내부망 확인: `http://192.168.50.2:13100`
 
-## 외부 접속 (DSM 관리자 · 공유기 화면에서 해야 함)
+## 외부 접속 — `https://Godlovesyou.synology.me:10443` (2026-10-03 설정 완료)
 
-photoshare(`:9443`)와 같은 방식 — 기존 Synology DDNS 호스트명과 Let's Encrypt 인증서를 그대로 쓴다.
-DuckDNS의 `icecrown-trial`은 GitHub Pages(main)용이므로 건드리지 않는다.
+photoshare(`:9443`)와 같은 방식 — 기존 Synology DDNS 호스트명과 Let's Encrypt 인증서(기본 인증서)를 그대로 쓴다.
+DuckDNS의 `icecrown-trial`은 GitHub Pages(main)용이므로 건드리지 않았다.
 
-1. DSM → 제어판 → 로그인 포털 → 고급 → 리버스 프록시 → 생성
-   - 설명 `zzigame`, 소스 HTTPS · `Godlovesyou.synology.me` · 포트 **10443** (나스에서 비어 있음 확인), 대상 HTTP · `localhost` · **13100**
-2. DSM → 보안 → 인증서 → 설정에서 위 항목에 기존 `Godlovesyou.synology.me` 인증서 지정
-3. DSM → 보안 → 방화벽 규칙에 TCP 10443 허용 (photoshare 8443 · 9443 규칙과 같게)
-4. 공유기 포트포워딩: 외부 10443 → 192.168.50.2:10443
-5. 확인: `https://Godlovesyou.synology.me:10443`
+| 구성 | 내용 | 설정 방법 |
+|---|---|---|
+| DSM 리버스 프록시 | `zzigame`: HTTPS `Godlovesyou.synology.me:10443` → HTTP `localhost:13100` | `synowebapi` (root) |
+| DSM 방화벽 | 기본 프로필 첫 규칙 허용 서비스에 `ReverseProxy_10443` 추가 (photoshare의 `ReverseProxy_9443`과 같은 방식) | `firewall.d/1.json` 수정 후 `synofirewall --reload` |
+| 공유기 포트포워딩 | 외부 10443 → 192.168.50.2:10443 (UPnP) | `zzigame-upnp` 컨테이너가 30분마다 다시 등록 |
+| 외부 확인 | 배포할 때마다 GitHub 서버에서 접속 확인 (`External access check` 작업) | `.github/workflows/deploy.yml` |
+
+- DSM 시스템 설정은 jihoon40이 docker 그룹이라 컨테이너로 root 권한을 얻어
+  (`docker run --rm --privileged --pid=host --network host alpine nsenter -t 1 -m -u -i -n -p -- …`) 실행했다.
+  실행한 스크립트와 변경 전 백업: `/volume2/docker/github-runner-zzigame/sysconfig/` (`01_proxy.sh`, `02_firewall.sh`, `*.bak`)
+- 되돌리기: DSM → 로그인 포털 → 리버스 프록시에서 `zzigame` 삭제, 방화벽은 `firewall-1.json.bak`을 되돌리고 `synofirewall --reload`
+  (또는 DSM 방화벽 화면에서 `ReverseProxy_10443` 해제), `zzigame-upnp` 컨테이너 중지
+- 인증서는 DSM 기본 인증서(Synology DDNS)가 자동으로 쓰인다. DSM이 갱신하면 그대로 따라간다
 
 ## 로컬 실행
 
