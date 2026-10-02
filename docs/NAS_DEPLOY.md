@@ -16,26 +16,45 @@
 
 ## 구조
 
-- `server/server.js` — Node 22 내장 모듈만 사용 (npm 패키지 없음, DB는 `node:sqlite`)
-  - 정적 파일(`index.html`, `css/`, `js/`, `assets/`) + `/api/*`
-  - 데이터: `data/game.db`
-- 재화와 특성은 **서버만 바꾼다**. 브라우저는 결과를 받아 보여줄 뿐
-  - 특성 구매: `POST /api/talents/buy` — 비용 계산과 골드 차감을 서버에서
-  - 판 보상: `POST /api/runs/start` → `POST /api/runs/report`(누적값). 서버가 실제 경과 시간 · 처치/골드 상한으로
-    검증하고 이전 지급분과의 차액만 지급. 거부된 판은 서버 로그에 `run rejected ... reasons=` 로 남는다
-  - 특성 정의(`js/data/talents.js`)는 서버와 브라우저가 같은 파일을 쓴다
-- 저장 방식: 로그인 = 서버 / 서버는 있는데 게스트 = 저장 안 함 / 서버 없음(정적 호스팅) = 브라우저 저장
+- `server/server.js` — HTTP · 정적 파일 · 인증 · 건의사항. Node 22 내장 모듈만 사용 (npm 패키지 없음, DB는 `node:sqlite`)
+- `server/db.js` — 스키마 (기존 DB에는 없는 열을 자동 추가)
+- `server/game.js` — 게임 경제 API. 데이터: `data/game.db`
+- 재화 · 아이템 · 특성은 **서버만 바꾼다**. 브라우저는 결과(`profile`)를 받아 보여줄 뿐
+- 정의 데이터는 서버와 브라우저가 같은 파일을 쓴다: `js/data/talents.js` · `items.js` · `stages.js`
 - 직업별 로직은 `js/classes/<직업>.js` 훅으로 분리 (`G.cls(p).훅`)
+- 게스트(로그인 안 함)는 죽음의 폐광 · 얼음왕관만 플레이, 아무것도 저장되지 않음
 
-## 밸런스 시뮬레이터
+### API
+
+| 경로 | 설명 |
+|---|---|
+| `POST /api/auth/register` · `login` · `logout` | 계정 (가입 시 냉기 마법사 캐릭터 생성) |
+| `GET /api/me` | 프로필: 지갑 · 캐릭터 · 특성 · 아이템 · 소모품 · 진행 · 가챠 천장 · 퀘스트 · 금고 · 이번 주 접두어 |
+| `POST /api/characters` | 직업 캐릭터 생성 |
+| `POST /api/talents/point` · `set` · `reset` | 특성 포인트 구매(골드) · 배분(내리기 불가) · 초기화(골드) |
+| `POST /api/items/equip` · `unequip` · `lock` · `sell` · `disenchant` · `socket` · `enchant` | 장비 |
+| `POST /api/gacha` | `{ kind: equip/enchant/gem, count: 1/10, premium }` |
+| `POST /api/runs/start` → `POST /api/runs/report` | 판 시작(개방 여부 검사) → 누적값 보고. 실제 경과 시간 · 처치/골드 상한 · 보스 수로 검증하고 이전 지급분과의 차액만 지급. 거부된 판은 서버 로그에 `run rejected ... reasons=` |
+| `GET /api/rankings` | `stage · difficulty · kind(clear/endless) · scope(week/all) · cls` |
+| `POST /api/quests/claim` · `POST /api/vault/claim` | 퀘스트 보상 · 금고 선택 |
+| `GET/POST/PATCH/DELETE /api/suggestions…` | 건의사항 게시판 |
+
+## 도구
 
 ```sh
-node tools/sim.cjs                    # 8판, 고정 시드
-node tools/sim.cjs --runs 16 --secs 600 --query "&all=1"
+node tools/sim.cjs                    # 밸런스 시뮬레이터: 8판, 고정 시드
+node tools/sim.cjs --runs 16 --secs 700 --query "&stage=scholomance&cls=warlock&gear=40&talents=1"
+python tools/fetch_icons.py           # 아이콘 받기 (wow.zamimg.com, 이미 있는 파일은 건너뜀)
 ```
 
-서버를 임시 포트 · 임시 DB로 직접 띄우고 봇으로 여러 판을 돌려 표로 출력한다. 시드가 고정이라
-코드가 같으면 결과도 같으므로, 수치를 바꾸기 전후로 돌려 비교한다. Playwright가 필요하다.
+시뮬레이터는 서버를 임시 포트 · 임시 DB로 직접 띄우고 봇으로 여러 판을 돌려 표로 출력한다. 시드가 고정이라
+코드가 같으면 결과도 같으므로, 수치를 바꾸기 전후로 돌려 비교한다. `gear`(가상 영웅 풀세트 아이템 레벨) ·
+`talents`(직업 특성 31점)는 시뮬레이션 전용이고 서버에는 저장되지 않는다. Playwright가 필요하다.
+
+> 테스트 전용 환경 변수 `ZZ_SKIP_CLOCK=1`은 런 보고의 실제 경과 시간 검증을 끈다. **운영에서는 절대 설정하지 말 것.**
+
+> Z:(RaiDrive) 위의 파일을 스크립트로 통째로 다시 쓰면 드물게 4KB 단위로 잘리는 일이 있었다 (2026-10, `server/game.js` · `js/game.js`).
+> 큰 파일을 고친 뒤에는 크기와 `node --check`로 확인하고, 커밋 전에 빈 파일이 없는지 본다.
 
 ## 환경 변수
 

@@ -10,6 +10,8 @@ G.init = async () => {
   await G.loadAssets();
   G.Spr.build();
   await G.Net.init();
+  // 밸런스 시뮬레이터 전용 가상 장비 · 특성 (?gear=아이템레벨&talents=1)
+  if (G.params.get('gear') || G.params.get('talents')) G.Meta.useSimLoadout(+G.params.get('gear') || 0, !!G.params.get('talents'));
   G.UI.init();
   G.R.init();
   G.Input();
@@ -93,6 +95,12 @@ G.startRun = (cls, stage, diff) => {
   G.UI.close();
   G.UI.el.hud.classList.remove('hidden');
   G.UI.buffSig = null; G.UI.bfTgt = null;
+  // 플레이어 프레임: 직업 이름 · 초상화 · 자원 막대 색, 이전 판 경고 지우기
+  const C = G.CLASSES[cls];
+  document.querySelector('#playerFrame .portrait img').src = G.icon(C.icon);
+  document.querySelector('#playerFrame .pfName').textContent = C.name;
+  document.querySelector('#playerFrame .bar.mana').classList.toggle('shards', cls === 'warlock');
+  G.UI.el.raidWarn.classList.remove('show'); G.UI.warnT = 0;
 };
 
 G.pause = () => { G.paused = true; G.UI.showPause(); };
@@ -278,7 +286,8 @@ G.simulate = secs => {
     const t0 = performance.now();
     let n = 0;
     while (G.t < secs && G.state === 'play' && n++ < 300) {
-      G.update(dt);
+      // 시뮬레이션 중 예외가 나면 멈춰서 기다리지 말고 로그에 남기고 끝낸다
+      try { G.update(dt); } catch (err) { el.textContent += `ERR ${err.message}\n`; G.state = 'over'; break; }
     if (Math.floor(G.t) % 30 === 0 && Math.floor(G.t - dt) % 30 !== 0) {
       const p = G.player;
       log.push(`t=${Math.floor(G.t)} lv=${p.level} hp=${Math.round(p.hp)}/${p.maxHp} enemies=${G.enemies.length} kills=${G.stats.kills} dps=${Math.round(G.meter.total / G.t)} boss=${G.Waves.boss ? G.Waves.boss.id + ':' + Math.round(G.Waves.boss.hp) : '-'}`);

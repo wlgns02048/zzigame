@@ -30,7 +30,7 @@ G.ENEMIES = {
   scarlet_monk: { name: '붉은십자군 수도사', hp: 40, speed: 115, dmg: 8, r: 14, xp: 3, icon: 'scarlet', scale: 1 },
   scarlet_knight: { name: '붉은십자군 기사', hp: 340, speed: 62, dmg: 22, r: 26, xp: 14, icon: 'scarlet', scale: 1 },
   // ---- 스칼로맨스 ----
-  student: { name: '스칼로맨스 학생', hp: 30, speed: 78, dmg: 6, r: 13, xp: 2, icon: 'student', scale: 1, ranged: { range: 250, cd: 3.4, dmg: 8, speed: 220 } },
+  student: { name: '스칼로맨스 학생', hp: 30, speed: 78, dmg: 6, r: 13, xp: 2, icon: 'student', scale: 1, ranged: { range: 250, cd: 4, dmg: 6, speed: 220 } },
   // ---- 화산 심장부 ----
   fireling: { name: '화염 정령 새끼', hp: 18, speed: 100, dmg: 6, r: 12, xp: 1, icon: 'fireelemental', scale: 1 },
   corehound: { name: '심장부 사냥개', hp: 60, speed: 110, dmg: 10, r: 18, xp: 3, icon: 'corehound', scale: 1 },
@@ -75,7 +75,7 @@ G.ENEMIES = {
       { type: 'summon', name: '십자군 소집', cd: 16, id: 'scarlet_soldier', n: 8 }, { type: 'heal', name: '부활', at: 0.5, amt: 0.25 }] },
 
   jandice: { name: '잔다이스 바로브', title: '바로브 가문', hp: 7000, speed: 85, dmg: 22, r: 32, xp: 200, icon: 'jandice', scale: 1, boss: true, glow: '255,120,255',
-    move: 'kite', skills: [{ type: 'summon', name: '환영', cd: 9, id: 'student', n: 8 }, { type: 'teleport', name: '사라짐', cd: 8 }, { type: 'volley', name: '저주의 화살', cd: 6, n: 10, dmg: 12, speed: 200 }] },
+    move: 'kite', skills: [{ type: 'summon', name: '환영', cd: 11, id: 'student', n: 5 }, { type: 'teleport', name: '사라짐', cd: 8 }, { type: 'volley', name: '저주의 화살', cd: 6, n: 10, dmg: 12, speed: 200 }] },
   frostwhisper: { name: '라스 프로스트위스퍼', title: '리치', hp: 24000, speed: 80, dmg: 24, r: 32, xp: 400, icon: 'frostwhisper', scale: 1, boss: true, glow: '120,200,255',
     move: 'kite', skills: [{ type: 'volley', name: '얼음 화살 일제 사격', cd: 4.5, n: 16, dmg: 14, speed: 210, kind: 'frost' }, { type: 'blast', name: '서리 고리', cd: 9, r: 100, dmg: 32, root: 1.6, color: '120,200,255' }] },
   gandling: { name: '암흑스승 간들링', title: '스칼로맨스 교장', hp: 70000, speed: 84, dmg: 26, r: 32, xp: 0, icon: 'gandling', scale: 1, boss: true, glow: '80,255,120',

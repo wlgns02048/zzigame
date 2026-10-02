@@ -68,7 +68,7 @@ G.R = {
     if (cam.shake > 0) { sx = U.rand(-cam.shake, cam.shake); sy = U.rand(-cam.shake, cam.shake); }
     const ox = Math.round(W / 2 - cam.x + sx), oy = Math.round(H / 2 - cam.y + sy);
     // 지형
-    const T = 512, g = G.Spr.ground;
+    const T = 512, theme = G.theme(), g = G.Spr.groundFor((G.state !== 'menu' && G.Waves.stage && G.Waves.stage.theme) || 'icecrown');
     const gx = ((ox % T) + T) % T - T, gy = ((oy % T) + T) % T - T;
     for (let x = gx; x < W; x += T) for (let y = gy; y < H; y += T) c.drawImage(g, x, y);
     c.save(); c.translate(ox, oy);
@@ -85,21 +85,22 @@ G.R = {
       this.drawTexts(c);
     }
     c.restore();
-    this.drawSnow(c, realDt);
+    this.drawSnow(c, realDt, theme.particles);
     c.drawImage(this.vig, 0, 0);
     const p = G.player;
     if (G.state === 'play' && p && p.hp / p.maxHp < 0.3) { c.globalAlpha = 0.5 + Math.sin(performance.now() / 200) * 0.3; c.drawImage(this.lowhp, 0, 0); c.globalAlpha = 1; }
   },
 
   drawDecor(c, x0, y0, x1, y1) {
-    const CH = 340, D = G.Spr.decor, types = ['rock', 'pine', 'pine', 'tree', 'grave', 'grave', 'saronite', 'ice', 'bones', 'rock'];
+    const CH = 340, D = G.Spr.decor, th = G.theme(), types = th.decor, glows = th.glow || {};
     for (let cx = Math.floor(x0 / CH); cx <= Math.floor(x1 / CH); cx++) for (let cy = Math.floor(y0 / CH); cy <= Math.floor(y1 / CH); cy++) {
       const n = Math.floor(U.hash(cx, cy, 1) * 2.4);
       for (let i = 0; i < n; i++) {
         if (Math.abs(cx) <= 0 && Math.abs(cy) <= 0) continue;
         const t = types[Math.floor(U.hash(cx, cy, 10 + i) * types.length)], s = D[t];
         const x = cx * CH + U.hash(cx, cy, 20 + i) * CH, y = cy * CH + U.hash(cx, cy, 30 + i) * CH;
-        if (t === 'saronite') { c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.35; const gl = G.Spr.glow('60,255,200', 128); c.drawImage(gl, x - 64, y - 70); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; }
+        const gc = t === 'saronite' ? '60,255,200' : glows[t];
+        if (gc) { c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.35; const gl = G.Spr.glow(gc, 128); c.drawImage(gl, x - 64, y - 70); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; }
         c.drawImage(s, Math.round(x - s.width / 2), Math.round(y - s.height));
       }
     }
@@ -386,11 +387,14 @@ G.R = {
     c.globalAlpha = 1;
   },
 
-  drawSnow(c, dt) {
-    const W = G.W, H = G.H;
-    c.fillStyle = 'rgba(235,245,255,0.75)';
+  // 화면 입자: 눈(기본) · 먼지 · 재 · 불씨(위로 떠오름)
+  drawSnow(c, dt, kind = 'snow') {
+    if (kind === 'none') return;
+    const W = G.W, H = G.H, up = kind === 'ember';
+    c.fillStyle = { snow: 'rgba(235,245,255,0.75)', dust: 'rgba(200,170,120,0.5)', ash: 'rgba(150,150,150,0.55)', ember: 'rgba(255,140,40,0.85)' }[kind];
     for (const f of this.snow) {
-      f.y += f.v * dt / H; f.ph += dt; f.x += (Math.sin(f.ph) * 8 + 10) * dt / W;
+      f.y += (up ? -0.6 : kind === 'snow' ? 1 : 0.35) * f.v * dt / H; f.ph += dt; f.x += (Math.sin(f.ph) * 8 + 10) * dt / W;
+      if (f.y < 0) { f.y = 1; f.x = Math.random(); }
       if (f.y > 1) { f.y = 0; f.x = Math.random(); } if (f.x > 1) f.x = 0;
       c.globalAlpha = 0.25 + f.s / 4;
       c.fillRect(f.x * W, f.y * H, f.s, f.s);

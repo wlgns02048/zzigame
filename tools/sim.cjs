@@ -8,6 +8,8 @@
 //   node tools/sim.cjs --runs 16 --secs 600
 //   node tools/sim.cjs --query "&all=1"      게임 URL 파라미터 추가 (?all, ?god 등)
 //   node tools/sim.cjs --seed 100            시드 시작값 (판 i는 seed+i)
+//   node tools/sim.cjs --query "&stage=naxxramas&cls=warlock&diff=heroic&gear=92&talents=1"
+//                                            스테이지 · 직업 · 난이도, 가상 장비(영웅 풀세트 아이템 레벨) · 직업 특성 31점
 //   node tools/sim.cjs --json                결과를 JSON으로
 //
 // 필요: Playwright (npm i -g playwright 후 npx playwright install chromium)

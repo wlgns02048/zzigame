@@ -56,6 +56,27 @@ G.Meta = {
     const ranks = this.tree(cls).ranks;
     for (const k in ranks) { const nd = G.TALENTS.node(cls, k); if (nd && nd.skill && ranks[k]) nd.skill(id, s, ranks[k]); }
   },
+  // 밸런스 시뮬레이터 전용 (?gear=아이템레벨&talents=1): 게스트에게 가상의 장비 · 특성을 입힌다. 서버에는 아무것도 저장되지 않는다.
+  useSimLoadout(ilvl, talents) {
+    let a = 777; const rng = () => { a = (a * 16807) % 2147483647; return a / 2147483647; };
+    const I = G.ITEMS, items = [], tal = {};
+    for (const cls in G.CLASSES) {
+      if (ilvl > 0) for (const e of I.EQUIP) {
+        if (e.id === 'offhand') continue;
+        const it = I.makeItem(rng, { slot: e.id === 'mainhand' ? 'staff' : e.accepts[0], quality: 3, ilvl });
+        it.equip = { cls, slot: e.id }; items.push(it);
+      }
+      if (talents) {
+        // 줄 순서대로 채워 31점 배분 (규칙 검사 통과하는 것만)
+        const ranks = {}, T = G.TALENTS;
+        for (const nd of T.TREES[cls].nodes.slice().sort((x, y) => x.row - y.row)) {
+          for (let r = 1; r <= nd.max && T.spent(ranks) < 31; r++) { const trial = { ...ranks, [nd.id]: r }; if (!T.validate(cls, trial, 31)) ranks[nd.id] = r; }
+        }
+        tal[cls] = { ranks, bought: 31, resets: 0 };
+      }
+    }
+    this.profile = { wallet: {}, characters: Object.keys(G.CLASSES), talents: tal, items, stacks: {}, progress: {}, gacha: {}, best: 0, wins: 0 };
+  },
   // 특성 포인트 구매 / 배분 / 초기화
   async buyPoint(tree) { this.useProfile((await G.Net.api('POST', '/api/talents/point', { tree })).profile); },
   async setRanks(tree, ranks) { this.useProfile((await G.Net.api('POST', '/api/talents/set', { tree, ranks })).profile); },

@@ -379,3 +379,4 @@ select { cursor: pointer; }
   .lbNav a span { display: none; } .stageWrap, .charBody, .talWrap { grid-template-columns: 1fr; } .talGrid { grid-column: 1; grid-row: auto; }
   .lbTop { flex-wrap: wrap; } .qBar { width: 180px; }
 }
+.bar.mana.shards .fill { background: linear-gradient(#c060ff, #5a1a9a); }

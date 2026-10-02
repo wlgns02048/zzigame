@@ -104,6 +104,7 @@ G.Spr = {
       bones: this.make(40, 24, drawBones),
     };
     this.ground = this.make(512, 512, drawGround);
+    for (const k in G.EXTRA_DECOR || {}) { const [w, h, f] = G.EXTRA_DECOR[k]; this.decor[k] = this.make(w, h, f); }
   },
 };
 

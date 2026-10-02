@@ -318,12 +318,19 @@ G.UI = {
   },
 
   showHelp() {
-    const keys = [['WASD / 방향키', '이동'], ['마우스', '조준 (단축키 주문 방향)'], ['자동 주문', '얼음화살·얼음창·진눈깨비 등은 자동 시전'],
-      ['Q', '얼어붙은 구슬'], ['E', '냉기 돌풍'], ['R', '빙하 가시 (고드름 최대치)'], ['F', '서리 회오리'], ['T', '서리 광선'], ['Space', '점멸'],
-      ['1 ~ 6', '얼음 핏줄 · 얼음 보호막 · 얼음 방패 · 매서운 한파 · 환영 복제 · 힘의 전환'], ['TAB', '피해 미터 (Details!)'], ['ESC', '일시 정지'], ['M', '소리 켜기/끄기'],
-      ['레벨업', '1/2/3 키 또는 클릭으로 선택']];
-    this.open('help', `<div class="panel"><h2>조작법</h2><div class="helpGrid">${keys.map(([k, v]) => `<div class="k">${k}</div><div>${v}</div>`).join('')}</div>
-      <p class="tt-sub" style="max-width:520px">단축키 주문은 레벨업에서 배워야 액션바에 나타납니다. 얼어붙은 적(빙결/겨울의 한기)은 얼음창에 3배 피해를 받고, 모든 냉기 주문의 치명타 확률이 높아집니다(산산조각).</p>
+    // 판 중이면 그 직업, 아니면 로비에서 고른 직업의 단축키 주문
+    const cls = (G.state === 'play' && G.player && G.player.cls) || (G.Lobby && G.Lobby.cls) || 'mage', C = G.CLASSES[cls];
+    const actives = Object.values(G.SKILLS).filter(d => d.cls === cls && d.kind === 'active' && d.key).sort((a, b) => G.ACTION_KEYS.indexOf(a.key) - G.ACTION_KEYS.indexOf(b.key));
+    const autos = Object.values(G.SKILLS).filter(d => d.cls === cls && d.kind === 'auto').map(d => d.name);
+    const tips = {
+      mage: '얼어붙은 적(빙결/겨울의 한기)은 얼음창에 3배 피해를 받고, 모든 냉기 주문의 치명타 확률이 높아집니다(산산조각).',
+      warlock: '부패 · 고통 · 불안정한 고통 같은 지속 피해를 여러 적에게 걸고, 고통이 만드는 영혼의 조각 3개 이상을 악의적인 환희(R)로 한 번에 터뜨리세요. 악마의 마법진(Space)은 처음엔 마법진을 그리고, 다시 누르면 그곳으로 돌아갑니다.',
+    };
+    const keys = [['WASD / 방향키', '이동'], ['마우스', '조준 (단축키 주문 방향)'], ['자동 주문', autos.join(' · ')],
+      ...actives.map(d => [G.KEY_LABEL[d.key] || d.key, d.name]), ['TAB', '피해 미터 (Details!)'], ['ESC', '일시 정지'], ['M', '소리 켜기/끄기'],
+      ['레벨업', '숫자 키 또는 클릭으로 선택']];
+    this.open('help', `<div class="panel"><h2>조작법 · ${C.name}</h2><div class="helpGrid">${keys.map(([k, v]) => `<div class="k">${k}</div><div>${v}</div>`).join('')}</div>
+      <p class="tt-sub" style="max-width:560px">단축키 주문은 레벨업에서 배워야 액션바에 나타납니다. ${tips[cls] || ''}</p>
       <button class="btn" id="hBack">돌아가기</button></div>`);
     $('hBack').onclick = () => (G.state === 'play' ? this.showPause() : this.showMenu());
   },

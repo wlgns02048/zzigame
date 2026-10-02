@@ -89,7 +89,7 @@ G.Lobby = {
           <img src="${G.icon(s.icon)}"><div><b>${s.name}</b><small>${s.type === 'raid' ? '공격대' : '던전'} · 권장 ${s.ilvl}</small>
           <span class="marks">${pn ? '<i class="ok">일반</i>' : ''}${ph ? '<i class="hc">영웅</i>' : ''}${open ? '' : '<i>잠김</i>'}</span></div></div>`;
       }).join('')}</div></div>`).join('');
-    const df = SD().DIFFICULTY, aff = this.pr() ? this.pr().affixes : SD().weeklyAffixes(IT().periodKeys().weekly), E = SD().ENDLESS;
+    const df = SD().DIFFICULTY, aff = (this.pr() && this.pr().affixes) || SD().weeklyAffixes(IT().periodKeys().weekly), E = SD().ENDLESS;
     const p = prog(this.diff);
     const chars = Object.values(G.CLASSES).map(C => {
       const have = this.chars().includes(C.id);
@@ -300,7 +300,7 @@ G.Lobby = {
         ranks[id] = r - 1; if (!ranks[id]) delete ranks[id]; this.render();
       };
     });
-    $('talBuy').onclick = () => this.act(() => this.api('POST', '/api/talents/point', { tree }), '포인트를 구매했습니다.').then(() => { this.pending.ranks = Object.assign(G.Meta.tree(tree).ranks, this.pending.ranks); this.render(); });
+    $('talBuy').onclick = () => this.act(() => this.api('POST', '/api/talents/point', { tree }), '포인트를 구매했습니다.'); // 배분 중이던 내용(pending)은 그대로 유지
     $('talApply').onclick = () => { const r = this.pending.ranks; this.pending = null; this.act(() => this.api('POST', '/api/talents/set', { tree, ranks: r }), '특성을 적용했습니다.'); };
     $('talUndo').onclick = () => { this.pending = null; this.render(); };
     $('talReset').onclick = () => { if (confirm('모든 포인트를 돌려받고 배분을 초기화할까요?')) { this.pending = null; this.act(() => this.api('POST', '/api/talents/reset', { tree }), '초기화했습니다.'); } };

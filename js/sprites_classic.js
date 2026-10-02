@@ -236,3 +236,69 @@ function drawGhost(x, o) {
     anubrekhan: [64 * 2, 48 * 2, x => { x.scale(2, 2); drawSpider(x, { body: '#2a3a2a', light: '#5a7a5a', leg: '#141e14', mark: '#c0a040', eye: '#a0ff40' }); }],
   };
 })();
+
+// ================= 스테이지 테마 (바닥 · 장식 · 입자) =================
+// pal: base(바탕) · a/b(얼룩) · hi(밝은 얼룩) · acc(강조 얼룩) · sp(반짝임) · crack(균열). particles: snow | dust | ash | ember | none
+G.THEMES = {
+  icecrown: { pal: null, decor: ['rock', 'pine', 'pine', 'tree', 'grave', 'grave', 'saronite', 'ice', 'bones', 'rock'], particles: 'snow' },
+  mine: { pal: { base: '#2a2016', a: '90,70,45', b: '20,15,10', hi: '160,130,90', acc: '200,150,60', sp: '200,180,140', crack: '120,90,60' }, decor: ['stone', 'stone', 'crate', 'crate', 'bones', 'stone', 'crate'], particles: 'dust', glow: { crate: '255,170,60' } },
+  forest: { pal: { base: '#1b241a', a: '50,70,45', b: '12,18,12', hi: '110,140,100', acc: '80,120,160', sp: '150,170,140', crack: '70,90,60' }, decor: ['tree', 'tree', 'tree', 'grave', 'stone'], particles: 'none' },
+  monastery: { pal: { base: '#2a2626', a: '90,80,80', b: '25,20,20', hi: '170,160,150', acc: '200,40,40', sp: '200,190,180', crack: '120,100,100' }, decor: ['pillar', 'pillar', 'grave', 'stone', 'crate'], particles: 'none' },
+  crypt: { pal: { base: '#1c1f24', a: '60,70,60', b: '10,12,10', hi: '120,130,120', acc: '80,255,120', sp: '160,200,160', crack: '60,120,70' }, decor: ['grave', 'bones', 'pillar', 'stone', 'bones'], particles: 'ash' },
+  ruins: { pal: { base: '#25201e', a: '80,60,50', b: '20,14,12', hi: '150,120,100', acc: '255,120,40', sp: '200,170,150', crack: '140,80,50' }, decor: ['tree', 'grave', 'bones', 'stone', 'crate'], particles: 'ember' },
+  lava: { pal: { base: '#2a140c', a: '120,40,10', b: '20,8,4', hi: '180,80,30', acc: '255,110,20', sp: '255,180,100', crack: '255,120,40' }, decor: ['lavarock', 'lavarock', 'stone', 'bones'], particles: 'ember', glow: { lavarock: '255,110,20' } },
+  lair: { pal: { base: '#1e1a1a', a: '70,50,50', b: '15,10,10', hi: '130,100,100', acc: '200,60,255', sp: '180,150,150', crack: '160,60,60' }, decor: ['stone', 'bones', 'lavarock', 'pillar'], particles: 'ash', glow: { lavarock: '255,90,30' } },
+  necropolis: { pal: { base: '#1a1f22', a: '50,80,70', b: '10,14,12', hi: '110,140,130', acc: '60,255,200', sp: '150,200,190', crack: '60,160,130' }, decor: ['web', 'bones', 'grave', 'pillar', 'saronite'], particles: 'ash' },
+};
+G.theme = () => G.THEMES[(G.state !== 'menu' && G.Waves.stage && G.Waves.stage.theme) || 'icecrown'];
+
+function drawThemeGround(x, w, h, pal) {
+  x.fillStyle = pal.base; x.fillRect(0, 0, w, h);
+  const blob = (cx, cy, r, col, sy = 1) => {
+    for (const ox of [-w, 0, w]) for (const oy of [-h, 0, h]) {
+      const g = x.createRadialGradient(cx + ox, cy + oy, 0, cx + ox, cy + oy, r);
+      g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
+      x.fillStyle = g; x.save(); x.translate(cx + ox, cy + oy); x.scale(1, sy); x.translate(-(cx + ox), -(cy + oy));
+      x.fillRect(cx + ox - r, cy + oy - r, r * 2, r * 2); x.restore();
+    }
+  };
+  let s = 11; const R = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+  for (let i = 0; i < 40; i++) blob(R() * w, R() * h, 60 + R() * 120, `rgba(${R() < 0.5 ? pal.a : pal.b},${0.25 + R() * 0.25})`, 0.6 + R() * 0.4);
+  for (let i = 0; i < 22; i++) blob(R() * w, R() * h, 40 + R() * 80, `rgba(${pal.hi},${0.06 + R() * 0.08})`, 0.4 + R() * 0.3);
+  for (let i = 0; i < 8; i++) blob(R() * w, R() * h, 30 + R() * 50, `rgba(${pal.acc},${0.06 + R() * 0.08})`, 0.35);
+  for (let i = 0; i < 500; i++) { x.fillStyle = `rgba(${pal.sp},${0.04 + R() * 0.12})`; x.fillRect(R() * w, R() * h, R() < 0.9 ? 1 : 2, 1); }
+  x.strokeStyle = `rgba(${pal.crack},0.12)`; x.lineWidth = 1;
+  for (let i = 0; i < 14; i++) { let px = R() * w, py = R() * h; x.beginPath(); x.moveTo(px, py); for (let j = 0; j < 5; j++) { px += (R() - 0.5) * 50; py += (R() - 0.5) * 30; x.lineTo(px, py); } x.stroke(); }
+}
+function drawCrate(x) {
+  poly(x, [[6, 18], [44, 18], [44, 48], [6, 48]], lg(x, 0, 18, 0, 48, [[0, '#8a6a3a'], [1, '#4a3418']]), '#2a1a08', 1.5);
+  poly(x, [[6, 18], [16, 10], [54, 10], [44, 18]], '#9a7a48', '#2a1a08', 1.5); poly(x, [[44, 18], [54, 10], [54, 40], [44, 48]], '#5a4020', '#2a1a08', 1.5);
+  line(x, 6, 18, 44, 48, '#3a2810', 2); line(x, 44, 18, 6, 48, '#3a2810', 2);
+}
+function drawPillar(x) {
+  poly(x, [[10, 8], [38, 8], [36, 92], [12, 92]], lg(x, 10, 0, 38, 0, [[0, '#6a6460'], [0.5, '#a8a29c'], [1, '#5a5450']]), '#2a2624', 1.5);
+  poly(x, [[4, 2], [44, 2], [42, 10], [6, 10]], '#8a847e', '#2a2624', 1.5); poly(x, [[6, 92], [42, 92], [44, 100], [4, 100]], '#7a746e', '#2a2624', 1.5);
+  for (let i = 0; i < 3; i++) line(x, 16 + i * 8, 14, 16 + i * 8, 88, 'rgba(0,0,0,0.25)', 1.5);
+}
+function drawLavaRock(x) {
+  poly(x, [[4, 44], [10, 18], [26, 8], [46, 14], [58, 36], [52, 48], [10, 50]], lg(x, 0, 8, 0, 50, [[0, '#4a3028'], [1, '#1a0e0a']]), '#0a0504', 1.5);
+  x.globalCompositeOperation = 'lighter'; x.strokeStyle = 'rgba(255,120,30,0.9)'; x.lineWidth = 2;
+  x.beginPath(); x.moveTo(14, 40); x.lineTo(24, 28); x.lineTo(36, 34); x.lineTo(48, 22); x.stroke(); x.globalCompositeOperation = 'source-over';
+}
+function drawWeb(x) {
+  x.strokeStyle = 'rgba(220,230,220,0.45)'; x.lineWidth = 1;
+  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; x.beginPath(); x.moveTo(40, 30); x.lineTo(40 + Math.cos(a) * 36, 30 + Math.sin(a) * 26); x.stroke(); }
+  for (let r = 8; r < 36; r += 7) { x.beginPath(); for (let i = 0; i <= 8; i++) { const a = i / 8 * Math.PI * 2; x.lineTo(40 + Math.cos(a) * r, 30 + Math.sin(a) * r * 0.72); } x.stroke(); }
+}
+// 눈 없는 바위 (얼음왕관 외 테마용)
+function drawStone(x) {
+  poly(x, [[4, 44], [10, 20], [26, 10], [46, 14], [58, 36], [52, 48], [10, 50]], lg(x, 0, 10, 0, 50, [[0, '#6a625a'], [1, '#2a2622']]), '#141210', 1.5);
+  poly(x, [[14, 22], [26, 14], [40, 18], [30, 26]], 'rgba(255,255,255,0.12)');
+  line(x, 20, 36, 34, 30, 'rgba(0,0,0,0.3)', 1.5);
+}
+G.EXTRA_DECOR = { crate: [56, 50, drawCrate], pillar: [48, 102, drawPillar], lavarock: [62, 52, drawLavaRock], web: [80, 60, drawWeb], stone: [62, 52, drawStone] };
+G.Spr.groundFor = function (id) {
+  this.groundCache ||= {};
+  if (!this.groundCache[id]) { const T = G.THEMES[id]; this.groundCache[id] = T.pal ? this.make(512, 512, (x, w, h) => drawThemeGround(x, w, h, T.pal)) : this.ground; }
+  return this.groundCache[id];
+};

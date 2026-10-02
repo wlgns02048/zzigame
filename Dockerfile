@@ -5,7 +5,7 @@ ENV NODE_ENV=production \
     DATA_DIR=/app/data \
     STATIC_DIR=/app/public \
     NODE_NO_WARNINGS=1
-COPY server/server.js ./server.js
+COPY server/ ./
 COPY index.html ./public/
 COPY css ./public/css
 COPY js ./public/js

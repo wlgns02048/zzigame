@@ -42,8 +42,8 @@ Object.assign(G.SKILLS, {
   // ===== 자동 시전 =====
   shadowbolt: {
     cls: 'warlock', name: '어둠의 화살', icon: 'shadowbolt', kind: 'auto', school: 'shadow', color: '#a050ff',
-    base: { dmg: 34, cast: 0.9, count: 1, pierce: 0, speed: 520, explode: 0, embrace: 0, proj: true },
-    tip: s => `가장 가까운 적에게 어둠의 화살을 날려 ${D(s.dmg)}의 암흑 피해를 입힙니다.` + (s.count > 1 ? `<br>투사체 ${N(s.count, 0)}개` : '') +
+    base: { dmg: 36, cast: 0.9, count: 1, pierce: 0, speed: 520, explode: 0, embrace: 0, slow: 0.3, proj: true },
+    tip: s => `가장 가까운 적에게 어둠의 화살을 날려 ${D(s.dmg)}의 암흑 피해를 입히고 탈진의 저주로 ${P(s.slow)} 감속시킵니다.` + (s.count > 1 ? `<br>투사체 ${N(s.count, 0)}개` : '') +
       (s.pierce ? ` · 관통 ${N(s.pierce, 0)}` : '') + (s.explode ? '<br>적중 시 주변에 폭발' : '') + (s.embrace ? `<br>어둠의 포옹: 대상이 받는 지속 피해 +${s.embrace * 4}%` : ''),
     castInfo: s => `시전 시간 ${s.cast.toFixed(2)}초`,
     nodes: [
@@ -57,7 +57,7 @@ Object.assign(G.SKILLS, {
   },
   corruption: {
     cls: 'warlock', name: '부패', icon: 'corruption', kind: 'auto', school: 'shadow', color: '#9a40e0',
-    base: { dmg: 9, cd: 1.6, targets: 3, dur: 12, interval: 1.5, spread: 0 },
+    base: { dmg: 12, cd: 1.4, targets: 4, dur: 12, interval: 1.5, spread: 0 },
     tip: s => `부패에 걸리지 않은 적 ${N(s.targets, 0)}명에게 부패를 겁니다. ${N(s.dur, 0)}초 동안 ${N(s.interval, 1)}초마다 ${D(s.dmg)}의 암흑 피해.` + (s.spread ? `<br>부패에 걸린 적이 죽으면 주변 ${N(s.spread, 0)}명에게 옮겨갑니다.` : ''),
     castInfo: s => `재사용 ${s.cd.toFixed(1)}초`,
     nodes: [
@@ -70,7 +70,7 @@ Object.assign(G.SKILLS, {
   },
   agony: {
     cls: 'warlock', name: '고통', icon: 'agony', kind: 'auto', school: 'shadow', color: '#c02080',
-    base: { dmg: 3, cd: 2.5, targets: 2, dur: 18, interval: 2, maxStack: 10, shardCh: 0.06 },
+    base: { dmg: 4, cd: 2.5, targets: 3, dur: 18, interval: 2, maxStack: 10, shardCh: 0.06 },
     tip: s => `적 ${N(s.targets, 0)}명에게 고통을 겁니다. 2초마다 피해가 중첩되며(최대 ${N(s.maxStack, 0)}중첩) 중첩당 ${D(s.dmg)}의 피해. 틱마다 ${P(s.shardCh)} 확률로 영혼의 조각 생성.`,
     castInfo: s => `재사용 ${s.cd.toFixed(1)}초`,
     nodes: [
@@ -90,7 +90,7 @@ Object.assign(G.SKILLS, {
   },
   drainlife: {
     cls: 'warlock', name: '생명력 흡수', icon: 'drainlife', kind: 'auto', school: 'shadow', color: '#40e070',
-    base: { dmg: 10, cd: 6, dur: 3, heal: 0.6, beams: 1 },
+    base: { dmg: 12, cd: 6, dur: 3, heal: 0.8, beams: 1 },
     tip: s => `가장 가까운 적과 연결해 ${N(s.dur, 0)}초 동안 0.5초마다 ${D(s.dmg)}의 피해를 입히고 피해의 ${P(s.heal)}만큼 생명력을 회복합니다. 이동을 방해하지 않습니다.`,
     castInfo: s => `재사용 ${s.cd.toFixed(1)}초`,
     nodes: [dmgNode(0.3, 5), node('heal', '흡혈', 3, '회복 비율 <b class="v">+20%</b>', s => (s.heal += 0.2), { icon: 'soulleech' }), node('beams', '다중 흡수', 3, '연결 대상 <b class="v">+1</b>', s => s.beams++), cdNode(0.15, 2)],
@@ -248,7 +248,8 @@ const addShard = n => { const p = W(); const was = p.shards; p.shards = Math.min
 const corruptionOpts = s => ({ dmg: s.dmg, dur: s.dur, interval: s.interval, src: 'corruption', color: '150,60,220',
   onTick: (e) => { const p = W(); if (p.stats.nightfall && Math.random() < p.stats.nightfall) { p.nightfall = 1; p.nfT = 12; } } });
 const agonyOpts = (s, p) => ({ dmg: s.dmg * (p.legend.eternalagony ? 1.4 : 1), dur: s.dur, interval: s.interval, src: 'agony', ramp: true, maxStack: s.maxStack + (p.legend.eternalagony ? 5 : 0), color: '200,40,140',
-  onTick: (e, d) => { if (p.evo.soulrot && d.stack < d.maxStack) d.stack++; if (Math.random() < s.shardCh) addShard(1); } });
+  // 조각 생성은 대상 수와 상관없이 2초에 한 번까지 (적이 많을 때 무한히 차지 않도록)
+  onTick: (e, d) => { if (p.evo.soulrot && d.stack < d.maxStack) d.stack++; if (G.t >= (p.shardICD || 0) && Math.random() < s.shardCh * 4) { p.shardICD = G.t + 2; addShard(1); } } });
 
 Object.assign(G.SKILL_IMPL, {
   shadowbolt: {
@@ -269,7 +270,9 @@ Object.assign(G.SKILL_IMPL, {
         G.Proj.spawn({
           x: p.x + p.face * 14, y: p.y - 24, a: Math.atan2(t.y - p.y, t.x - p.x) + (i >= tg.length ? (i - tg.length + 1) * 0.15 : 0), speed: s.speed, r: 9, kind: cb ? 'chaos' : 'shadowbolt', homing: t, turn: 3.5, src, life: 1.8, pierce: s.pierce + (cb ? 3 : 0), scale: cb ? 1.3 : 1,
           onHit: e => {
-            G.hit(e, s.dmg * nf, src, { school: cb ? 'fire' : 'shadow', crit: cb ? 1 : 0 });
+            const dealt = G.hit(e, s.dmg * nf, src, { school: cb ? 'fire' : 'shadow', crit: cb ? 1 : 0 });
+            G.P.healSilent(dealt * 0.03); // 영혼 흡수
+            G.chill(e, s.slow, 2);
             if (s.embrace) e.embrace = Math.min(5, (e.embrace || 0) + s.embrace * 0.34);
             if (s.explode) { const R = (25 + 18 * s.explode) * p.stats.area; G.Grid.query(e.x, e.y, R).forEach(o => { if (o !== e) G.hit(o, s.dmg * 0.4, src, { noText: true }); }); G.fx.ring(e.x, e.y, 5, R, 0.3, '170,90,255', 3, 0.2); }
             G.fx.burst(e.x, e.y, 8, { rgb: cb ? '120,255,80' : '170,90,255', sp: 130, size: 10 });
@@ -584,6 +587,8 @@ G.CLASSES.warlock = {
 
   init(p) { Object.assign(p, { shards: 0, shardMax: 5, demons: [], drains: null, nightfall: 0, nfT: 0, dsT: 0, drT: 0, dr: 0, circle: null, infernal: null }); },
   recalc(st, p) {
+    st.armor += 0.03; // 악마의 피부: 흑마법사 기본 피해 감소
+    st.dotLeech += 0.02; // 영혼 흡수: 지속 피해의 2% 회복
     st.dotMul += st.mastery * 0.02;
     if (p.dsT > 0 && p.skills.darksoul) { st.haste += p.skills.darksoul.s.haste; st.dotMul += p.skills.darksoul.s.dot; }
     if (p.legend.darkharvest) { st.critMul += 0.25; st.shardOnKill = (st.shardOnKill || 0) + 0.03; }
