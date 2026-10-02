@@ -74,7 +74,13 @@ G.UI = {
     for (const k of G.ACTION_KEYS) {
       const d = this.slotEls[k], id = this.skillForKey(k), img = d.querySelector('img');
       if (id) { img.src = G.icon(G.SKILLS[id].icon); img.classList.remove('hidden'); d.classList.remove('empty'); }
-      else { img.classList.add('hidden'); d.classList.add('empty'); }
+      else {
+        // 빈 칸: 이전 판(다른 직업)의 표시가 남지 않도록 상태 표시를 모두 지운다
+        img.classList.add('hidden'); d.classList.add('empty');
+        d.classList.remove('autocast', 'glow', 'active', 'unusable');
+        const cd = d.querySelector('.cd'), t = d.querySelector('.cdt'), ch = d.querySelector('.chg');
+        cd.style.setProperty('--p', 0); t.textContent = ''; ch.textContent = '';
+      }
     }
     const ab = this.el.autoBar; ab.innerHTML = ''; this.autoEls = [];
     for (const id of p.order) {
