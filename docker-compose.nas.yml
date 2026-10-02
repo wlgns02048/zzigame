@@ -10,5 +10,5 @@ services:
     ports: !reset []
     environment:
       PORT: "13100"
-    volumes: !override
+    volumes:  # 같은 대상 경로(/app/data)라 기본 compose의 named volume을 대체 (나스 compose 2.20은 !override 미지원)
       - ${DATA_ROOT:-./data}:/app/data
