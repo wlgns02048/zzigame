@@ -79,29 +79,30 @@ DATA_ROOT=/volume2/docker/zzigame-data docker compose -p zzigame -f docker-compo
 - 게시판 관리자: 저장소 Settings → Secrets and variables → Actions → **Variables**에 `ADMIN_USERS`
 - 수동 배포: Actions 탭 → Deploy to NAS → Run workflow
 
-### 러너 설치 (한 번만)
+### 러너 (2026-10-03 설치 완료)
 
-러너는 저장소마다 따로 등록해야 해서 기존 `nas-runner`(qdrop) · `nas-runner-photoshare`는 쓸 수 없다.
-`Z:\docker\github-runner-zzigame\`에 설치 스크립트가 있다.
+- `nas-runner-zzigame` (라벨 `nas`) — `/volume2/docker/github-runner-zzigame`, **jihoon40으로 실행**
+  (root로 돌리면 러너가 "Must not run interactively with sudo"로 거부한다)
+- 부팅 시 자동 시작: DSM 작업 스케줄러에 새 작업을 만들려면 root가 필요해서, 이미 부팅 작업으로 실행되는
+  `/volume2/docker/github-runner-photoshare/start-runner.sh` 끝에 zzigame 러너 시작 한 줄을 붙였다
+  (원하면 DSM에서 같은 명령으로 별도 부팅 작업을 만들고 그 줄을 지워도 된다)
+- 다시 설치할 때: PC에서 `gh api -X POST repos/wlgns02048/zzigame/actions/runners/registration-token --jq .token`으로
+  토큰(1시간 유효)을 받고, 나스에서 `sh /volume2/docker/github-runner-zzigame/setup.sh <토큰>` (sudo 없이)
+- DSM에 `ldd` · `ldconfig`가 없어 설치 스크립트는 기존 러너용 대체 스크립트(`/var/services/homes/jihoon40/bin`)를 쓴다
+- 컨테이너는 `restart: unless-stopped`라 나스를 재시작해도 다시 뜬다
+- 내부망 확인: `http://192.168.50.2:13100`
 
-```sh
-# PC에서 등록 토큰 받기 (1시간 유효)
-gh api -X POST repos/wlgns02048/zzigame/actions/runners/registration-token --jq .token
+## 외부 접속 (DSM 관리자 · 공유기 화면에서 해야 함)
 
-# 나스에 SSH 접속 후
-sudo sh /volume2/docker/github-runner-zzigame/setup.sh <토큰>
-```
+photoshare(`:9443`)와 같은 방식 — 기존 Synology DDNS 호스트명과 Let's Encrypt 인증서를 그대로 쓴다.
+DuckDNS의 `icecrown-trial`은 GitHub Pages(main)용이므로 건드리지 않는다.
 
-그다음 DSM → 제어판 → 작업 스케줄러 → 생성 → 트리거된 작업 → 사용자 정의 스크립트
-(사용자 root, 이벤트 부트업, 명령 `sh /volume2/docker/github-runner-zzigame/start-runner.sh`)를 추가한다.
-기존 러너들과 같은 구성이다.
-
-## 외부 접속
-
-1. DuckDNS에서 새 서브도메인(예: `icecrown-beta`)을 만들어 집 IP를 가리키게 한다.
-   기존 `icecrown-trial`은 GitHub Pages(main)용이므로 건드리지 않는다.
-2. DSM → 로그인 포털 → 고급 → 리버스 프록시: `https://<새 도메인>:443` → `http://localhost:13100`
-3. DSM → 보안 → 인증서에서 해당 도메인 Let's Encrypt 인증서 발급 후 리버스 프록시에 할당
+1. DSM → 제어판 → 로그인 포털 → 고급 → 리버스 프록시 → 생성
+   - 설명 `zzigame`, 소스 HTTPS · `Godlovesyou.synology.me` · 포트 **10443** (나스에서 비어 있음 확인), 대상 HTTP · `localhost` · **13100**
+2. DSM → 보안 → 인증서 → 설정에서 위 항목에 기존 `Godlovesyou.synology.me` 인증서 지정
+3. DSM → 보안 → 방화벽 규칙에 TCP 10443 허용 (photoshare 8443 · 9443 규칙과 같게)
+4. 공유기 포트포워딩: 외부 10443 → 192.168.50.2:10443
+5. 확인: `https://Godlovesyou.synology.me:10443`
 
 ## 로컬 실행
 
