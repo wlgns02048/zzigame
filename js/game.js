@@ -9,7 +9,6 @@ G.chests = [];
 G.init = async () => {
   await G.loadAssets();
   G.Spr.build();
-  G.Meta.load();
   await G.Net.init();
   G.UI.init();
   G.R.init();
@@ -65,22 +64,35 @@ G.Input = () => {
   addEventListener('mousedown', () => G.Audio.init());
 };
 
-G.startRun = (cls = G.selectedClass || 'mage') => {
+// 판 시작. 기본값은 로비 선택 → URL 파라미터(?cls=&stage=&diff=, 시뮬레이션용) → 얼음왕관
+G.startRun = (cls, stage, diff) => {
+  cls ||= G.selectedClass || G.params.get('cls') || 'mage';
+  stage ||= G.selectedStage || G.params.get('stage') || 'icecrown';
+  diff ||= G.selectedDiff || G.params.get('diff') || 'normal';
   Object.assign(G, { t: 0, enemies: [], projs: [], eprojs: [], zones: [], tele: [], pickups: [], parts: [], texts: [], rings: [], pets: [], images: [], delayed: [], chests: [] });
   G.stats = { kills: 0, gold: 0, banked: 0 };
   G.state = 'play'; G.paused = false;
   G.player = G.P.create(cls);
-  G.meter.reset(); G.Waves.reset();
+  // 로그인 중이면 서버에 런 등록 (봇/시뮬레이션 제외)
+  G.run = G.Meta.mode() === 'account' && !G.Bot.on ? G.Net.startRun(cls, stage, diff) : null;
+  G.runInfo = { cls, stage, diff };
+  G.meter.reset(); G.Waves.reset(stage, diff);
   G.P.recalc();
   G.P.learn(G.CLASSES[cls].starter);
+  // 달라란 도서관: 준비된 주문서
+  if (G.Meta.lib('scroll')) {
+    const autos = Object.values(G.SKILLS).filter(d => d.cls === cls && d.kind === 'auto' && d.id !== G.CLASSES[cls].starter && !d.req);
+    if (autos.length) G.P.learn(U.choice(autos).id);
+  }
+  // 직업 특성: 시작 보호막
+  const tr = G.Meta.tree(cls).ranks;
+  if (tr.iceBarrier || tr.darkPact) G.player.absorb = Math.round(G.player.maxHp * 0.3);
   if (G.params.get('all')) for (const id in G.SKILLS) { const d = G.SKILLS[id]; if (d.cls === cls && (d.kind === 'auto' || d.kind === 'active') && !G.player.skills[id]) G.P.learn(id); }
   if (G.params.get('t')) G.t = +G.params.get('t');
   G.cam.x = 0; G.cam.y = 0;
   G.UI.close();
   G.UI.el.hud.classList.remove('hidden');
   G.UI.buffSig = null; G.UI.bfTgt = null;
-  // 로그인 중이면 서버에 런 등록 (봇/시뮬레이션 제외)
-  G.run = G.Meta.mode() === 'account' && !G.Bot.on ? G.Net.startRun(cls, 'icecrown') : null;
 };
 
 G.pause = () => { G.paused = true; G.UI.showPause(); };
@@ -128,7 +140,7 @@ G.updatePickups = dt => {
       if (d < 18) {
         k.done = true;
         if (k.kind === 'xp') { G.P.gainXp(k.v); G.Audio.play('xp'); }
-        else if (k.kind === 'gold') { G.stats.gold += k.v * (1 + G.Meta.rank('luck') * 0.1); G.Audio.play('gold'); }
+        else if (k.kind === 'gold') { G.stats.gold += k.v * (1 + G.Meta.lib('luck') * 0.1); G.Audio.play('gold'); }
         else if (k.kind === 'food') { G.P.heal(p.maxHp * 0.3); G.Audio.play('buff', 0.5); }
         else if (k.kind === 'magnet') { for (const o of G.pickups) if (o.kind === 'xp') o.mag = true; G.Audio.play('orb'); }
         else if (k.kind === 'chest') { G.chests.push(k.v); G.Audio.play('chest'); }
@@ -144,22 +156,32 @@ G.checkModals = () => {
   if (G.state !== 'play' || G.UI.modalKind || p.dead) return;
   if (p.pendingLv > 0) {
     G.paused = true; G.lvMode = 'level';
-    G.UI.showLevelUp(G.Upg.gen(3), '레벨 업!', `${p.level - p.pendingLv + 1}레벨 달성 · 배울 주문을 선택하세요 (1 / 2 / 3)`);
+    const n = 3 + (G.Meta.lib('wideVision') ? 1 : 0); // 달라란 도서관: 넓어진 시야
+    G.UI.showLevelUp(G.Upg.gen(n), '레벨 업!', `${p.level - p.pendingLv + 1}레벨 달성 · 배울 주문을 선택하세요 (1 ~ ${n})`);
   } else if (G.chests.length) {
     G.paused = true; G.lvMode = 'chest';
     const v = G.chests[0];
-    G.UI.showLevelUp(G.Upg.gen(v >= 2 ? 4 : 3, v), v >= 2 ? '보스 전리품' : '전리품 상자', '보상을 하나 선택하세요');
+    G.UI.showLevelUp(G.Upg.gen((v >= 2 ? 4 : 3) + (G.Meta.lib('treasure') >= 2 ? 1 : 0), v), v >= 2 ? '보스 전리품' : '전리품 상자', '보상을 하나 선택하세요');
   }
   if (G.Bot.sync && G.UI.modalKind === 'levelup') G.pickUpgrade(G.Bot.pick());
   else if (G.Bot.on && G.UI.modalKind === 'levelup') setTimeout(() => G.UI.modalKind === 'levelup' && G.pickUpgrade(G.Bot.pick()), 30);
 };
 G.pickUpgrade = i => {
   const p = G.player;
+  // 봉인 표시한 다른 선택지는 다음 선택까지 보관
+  if (p.sealPick != null && p.sealPick !== i && G.UI.lvOpts[p.sealPick]) { const o = G.UI.lvOpts[p.sealPick]; p.sealed = { type: o.type, id: o.id, nodeId: o.nodeId }; }
+  p.sealPick = null;
   if (i < 0) G.stats.gold += 10;
   else G.Upg.apply(G.UI.lvOpts[i]);
   if (G.lvMode === 'chest') G.chests.shift(); else p.pendingLv--;
   G.UI.close(); G.paused = false;
   G.checkModals();
+};
+// 달라란 도서관: 추방 — 이 선택지를 이번 판에서 영구 제외하고 다시 굴림 (굴리기 횟수 소모 없음)
+G.banishUpgrade = i => {
+  const p = G.player, o = G.UI.lvOpts[i]; if (!o || p.banishes <= 0) return;
+  p.banishes--; p.banished.add(G.Upg.key(o)); p.sealPick = null;
+  G.UI.close(); G.checkModals();
 };
 G.rerollUpgrade = () => {
   const p = G.player; if (p.rerolls <= 0) return;
@@ -185,19 +207,18 @@ G.playerDeath = () => {
 };
 G.endRun = victory => {
   if (G.state !== 'play') return;
-  const m = G.Meta.data, mode = G.Meta.mode();
-  // 화면에 먼저 보여줄 예상치. 로그인 중이면 서버가 같은 식으로 다시 계산해 확정한다.
-  const gain = Math.floor(G.stats.gold - G.stats.banked + (G.stats.banked ? 0 : G.t / 6) + (victory ? 500 : 0));
-  G.stats.banked = G.stats.gold;
-  if (mode === 'local') { m.gold += gain; m.best = Math.max(m.best, G.t); if (victory) m.wins++; G.Meta.save(); }
+  const mode = G.Meta.mode();
   G.state = 'over'; G.paused = true;
   if (victory) G.Audio.play('victory');
-  G.UI.showEnd(victory, gain, mode);
-  if (G.run) {
-    G.Net.reportRun(G.run, { victory, final: !victory || G.Waves.endless })
-      .then(g => G.UI.setEndGain(g))
-      .catch(e => G.UI.setEndGain(null, e.message));
-  } else if (mode === 'account') G.UI.setEndGain(null, '이 판은 서버에 등록되지 않았습니다.');
+  G.UI.showEnd(victory, mode);
+  // 보상은 서버가 계산한다. 클리어 직후(엔드리스 선택 전)는 중간 보고, 그 외는 최종 보고.
+  if (G.run) G.Net.reportRun(G.run, { victory, final: !victory || G.Waves.endless }).then(r => G.UI.setEndRewards(r)).catch(e => G.UI.setEndRewards(null, e.message));
+  else if (mode === 'account') G.UI.setEndRewards(null, '이 판은 서버에 등록되지 않았습니다.');
+};
+// 클리어 후 "보상 받고 종료": 최종 보고만 하고 로비로
+G.leaveRun = () => {
+  if (G.run && G.Waves.clearT != null && !G.Waves.endless) G.Net.reportRun(G.run, { victory: true, final: true }).catch(() => {});
+  G.run = null; G.state = 'menu'; G.UI.showMenu();
 };
 
 // ================= 자동 플레이 봇 (테스트용 ?test=1) =================

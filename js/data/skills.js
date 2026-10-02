@@ -265,8 +265,9 @@ G.SOURCES = {
   iceblock: ['산산조각 나는 얼음', 'iceblock', '#bfe8ff'],
 };
 
-// 지금까지의 주문은 모두 냉기 마법사 것. 다른 직업 파일은 cls를 직접 지정한다.
-for (const id in G.SKILLS) G.SKILLS[id].cls ||= 'mage';
+// 지금까지의 주문은 냉기 마법사 것. 일반 능력치는 모든 직업 공용('any'). 다른 직업 파일은 cls를 직접 지정한다.
+const COMMON_PASSIVES = ['arcaneint', 'haste', 'crit', 'stamina', 'speed', 'pickup', 'area', 'duration', 'regen', 'luck', 'projectile'];
+for (const id in G.SKILLS) G.SKILLS[id].cls ||= COMMON_PASSIVES.includes(id) ? 'any' : 'mage';
 
 G.ACTION_KEYS = ['Q', 'E', 'R', 'F', 'T', 'SPACE', '1', '2', '3', '4', '5', '6'];
 G.KEY_LABEL = { SPACE: 'Spc' };

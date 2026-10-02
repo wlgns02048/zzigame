@@ -59,6 +59,9 @@ G.Spr = {
       necromancer: [64, 74, drawNecro], cryptfiend: [84, 64, drawFiend], abomination: [104, 104, (x, w, h) => drawAbom(x, w, h, false)],
       patchwerk: [104, 104, (x, w, h) => drawAbom(x, w, h, true)], kelthuzad: [104, 116, drawKT], lichking: [116, 126, drawLK],
     };
+    Object.assign(defs, G.EXTRA_SPRITES || {}); // 챕터별 추가 스프라이트 (sprites_classic.js)
+    // ramstein 같은 재사용 보스: 기존 그림을 그대로 쓴다
+    defs.ramstein = defs.abomination;
     for (const k in defs) { const [w, h, f] = defs[k]; this.enemy[k] = this.variants(this.make(w, h, f)); }
 
     // 투사체
@@ -72,6 +75,17 @@ G.Spr = {
     this.splinter = this.make(32, 12, (x) => drawCrystal(x, 32, 12, 1, ['#f6e0ff', '#b56bff', '#5a2bd0']));
     this.shadow = this.make(36, 36, (x) => drawOrbBlob(x, 36, ['#f0c8ff', '#7a1fd0', 'rgba(40,0,80,0)']));
     this.frostshot = this.make(36, 36, (x) => drawOrbBlob(x, 36, ['#ffffff', '#6fd0ff', 'rgba(20,60,160,0)']));
+    // 흑마법사 투사체 · 적 투사체 종류별 색
+    this.boltShadow = this.make(72, 36, (x) => drawBolt(x, '170,90,255', '#ffffff', '#c890ff'));
+    this.boltChaos = this.make(72, 36, (x) => drawBolt(x, '120,255,80', '#f0ffe0', '#80ff40'));
+    this.boltCoil = this.make(72, 36, (x) => drawBolt(x, '90,230,110', '#e0ffe8', '#60e080', 0.8));
+    this.boltFire = this.make(44, 22, (x) => drawBolt(x, '255,140,40', '#fff0c0', '#ff9030', 0.6));
+    const orb = cols => this.make(36, 36, x => drawOrbBlob(x, 36, cols));
+    this.eshots = {
+      shadow: this.shadow, frost: this.frostshot,
+      fire: orb(['#fff4c0', '#ff8020', 'rgba(160,30,0,0)']), arcane: orb(['#ffe8ff', '#e060ff', 'rgba(90,0,140,0)']),
+      holy: orb(['#ffffff', '#ffe080', 'rgba(160,120,0,0)']), blade: orb(['#ffffff', '#c0c8d0', 'rgba(60,60,70,0)']),
+    };
     this.shard = this.make(10, 10, x => { x.fillStyle = '#e8f8ff'; x.beginPath(); x.moveTo(5, 0); x.lineTo(8, 5); x.lineTo(5, 10); x.lineTo(2, 5); x.closePath(); x.fill(); });
     this.bone = this.make(12, 6, x => { x.fillStyle = '#d9d2bc'; x.fillRect(2, 2, 8, 2); x.beginPath(); x.arc(2, 2, 2, 0, 7); x.arc(2, 4, 2, 0, 7); x.arc(10, 2, 2, 0, 7); x.arc(10, 4, 2, 0, 7); x.fill(); });
 

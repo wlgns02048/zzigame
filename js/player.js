@@ -9,7 +9,7 @@ G.P = {
       skills: {}, passives: {}, legend: {}, evo: {}, order: [],
       stats: {}, face: 1, moving: false, mvx: 0, mvy: 0, dead: false,
       channel: null, rootT: 0, hurtT: 0,
-      rerolls: 2 + m.rank('reroll'), revives: m.rank('revive'),
+      rerolls: 2 + m.lib('reroll'), revives: m.lib('revive'), banishes: m.lib('banish'), banished: new Set(), sealed: null,
       skillLevel(id) { const sk = this.skills[id]; if (!sk) return 0; let l = 1; for (const k in sk.ranks) l += sk.ranks[k]; return l; },
     };
     G.CLASSES[cls].init(p);
@@ -20,15 +20,17 @@ G.P = {
   recalc() {
     const p = G.player, m = G.Meta;
     const st = {
-      dmg: 1 + m.rank('power') * 0.05, haste: m.rank('haste') * 0.03, crit: 0.08, critMul: 2, area: 1, dur: 1, proj: 0,
-      hpMul: 1 + m.rank('stamina') * 0.1, regen: 0.5, pickupMul: 1 + m.rank('pickup') * 0.15, luck: m.rank('luck') * 0.05, armor: 0,
-      movePenalty: 0.15, fof: 0, bf: 0, shatterCrit: 0.35, speedMul: 1 + m.rank('speed') * 0.04, xpMul: 1 + m.rank('xp') * 0.06,
+      dmg: 1, haste: 0, crit: 0.08, critMul: 2, area: 1, dur: 1, proj: 0,
+      hpMul: 1, hpFlat: 0, regen: 0.5, pickupMul: 1, luck: 0, armor: 0,
+      movePenalty: 0.15, fof: 0, bf: 0, shatterCrit: 0.35, speedMul: 1, xpMul: 1,
+      mastery: 0, vers: 0, dotMul: 1, dotLeech: 0, nightfall: 0, shardMax: 0,
     };
+    m.applyLoadout(st, p.cls); // 특성 · 장비 · 보석 · 마법부여
     for (const id in p.passives) { const def = G.SKILLS[id]; def.apply(st, p.passives[id].total); }
     G.cls(p).recalc(st, p);
     const oldMax = p.maxHp;
     p.stats = st;
-    p.maxHp = Math.round(150 * st.hpMul);
+    p.maxHp = Math.round(150 * st.hpMul + st.hpFlat);
     if (oldMax > 1) p.hp = Math.min(p.maxHp, p.hp + Math.max(0, p.maxHp - oldMax)); else p.hp = p.maxHp;
     st.speed = 175 * st.speedMul; st.pickup = 115 * st.pickupMul;
     for (const id in p.skills) G.P.computeSkill(p.skills[id]);
@@ -39,6 +41,7 @@ G.P = {
   computeSkill(sk) {
     const p = G.player, def = sk.def, s = Object.assign({}, def.base);
     for (const n of def.nodes || []) { const r = sk.ranks[n.id] || 0; for (let i = 0; i < r; i++) n.apply(s); }
+    G.Meta.applySkillTalents(sk.id, s, p.cls);
     if (s.proj) {
       if (s.count !== undefined) s.count += p.stats.proj;
       else if (s.targets !== undefined) s.targets += p.stats.proj;
@@ -77,6 +80,8 @@ G.P = {
     }
   },
 
+  // 지속 회복용: 숫자를 띄우지 않음
+  healSilent(v) { const p = G.player; if (!p.dead && v > 0) p.hp = Math.min(p.maxHp, p.hp + v); },
   heal(v) {
     const p = G.player; if (p.dead) return;
     const h = Math.min(p.maxHp - p.hp, v); if (h <= 0) return;
@@ -156,6 +161,7 @@ G.Pets = {
     }
     // 환영
     for (const im of G.images) {
+      if (im.update) { im.update(im, dt); if (im.hp <= 0 || im.life <= 0) im.dead = true; continue; } // 직업별 소환수 (공허방랑자 등)
       im.t += dt; im.life -= dt;
       const a = im.idx / im.n * Math.PI * 2 + im.t * 0.8;
       im.x += (p.x + Math.cos(a) * 70 - im.x) * Math.min(1, dt * 5); im.y += (p.y + Math.sin(a) * 50 - im.y) * Math.min(1, dt * 5);

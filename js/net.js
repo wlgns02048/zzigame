@@ -38,7 +38,7 @@ G.Net = {
   dropSession() {
     this.token = null; this.user = null;
     try { localStorage.removeItem('frostmage_token'); } catch (e) { /* 무시 */ }
-    if (this.online) G.Meta.reset(); else G.Meta.load();
+    G.Meta.reset();
   },
 
   async login(username, password) {
@@ -56,18 +56,21 @@ G.Net = {
 
   // ---------- 런 ----------
   // 시작 요청은 기다리지 않고 바로 게임을 시작한다. 보고할 때 시작 응답을 기다린다.
-  startRun(cls, stage) {
+  startRun(cls, stage, difficulty) {
     const run = { id: null };
-    run.ready = this.api('POST', '/api/runs/start', { cls, stage }).then(r => (run.id = r.runId)).catch(e => { run.error = e.message; });
+    run.ready = this.api('POST', '/api/runs/start', { cls, stage, difficulty })
+      .then(r => { run.id = r.runId; run.affixes = r.affixes; })
+      .catch(e => { run.error = e.message; G.UI.toast('서버 등록 실패 — 이번 판 보상은 저장되지 않습니다. (' + e.message + ')'); });
     return run;
   },
+  // 누적값 보고 → { gain, loot, endlessLv, profile }
   async reportRun(run, { victory, final }) {
     await run.ready;
     if (!run.id) throw new Error(run.error || '서버에 기록되지 않은 판입니다.');
     const r = await this.api('POST', '/api/runs/report', {
-      runId: run.id, t: G.t, kills: G.stats.kills, gold: G.stats.gold, level: G.player.level, victory, final,
+      runId: run.id, t: G.t, kills: G.stats.kills, gold: G.stats.gold, level: G.player.level, bossKills: G.Waves.bossKills, victory, final,
     });
     G.Meta.useProfile(r.profile);
-    return r.gain;
+    return r;
   },
 };

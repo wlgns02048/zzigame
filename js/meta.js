@@ -1,43 +1,63 @@
 'use strict';
-// ================= 영구 진행도 (골드 · 달라란 도서관 · 기록) =================
-// 저장 방식은 세 가지:
-//  - account: 로그인. 서버 프로필이 원본이고, 구매/보상은 서버 API로만 바뀐다
-//  - guest:   서버는 있지만 로그인 안 함. 아무것도 저장하지 않는다 (기본 플레이만)
-//  - local:   서버가 없는 정적 호스팅. 예전처럼 브라우저에 저장
-G.META_DEFS = G.TALENTS.scopes.library;
-
-const META_KEY = 'frostmage_meta';
-const metaDefaults = () => ({ gold: 0, ranks: {}, best: 0, wins: 0 });
-
+// ================= 영구 진행도 (서버 프로필의 브라우저 쪽 보기) =================
+// 로그인하면 서버 프로필(재화 · 캐릭터 · 특성 · 장비 · 진행)이 원본이다. 게스트는 아무것도 저장하지 않는다.
 G.Meta = {
-  data: metaDefaults(),
-  mode() { return G.Net.user ? 'account' : G.Net.online ? 'guest' : 'local'; },
+  profile: null,
+  mode() { return G.Net.user ? 'account' : 'guest'; },
+  reset() { this.profile = null; },
+  useProfile(pr) { this.profile = pr; },
 
-  load() {
-    this.data = metaDefaults();
-    try { const s = localStorage.getItem(META_KEY); if (s) Object.assign(this.data, JSON.parse(s)); } catch (e) { /* 저장소 사용 불가 */ }
+  // 메뉴/상점에서 쓰는 요약 (예전 data 형태 유지)
+  get data() {
+    const pr = this.profile;
+    return pr ? { gold: pr.wallet.gold || 0, best: pr.best, wins: pr.wins } : { gold: 0, best: 0, wins: 0 };
   },
-  reset() { this.data = metaDefaults(); },
-  useProfile(pr) {
-    this.data = { gold: pr.wallet.gold || 0, ranks: Object.assign({}, pr.talents.library), best: pr.best, wins: pr.wins, wallet: pr.wallet };
+  wallet(c) { return this.profile ? this.profile.wallet[c] || 0 : 0; },
+  tree(t) { return (this.profile && this.profile.talents[t]) || { ranks: {}, bought: 0, resets: 0 }; },
+  // 달라란 도서관 특성 등급
+  lib(id) { return this.tree('library').ranks[id] || 0; },
+  equipped(cls) {
+    const out = {};
+    if (this.profile) for (const it of this.profile.items) if (it.equip && it.equip.cls === cls) out[it.equip.slot] = it;
+    return out;
   },
-  save() {
-    if (this.mode() !== 'local') return;
-    try { localStorage.setItem(META_KEY, JSON.stringify(this.data)); } catch (e) { /* 무시 */ }
+  avgIlvl(cls) {
+    let s = 0; for (const it of Object.values(this.equipped(cls))) s += it.ilvl * (G.ITEMS.SLOT[it.slot].twoHand ? 2 : 1);
+    return Math.round(s / 16);
   },
-
-  rank(id) { return this.data.ranks[id] || 0; },
-  cost(def) { return G.TALENTS.cost(def, this.rank(def.id)); },
-  canBuy(def) { return this.mode() !== 'guest' && this.rank(def.id) < def.max && this.data.gold >= this.cost(def); },
-  async buy(id) {
-    const def = G.TALENTS.find('library', id);
-    if (!def || !this.canBuy(def)) return false;
-    if (this.mode() === 'account') {
-      const r = await G.Net.api('POST', '/api/talents/buy', { scope: 'library', id });
-      this.useProfile(r.profile);
-      return true;
+  // 장비 능력치 합 (보석 · 마법부여 포함) + 특수 효과 목록
+  gearTotals(cls) {
+    const tot = {}, effects = [];
+    for (const it of Object.values(this.equipped(cls))) {
+      const t = G.ITEMS.itemTotals(it);
+      for (const k in t) tot[k] = (tot[k] || 0) + t[k];
+      if (it.effect) effects.push(it.effect);
+      for (const g of it.gems || []) if (g && G.ITEMS.GEMS[g].effect) effects.push(G.ITEMS.GEMS[g].effect);
+      if (it.enchant && G.ITEMS.ENCHANTS[it.enchant].effect) effects.push(G.ITEMS.ENCHANTS[it.enchant].effect);
     }
-    this.data.gold -= this.cost(def); this.data.ranks[id] = this.rank(id) + 1; this.save();
-    return true;
+    return { tot, effects };
   },
+  // 판 시작 시 능력치에 영구 진행도 적용 (특성 → 장비)
+  applyLoadout(st, cls) {
+    const T = G.TALENTS;
+    for (const tree of ['library', cls]) {
+      const ranks = this.tree(tree).ranks;
+      for (const id in ranks) { const nd = T.node(tree, id); if (nd && nd.stat && ranks[id]) nd.stat(st, ranks[id]); }
+    }
+    const { tot, effects } = this.gearTotals(cls);
+    if (!Object.keys(tot).length && !effects.length) return;
+    const d = G.ITEMS.derive(tot);
+    st.dmg += d.dmg; st.hpFlat += d.hp; st.crit += d.crit; st.haste += d.haste; st.mastery += d.mastery; st.vers += d.vers;
+    st.dmg *= 1 + d.vers;
+    for (const ef of effects) for (const k in ef) st[k] = (st[k] || 0) + ef[k];
+  },
+  // 주문 수치에 직업 특성 적용
+  applySkillTalents(id, s, cls) {
+    const ranks = this.tree(cls).ranks;
+    for (const k in ranks) { const nd = G.TALENTS.node(cls, k); if (nd && nd.skill && ranks[k]) nd.skill(id, s, ranks[k]); }
+  },
+  // 특성 포인트 구매 / 배분 / 초기화
+  async buyPoint(tree) { this.useProfile((await G.Net.api('POST', '/api/talents/point', { tree })).profile); },
+  async setRanks(tree, ranks) { this.useProfile((await G.Net.api('POST', '/api/talents/set', { tree, ranks })).profile); },
+  async resetTree(tree) { this.useProfile((await G.Net.api('POST', '/api/talents/reset', { tree })).profile); },
 };

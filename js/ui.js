@@ -211,29 +211,7 @@ G.UI = {
   open(kind, html) { document.body.classList.add('modal-open'); this.modalKind = kind; this.el.modal.innerHTML = html; this.el.modal.classList.remove('hidden'); this.hideTip(); },
   close() { document.body.classList.remove('modal-open'); this.modalKind = null; this.el.modal.classList.add('hidden'); this.el.modal.innerHTML = ''; this.hideTip(); },
 
-  showMenu() {
-    const m = G.Meta.data, net = G.Net;
-    this.el.hud.classList.add('hidden');
-    const account = !net.online ? ''
-      : net.user ? `<div class="acctLine"><b>${esc(net.user.username)}</b> 님으로 접속 중 · 진행도가 계정에 저장됩니다 <button class="btn small" id="mLogout">로그아웃</button></div>`
-        : `<div class="acctLine">게스트로 플레이 중 · 골드와 강화는 로그인해야 저장됩니다 <button class="btn small" id="mLogin">로그인 / 회원가입</button></div>`;
-    this.open('menu', `<div class="menuWrap">
-      <div class="logo">얼음왕관의 시련</div>
-      <div class="logo2">냉기 마법사 로그라이크</div>
-      ${account}
-      <button class="btn" id="mStart">전투 시작</button>
-      <button class="btn" id="mMeta">영구 강화 (달라란 도서관)</button>
-      <button class="btn" id="mHelp">조작법</button>
-      ${net.online ? '<button class="btn" id="mBoard">건의사항 게시판</button>' : ''}
-      <div class="goldLine">보유 골드: ${Math.floor(m.gold)} · 최고 기록: ${U.fmtTime(m.best)} · 리치 왕 처치: ${m.wins}회</div>
-      <div class="tt-sub">15분 동안 살아남아 리치 왕을 쓰러뜨리세요.</div></div>`);
-    $('mStart').onclick = () => { G.Audio.init(); G.startRun(); };
-    $('mMeta').onclick = () => { G.Audio.init(); this.showMeta(); };
-    $('mHelp').onclick = () => this.showHelp();
-    if ($('mBoard')) $('mBoard').onclick = () => this.showBoard();
-    if ($('mLogin')) $('mLogin').onclick = () => this.showAuth();
-    if ($('mLogout')) $('mLogout').onclick = async () => { await G.Net.logout(); this.toast('로그아웃했습니다.'); this.showMenu(); };
-  },
+  showMenu() { G.state = 'menu'; G.Lobby.show(); },
 
   // ---------- 계정 ----------
   showAuth() {
@@ -274,7 +252,7 @@ G.UI = {
       try { const r = await net.api('GET', `/api/suggestions?sort=${b.sort}`); b.items = r.items; b.more = r.more; }
       catch (e) { this.toast(e.message); return; }
     }
-    if (this.modalKind !== 'menu' && this.modalKind !== 'board') return; // 불러오는 사이 다른 화면으로 이동함
+    if (!['menu', 'board', 'lobby'].includes(this.modalKind)) return; // 불러오는 사이 다른 화면으로 이동함
     const STATUS = { open: '접수', planned: '반영 예정', done: '반영 완료', rejected: '보류' };
     const admin = net.user && net.user.admin;
     const item = s => `<div class="sgItem">
@@ -299,7 +277,7 @@ G.UI = {
       ${b.more ? '<button class="btn small" id="sgMore">더 보기</button>' : ''}
       <button class="btn" id="sgBack">돌아가기</button></div>`);
     const root = this.el.modal;
-    $('sgBack').onclick = () => this.showMenu();
+    $('sgBack').onclick = () => G.Lobby.show('stage');
     if ($('sgLogin')) $('sgLogin').onclick = e => { e.preventDefault(); this.showAuth(); };
     root.querySelectorAll('[data-sort]').forEach(a => (a.onclick = e => { e.preventDefault(); b.sort = a.dataset.sort; this.showBoard(); }));
     root.querySelectorAll('.sgMain').forEach(el => (el.onclick = e => { if (!e.target.closest('a, select')) el.parentNode.classList.toggle('open'); }));
@@ -349,23 +327,6 @@ G.UI = {
       <button class="btn" id="hBack">돌아가기</button></div>`);
     $('hBack').onclick = () => (G.state === 'play' ? this.showPause() : this.showMenu());
   },
-  showMeta() {
-    const m = G.Meta;
-    this.open('meta', `<div class="panel"><h2>달라란 도서관</h2><div class="sub">보유 골드: <span style="color:#ffd100">${Math.floor(m.data.gold)}</span></div>
-      <div class="metaGrid">${G.META_DEFS.map(d => {
-        const r = m.rank(d.id), max = r >= d.max, c = m.cost(d);
-        return `<div class="metaItem"><img src="${G.icon(d.icon)}"><div class="mi"><b>${d.name}</b> <span class="r">${r}/${d.max}</span><br>${d.desc(Math.max(1, r))}</div>
-          <button class="btn small" data-buy="${d.id}" ${m.canBuy(d) ? '' : 'disabled'}>${max ? '최대' : c + 'G'}</button></div>`;
-      }).join('')}</div>${m.mode() === 'guest' ? '<div class="sgLogin">영구 강화는 <a href="#" id="metaLogin">로그인</a>해야 사용할 수 있습니다.</div>' : ''}<button class="btn" id="metaBack">돌아가기</button></div>`);
-    this.el.modal.querySelectorAll('[data-buy]').forEach(b => (b.onclick = async () => {
-      b.disabled = true;
-      try { if (await m.buy(b.dataset.buy)) G.Audio.play('gold'); } catch (e) { this.toast(e.message); }
-      if (this.modalKind === 'meta') this.showMeta();
-    }));
-    if ($('metaLogin')) $('metaLogin').onclick = e => { e.preventDefault(); this.showAuth(); };
-    $('metaBack').onclick = () => this.showMenu();
-  },
-
   showLevelUp(opts, title, sub) {
     const p = G.player;
     this.lvOpts = opts;
@@ -376,12 +337,16 @@ G.UI = {
         ${o.nodeDesc ? `<div class="cnode">${o.nodeDesc}</div>` : ''}
         ${o.cast ? `<div class="tt-row" style="font-size:12px;margin-bottom:4px"><span>${o.cast}</span></div>` : ''}
         <div class="cdesc">${o.desc || ''}</div>
-        <div class="cfoot"><span style="color:${r.color}">${r.name}</span><span>${o.key ? `단축키 ${G.KEY_LABEL[o.key] || o.key} · ` : ''}<span class="ckey">${i + 1}</span></span></div></div>`;
+        <div class="cfoot"><span style="color:${r.color}">${r.name}${o.wasSealed ? ' · 봉인됨' : ''}</span><span>${o.key ? `단축키 ${G.KEY_LABEL[o.key] || o.key} · ` : ''}<span class="ckey">${i + 1}</span></span></div>
+        ${o.type !== 'gold' && o.type !== 'heal' ? `<div class="cacts">${p.banishes > 0 ? `<a href="#" data-banish="${i}">추방 (${p.banishes})</a>` : ''}${G.Meta.lib('seal') ? `<a href="#" data-seal="${i}" class="${p.sealPick === i ? 'on' : ''}">봉인</a>` : ''}</div>` : ''}</div>`;
     };
     this.open('levelup', `<div><div class="lvTitle">${title}</div><div class="lvSub">${sub}</div>
       <div class="cards">${opts.map(card).join('')}</div>
       <div class="lvBtns"><button class="btn small" id="lvReroll" ${p.rerolls > 0 ? '' : 'disabled'}>다시 굴리기 (${p.rerolls})</button><button class="btn small" id="lvSkip">건너뛰기 (+10 골드)</button></div></div>`);
-    this.el.modal.querySelectorAll('.card').forEach(c => (c.onclick = () => G.pickUpgrade(+c.dataset.i)));
+    this.el.modal.querySelectorAll('.card').forEach(c => (c.onclick = e => { if (!e.target.closest('.cacts')) G.pickUpgrade(+c.dataset.i); }));
+    // 달라란 도서관: 추방(이 판에서 영구 제외) · 봉인(다음 선택까지 보관)
+    this.el.modal.querySelectorAll('[data-banish]').forEach(a => (a.onclick = e => { e.preventDefault(); G.banishUpgrade(+a.dataset.banish); }));
+    this.el.modal.querySelectorAll('[data-seal]').forEach(a => (a.onclick = e => { e.preventDefault(); p.sealPick = p.sealPick === +a.dataset.seal ? null : +a.dataset.seal; a.classList.toggle('on'); }));
     $('lvReroll').onclick = () => G.rerollUpgrade();
     $('lvSkip').onclick = () => G.pickUpgrade(-1);
   },
@@ -405,27 +370,36 @@ G.UI = {
     $('pQuit').onclick = () => G.endRun(false);
   },
 
-  // 서버 정산 결과로 종료 화면의 골드를 확정
-  setEndGain(gain, err) {
-    const g = $('eGain'), n = $('eGainNote'); if (!g) return;
-    if (err) { n.textContent = err; n.classList.add('err'); return; }
-    g.textContent = '+' + gain; n.textContent = '계정에 저장됨';
+  // 서버 정산 결과 (재화 · 전리품) 표시
+  setEndRewards(r, err) {
+    const box = $('eRewards'); if (!box) return;
+    if (err) { box.innerHTML = `<div class="err">${esc(err)}</div>`; return; }
+    const I = G.ITEMS, gain = Object.entries(r.gain || {});
+    box.innerHTML = (gain.length ? `<div class="eGain">${gain.map(([k, v]) => `<span><img class="ci" src="${G.icon(I.CURRENCIES[k].icon)}">+${v} ${I.CURRENCIES[k].name}</span>`).join('')}</div>` : '<div class="dim">새로 받은 재화가 없습니다.</div>') +
+      (r.loot && r.loot.length ? `<div class="eLoot">${r.loot.map(it => `<div class="pull" style="--qc:${I.QUALITY[it.quality].color}" data-tip="${esc(G.Lobby.itemTip(it, G.runInfo && G.runInfo.cls))}"><img src="${G.icon(it.icon)}"><span>${esc(it.name)}</span><small>${it.ilvl}${it.autoDE ? ' · 가방 가득: 분해' : ''}</small></div>`).join('')}</div>` : '') +
+      (r.endlessLv ? `<div class="dim">엔드리스 ${r.endlessLv}단계 도달</div>` : '');
   },
 
-  showEnd(victory, goldGain, mode) {
+  showEnd(victory, mode) {
     const rows = Object.entries(G.meter.d).sort((a, b) => b[1] - a[1]);
-    const tot = G.meter.total || 1, dur = Math.max(1, G.t);
+    const tot = G.meter.total || 1, dur = Math.max(1, G.t), W = G.Waves, st = W.stage;
+    const endless = W.endless, title = victory ? '스테이지 클리어!' : endless ? `엔드리스 ${W.level}단계에서 쓰러졌습니다` : '당신은 죽었습니다';
     this.open('end', `<div class="panel" style="max-height:92vh;overflow:auto">
-      <h1 style="color:${victory ? '#ffd100' : '#ff4b3a'}">${victory ? '승리!' : '당신은 죽었습니다'}</h1>
-      <div class="sub">${victory ? '리치 왕이 쓰러졌습니다. 얼음왕관 성채에 평화가 찾아옵니다.' : '영혼이 망령으로 떠돌고 있습니다...'}</div>
-      <div class="summary"><div>생존 시간<b>${U.fmtTime(G.t)}</b></div><div>레벨<b>${G.player.level}</b></div><div>처치<b>${G.stats.kills.toLocaleString()}</b></div><div>획득 골드<b id="eGain">+${goldGain}</b><small id="eGainNote">${mode === 'account' ? '정산 중…' : mode === 'guest' ? '로그인하면 저장됩니다' : ''}</small></div><div>총 피해<b>${U.num(tot)}</b></div></div>
+      <h1 style="color:${victory ? '#ffd100' : '#ff4b3a'}">${title}</h1>
+      <div class="sub">${st.name} · ${W.diff.name}${victory ? ' — 보상을 받고 끝내거나, 엔드리스로 계속 도전할 수 있습니다.' : ''}</div>
+      <div class="summary"><div>시간<b>${U.fmtTime(G.t)}</b></div><div>레벨<b>${G.player.level}</b></div><div>처치<b>${G.stats.kills.toLocaleString()}</b></div><div>보스<b>${W.bossKills}</b></div><div>총 피해<b>${U.num(tot)}</b></div></div>
+      <div id="eRewards" class="eRewards">${mode === 'account' ? '<div class="dim">정산 중…</div>' : '<div class="dim">게스트는 보상이 저장되지 않습니다. 로그인하면 골드 · 휘장 · 장비를 받을 수 있습니다.</div>'}</div>
       ${this.buildSummary()}
       <table class="statTable"><tr><th>주문</th><th>피해량</th><th>DPS</th><th>비율</th></tr>
       ${rows.map(([s, v]) => { const [n, ic] = G.SOURCES[s] || [s, 'frostbolt']; return `<tr><td><img src="${G.icon(ic)}">${n}</td><td>${U.num(v)}</td><td>${U.num(v / dur)}</td><td>${(v / tot * 100).toFixed(1)}%</td></tr>`; }).join('')}</table>
-      ${victory ? '<button class="btn" id="eEndless">무한 모드로 계속하기</button>' : ''}
-      <button class="btn" id="eAgain">다시 도전</button><button class="btn" id="eMenu">메인 메뉴</button></div>`);
-    $('eAgain').onclick = () => G.startRun();
-    $('eMenu').onclick = () => { G.state = 'menu'; this.showMenu(); };
-    if (victory) $('eEndless').onclick = () => { G.Waves.endless = true; G.state = 'play'; G.resume(); };
+      ${victory ? '<button class="btn" id="eEndless">엔드리스로 계속하기</button><button class="btn" id="eLeave">보상 받고 종료</button>'
+        : '<button class="btn" id="eAgain">다시 도전</button><button class="btn" id="eMenu">로비로</button>'}</div>`);
+    if (victory) {
+      $('eEndless').onclick = () => { W.startEndless(); G.state = 'play'; G.resume(); };
+      $('eLeave').onclick = () => G.leaveRun();
+    } else {
+      $('eAgain').onclick = () => { const r = G.runInfo; G.startRun(r.cls, r.stage, r.diff); };
+      $('eMenu').onclick = () => { G.state = 'menu'; this.showMenu(); };
+    }
   },
 };

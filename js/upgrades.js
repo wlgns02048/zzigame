@@ -15,9 +15,18 @@ G.Upg = {
   pool(chest) {
     const p = G.player, C = G.cls(p), out = [];
     const npass = Object.keys(p.passives).length;
-    const add = o => { o.w = C.upgWeight(o, p) ?? o.w ?? 1; out.push(o); };
+    const M = G.Meta, school = { auto: 1 + 0.3 * M.lib('schoolAuto'), active: 1 + 0.3 * M.lib('schoolActive') };
+    const add = o => {
+      o.w = C.upgWeight(o, p) ?? o.w ?? 1;
+      // 달라란 도서관: 학파 연구 · 전설의 부름
+      if (o.type === 'new') o.w *= school[G.SKILLS[o.id].kind];
+      else if (o.type === 'passive') o.w *= 1 + 0.3 * M.lib('schoolPassive');
+      else if (o.type === 'legendary') o.w *= 1 + 0.5 * M.lib('legendCall');
+      if (p.banished.has(this.key(o))) return;
+      out.push(o);
+    };
     for (const id in G.SKILLS) {
-      const def = G.SKILLS[id], ok = def.cls === p.cls && (!def.req || def.req(p));
+      const def = G.SKILLS[id], ok = (def.cls === p.cls || def.cls === 'any') && (!def.req || def.req(p));
       if (!ok) continue;
       if ((def.kind === 'auto' || def.kind === 'active') && !p.skills[id] && this.count(def.kind) < G.LIMITS[def.kind]) {
         add({ type: 'new', id });
@@ -48,9 +57,17 @@ G.Upg = {
     return 0;
   },
 
+  key(o) { return `${o.type}:${o.id}:${o.nodeId || ''}`; },
+
   gen(n = 3, chest = 0) {
     let pool = this.pool(chest);
-    const picks = [];
+    const picks = [], p = G.player;
+    // 봉인해 둔 선택지가 아직 유효하면 맨 앞에
+    if (p.sealed) {
+      const k = this.key(p.sealed), s = pool.find(o => this.key(o) === k);
+      p.sealed = null;
+      if (s) { s.wasSealed = true; picks.push(s); pool = pool.filter(o => o !== s); }
+    }
     if (chest >= 2) {
       const special = pool.filter(o => o.type === 'evolution' || o.type === 'legendary');
       if (special.length) { const s = U.wpick(special, o => o.w); picks.push(s); pool = pool.filter(o => o !== s); }

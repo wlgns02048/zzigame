@@ -73,8 +73,8 @@ G.hit = (e, base, src, o = {}) => {
   e.hp -= d; e.flash = 0.05;
   G.meter.add(src, d);
   if (!o.noText) {
-    const col = o.school === 'fire' ? (crit ? '#ffb347' : '#ff8a3c') : o.school === 'arcane' ? (crit ? '#ff9cff' : '#e4a6ff') : (crit ? '#ffe14d' : '#ffffff');
-    G.fx.text(e.x, e.y - e.r - 6, crit ? U.num(d) + '!' : U.num(d), col, crit ? 24 : 15, crit);
+    const col = o.school === 'fire' ? (crit ? '#ffb347' : '#ff8a3c') : o.school === 'arcane' ? (crit ? '#ff9cff' : '#e4a6ff') : o.school === 'shadow' ? (crit ? '#e6b3ff' : '#c58bff') : (crit ? '#ffe14d' : '#ffffff');
+    G.fx.text(e.x, e.y - e.r - 6, crit ? U.num(d) + '!' : U.num(d), col, crit ? (o.small ? 18 : 24) : (o.small ? 12 : 15), crit);
   }
   if (crit) G.cls(p).onCrit(e, p);
   if (e.hp <= 0) G.killEnemy(e, frozen);
@@ -105,7 +105,7 @@ G.killEnemy = (e, frozen) => {
     while (xp >= 50) { G.dropPickup('xp', e.x + U.rand(-20, 20), e.y + U.rand(-20, 20), 50); xp -= 50; }
     if (xp > 0) G.dropPickup('xp', e.x, e.y, xp);
   }
-  const gm = 1 + (G.Meta.rank('luck') * 0.1);
+  const gm = 1 + (G.Meta.lib('luck') * 0.1);
   if (e.elite || e.boss) {
     G.dropPickup('chest', e.x, e.y, e.boss ? 2 : 1);
     for (let i = 0; i < (e.boss ? 12 : 4); i++) G.dropPickup('gold', e.x + U.rand(-40, 40), e.y + U.rand(-40, 40), U.randi(3, 6));
@@ -114,6 +114,8 @@ G.killEnemy = (e, frozen) => {
     if (Math.random() < 0.008) G.dropPickup('food', e.x, e.y, 1);
     if (Math.random() < 0.0012) G.dropPickup('magnet', e.x, e.y, 1);
   }
+  G.cls().onKill(e, G.player);
+  G.Waves.onKill(e);
   if (e.boss) G.Waves.onBossDeath(e);
 };
 
@@ -130,7 +132,8 @@ G.dropPickup = (kind, x, y, v) => {
 G.hurtPlayer = (dmg, src) => {
   const p = G.player;
   if (p.dead || G.cls(p).immune(p) || G.params.get('god')) return;
-  dmg *= (1 - Math.min(0.6, p.stats.armor)) * G.Waves.dmgMul();
+  if (src && src.hp !== undefined && src.hp < src.maxHp * 0.3 && G.Waves.affix('raging')) dmg *= 1.5;
+  dmg *= (1 - Math.min(0.6, p.stats.armor)) * G.Waves.dmgMul() * (1 - (p.stats.vers || 0) * 0.5) * (p.drT > 0 ? 1 - p.dr : 1);
   dmg = Math.round(dmg);
   if (p.absorb > 0) {
     const a = Math.min(p.absorb, dmg); p.absorb -= a; dmg -= a;

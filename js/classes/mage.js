@@ -25,6 +25,8 @@ G.CLASSES.mage = {
     if (sk.id === 'icicles' && p.legend.giantheart) { s.max += 3; s.dmg *= 1.6; }
     if (sk.id === 'frostbolt' && p.evo.frostfire) { s.dmg *= 1.6; s.explode = Math.max(1, s.explode) + 1; s.ff = 1; }
     if (sk.id === 'icelance' && p.evo.splinterstorm) s.splinters = 1;
+    // 특화: 고드름 · 얼음창 피해
+    if ((sk.id === 'icicles' || sk.id === 'icelance') && p.stats.mastery) s.dmg *= 1 + p.stats.mastery * 0.02;
   },
   haste(p) { return p.ivT > 0 && p.skills.icyveins ? p.skills.icyveins.s.haste : 0; },
   onCrit(e, p) { if (p.legend.coldhearted && Math.random() < 0.05) G.freeze(e, 2); },

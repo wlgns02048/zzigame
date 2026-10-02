@@ -46,6 +46,13 @@ G.R = {
       }
     } else if (z.kind === 'burn' && z.target && !z.target.dead && Math.random() < 0.5) {
       G.fx.part({ x: z.target.x + U.rand(-8, 8), y: z.target.y - U.rand(0, 20), vy: -60, life: 0.4, size: U.rand(6, 11), rgb: Math.random() < 0.5 ? '255,130,40' : '200,90,255' });
+    } else if (z.kind === 'rainoffire') {
+      for (let i = 0; i < 2; i++) {
+        const a = Math.random() * 6.28, r = Math.sqrt(Math.random()) * z.r, x = z.x + Math.cos(a) * r, y = z.y + Math.sin(a) * r * 0.75;
+        G.fx.part({ x: x - 50, y: y - 170, vx: 250, vy: 850, life: 0.2, size: U.rand(6, 10), rgb: Math.random() < 0.5 ? '255,140,40' : '255,200,80' });
+      }
+    } else if (z.kind === 'tinted' && Math.random() < 0.3) {
+      G.fx.part({ x: z.x + U.rand(-z.r, z.r) * 0.7, y: z.y + U.rand(-z.r, z.r) * 0.5, vy: -30, life: 0.8, size: U.rand(4, 8), rgb: z.color });
     } else if (z.kind === 'poison' && Math.random() < 0.3) {
       G.fx.part({ x: z.x + U.rand(-z.r, z.r) * 0.7, y: z.y + U.rand(-z.r, z.r) * 0.5, vy: -30, life: 0.8, size: U.rand(4, 8), rgb: '120,255,60' });
     } else if (z.kind === 'defile' && Math.random() < 0.6) {
@@ -128,6 +135,15 @@ G.R = {
         c.fillStyle = 'rgba(210,240,255,0.85)'; c.fill(); c.strokeStyle = 'rgba(80,150,230,0.8)'; c.lineWidth = 1; c.stroke();
       }
       c.globalAlpha = 1;
+    } else if (z.kind === 'tinted' || z.kind === 'rainoffire') {
+      // 범용 장판 (보스 기술 · 접두어 · 불의 비)
+      const col = z.kind === 'rainoffire' ? '255,110,30' : z.color;
+      c.save(); c.translate(z.x, z.y); c.scale(1, 0.75);
+      const g = c.createRadialGradient(0, 0, 0, 0, 0, z.r);
+      g.addColorStop(0, `rgba(${col},${0.42 * life})`); g.addColorStop(0.8, `rgba(${col},${0.25 * life})`); g.addColorStop(1, `rgba(${col},0)`);
+      c.fillStyle = g; c.beginPath(); c.arc(0, 0, z.r, 0, 7); c.fill();
+      c.strokeStyle = `rgba(${col},${0.6 * life})`; c.lineWidth = 2; c.setLineDash([12, 10]); c.lineDashOffset = -z.t * 30;
+      c.beginPath(); c.arc(0, 0, z.r * 0.95, 0, 7); c.stroke(); c.setLineDash([]); c.restore();
     } else if (z.kind === 'poison') {
       c.save(); c.translate(z.x, z.y); c.scale(1, 0.75);
       const g = c.createRadialGradient(0, 0, 0, 0, 0, z.r);
@@ -193,7 +209,7 @@ G.R = {
       c.fillStyle = 'rgba(120,190,255,0.06)'; c.fill(); c.restore();
     }
     for (const q of G.pets) this.drawWater(c, q);
-    for (const im of G.images) G.cls().drawBody(c, im.x, im.y, im.face, 0.5, true, im.t);
+    for (const im of G.images) if (im.draw) im.draw(c, im); else G.cls().drawBody(c, im.x, im.y, im.face, 0.5, true, im.t);
     this.drawPlayer(c);
     // 체력바 (피해 입은 적, 정예)
     for (const e of list) {
@@ -213,7 +229,7 @@ G.R = {
     const sq = moving ? 1 + Math.sin(e.t * 18) * 0.025 : 1;
     if (e.elite || e.boss) {
       c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.45 + Math.sin(e.t * 4) * 0.15;
-      const gr = e.boss ? (e.id === 'patchwerk' ? '120,255,80' : '90,170,255') : '255,190,60';
+      const gr = e.boss ? (e.def.glow || '90,170,255') : '255,190,60';
       c.drawImage(G.Spr.glow(gr, 128), e.x - e.r * 2.2, e.y - e.r * 2.2 + fly, e.r * 4.4, e.r * 4.4);
       c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
     }
@@ -278,7 +294,8 @@ G.R = {
       const a = Math.atan2(pr.vy, pr.vx), k = pr.kind;
       if (k === 'orb') { this.drawOrb(c, pr); continue; }
       const map = { frostbolt: [S.bolt, '100,180,255', 44], frostfire: [S.boltFF, '210,110,255', 54], lance: [S.lance, '150,215,255', 30], icicle: [S.icicle, '150,215,255', 22],
-        flurry: [S.flurry, '120,190,255', 30], spike: [S.spike, '120,200,255', 90], water: [S.water, '60,150,255', 34], splinter: [S.splinter, '190,110,255', 24] };
+        flurry: [S.flurry, '120,190,255', 30], spike: [S.spike, '120,200,255', 90], water: [S.water, '60,150,255', 34], splinter: [S.splinter, '190,110,255', 24],
+        shadowbolt: [S.boltShadow, '150,60,240', 44], chaos: [S.boltChaos, '110,255,60', 58], haunt: [S.shadow, '110,130,255', 40], deathcoil: [S.boltCoil, '80,230,100', 44], firebolt: [S.boltFire, '255,130,40', 28] };
       const [img, rgb, gs] = map[k] || map.frostbolt, sc = pr.scale;
       c.globalCompositeOperation = 'lighter';
       c.drawImage(S.glow(rgb, 64), pr.x - gs * sc / 2, pr.y - gs * sc / 2, gs * sc, gs * sc);
@@ -288,9 +305,9 @@ G.R = {
       c.globalCompositeOperation = 'source-over';
     }
     for (const b of G.eprojs) {
-      const img = b.kind === 'frost' ? S.frostshot : S.shadow;
+      const img = S.eshots[b.kind] || S.shadow;
       c.globalCompositeOperation = 'lighter';
-      c.drawImage(S.glow(b.kind === 'frost' ? '90,180,255' : '150,40,230', 64), b.x - 22, b.y - 22, 44, 44);
+      c.drawImage(S.glow(EPROJ_RGB[b.kind] || '150,40,230', 64), b.x - 22, b.y - 22, 44, 44);
       c.globalCompositeOperation = 'source-over';
       c.drawImage(img, b.x - 12, b.y - 12, 24, 24);
     }
