@@ -19,7 +19,7 @@ G.UI = {
     for (const k of G.ACTION_KEYS) {
       const d = document.createElement('div');
       d.className = 'slot empty'; d.dataset.key = k;
-      d.innerHTML = `<img class="hidden"><div class="cd"></div><div class="cdt"></div><span class="key">${G.KEY_LABEL[k] || k}</span><span class="chg"></span><span class="ac">자동</span>`;
+      d.innerHTML = `<img class="hidden"><div class="cd"></div><div class="cdt"></div><span class="key">${G.Keys.label(k)}</span><span class="chg"></span><span class="ac">자동</span>`;
       ab.appendChild(d); this.slotEls[k] = d;
       // 왼쪽 클릭: 시전 · 오른쪽 클릭: 자동 시전 켜기/끄기
       d.addEventListener('mousedown', e => { e.stopPropagation(); if (e.button !== 0) return; const id = this.skillForKey(k); if (id) G.Skills.activate(id); });
@@ -65,7 +65,7 @@ G.UI = {
     const ranks = (def.nodes || []).filter(n => sk.ranks[n.id]).map(n => `<span class="tt-green">${n.name} ${sk.ranks[n.id]}/${n.max}</span>`).join(' · ');
     return `<div class="tt-title" style="${isFF ? 'color:#e6cc80' : ''}">${isFF ? '서리불꽃 화살' : def.name}</div>
       <div class="tt-row"><span>${def.castInfo(sk.s)}</span><span>${p.skillLevel(id)}레벨</span></div>
-      ${def.key ? `<div class="tt-row"><span>단축키: ${G.KEY_LABEL[def.key] || def.key}</span></div>` : ''}
+      ${def.key ? `<div class="tt-row"><span>단축키: ${G.Keys.label(def.key)}</span></div>` : ''}
       ${def.kind === 'active' ? `<div class="tt-sub">${def.noAuto ? '자동 시전할 수 없는 주문입니다.' : sk.autoCast ? `<span class="tt-green">자동 시전 중</span> · 재사용 대기시간 +${Math.round(G.Skills.autoPen() * 100)}% · 오른쪽 클릭으로 끄기` : `오른쪽 클릭: 자동 시전 (재사용 대기시간 +${Math.round(G.Skills.autoPen() * 100)}%)`}</div>` : ''}
       <div class="tt-desc">${def.tip(sk.s)}</div>${ranks ? `<div class="tt-sub">${ranks}</div>` : ''}`;
   },
@@ -362,12 +362,12 @@ G.UI = {
     const actives = Object.values(G.SKILLS).filter(d => d.cls === cls && d.kind === 'active' && d.key).sort((a, b) => G.ACTION_KEYS.indexOf(a.key) - G.ACTION_KEYS.indexOf(b.key));
     const autos = Object.values(G.SKILLS).filter(d => d.cls === cls && d.kind === 'auto').map(d => d.name);
     const tips = {
-      mage: '얼어붙은 적(빙결/겨울의 한기)은 얼음창에 3배 피해를 받고, 모든 냉기 주문의 치명타 확률이 높아집니다(산산조각). 보스는 빙결되지 않는 대신 8초에 한 번, 2초 동안 얼어붙은 것으로 간주됩니다. 얼음 방패는 치명적인 피해를 받으면 자동으로 발동합니다.',
+      mage: '얼어붙은 적(빙결/겨울의 한기)은 얼음창에 3배 피해를 받고, 모든 냉기 주문의 치명타 확률이 높아집니다(산산조각). 보스는 빙결되지 않는 대신 8초에 한 번, 2초 동안 얼어붙은 것으로 간주됩니다. 얼음장은 치명적인 피해를 받으면 자동으로 발동합니다.',
       warlock: '부패 · 고통 · 생명력 착취 · 불안정한 고통 같은 지속 피해를 여러 적에게 걸고(적 발밑 고리와 머리 위 아이콘으로 표시), 어둠의 화살은 지속 피해가 많이 걸린 적에게 더 아픕니다. 고통이 만드는 영혼의 조각 3개 이상을 악의적인 환희(R)로 한 번에 터뜨리세요. 악마의 마법진(Space)은 처음엔 마법진을 그리고, 다시 누르면 그곳으로 돌아갑니다.',
       hunter: '고정 사격(이동 중에도 그대로)으로 집중을 모으고, 멈춰 서면 조준 사격을 겨눕니다(붉은 조준선). 조준 사격이 맞으면 정밀 사격이 붙어 다음 신비한 사격 · 일제 사격이 강해지고, 일제 사격이 3명 이상 맞히면 속임수 사격으로 다음 조준 사격 · 속사가 주변 적에게 튕깁니다. 독수리가 찍은 관측자의 징표(머리 위 독수리 아이콘)가 있는 적은 조준 사격에 더 아프고, 멀리 있는 적일수록 피해가 커집니다(저격 훈련). 거북의 상은 치명적인 피해를 받으면 자동으로 발동합니다.',
     };
     const keys = [['WASD / 방향키', '이동'], ['마우스 오른쪽 클릭', '그 지점으로 이동 (누르고 있으면 커서를 따라감)'], ['마우스', '조준 (단축키 주문 방향)'], ['자동 주문', autos.join(' · ')],
-      ...actives.map(d => [G.KEY_LABEL[d.key] || d.key, d.name]), ['액션바 오른쪽 클릭', `자동 시전 켜기/끄기 (재사용 대기시간 +${Math.round(G.Skills.autoPen() * 100)}%, 달라란 도서관에서 줄일 수 있음)`], ['TAB', '피해 미터 (Details!)'], ['ESC', '일시 정지'], ['M', '소리 켜기/끄기'], ['N', '배경음악 켜기/끄기'],
+      ...actives.map(d => [G.Keys.label(d.key), d.name]), ['단축키 바꾸기', '설정 → 단축키'], ['액션바 오른쪽 클릭', `자동 시전 켜기/끄기 (재사용 대기시간 +${Math.round(G.Skills.autoPen() * 100)}%, 달라란 도서관에서 줄일 수 있음)`], ['TAB', '피해 미터 (Details!)'], ['ESC', '일시 정지'], ['M', '소리 켜기/끄기'], ['N', '배경음악 켜기/끄기'],
       ['레벨업', '숫자 키 또는 클릭으로 선택']];
     this.open('help', `<div class="panel"><h2>조작법 · ${C.name}</h2><div class="helpGrid">${keys.map(([k, v]) => `<div class="k">${k}</div><div>${v}</div>`).join('')}</div>
       <p class="tt-sub" style="max-width:560px">단축키 주문은 레벨업에서 배워야 액션바에 나타납니다. ${tips[cls] || ''}</p>
@@ -387,8 +387,16 @@ G.UI = {
     const S = G.Settings, row = o => o.type === 'range'
       ? `<label class="setRow"><span>${o.name}</span><input type="range" data-set="${o.k}" min="${o.min}" max="${o.max}" step="${o.step}" value="${S.get(o.k)}"><b data-val="${o.k}">${o.fmt(S.get(o.k))}</b></label>`
       : `<label class="setRow"><span>${o.name}${o.desc ? `<small>${o.desc}</small>` : ''}</span><input type="checkbox" data-set="${o.k}" ${S.get(o.k) ? 'checked' : ''}><b></b></label>`;
+    // 단축키: 칸마다 이 직업이 그 칸에 넣는 주문 이름을 같이 보여 준다
+    const cls = (G.state === 'play' && G.player && G.player.cls) || (G.Lobby && G.Lobby.cls) || 'mage';
+    const slotNames = s => Object.values(G.SKILLS).filter(d => d.cls === cls && d.kind === 'active' && d.key === s).map(d => d.name).join(' · ') || '<i>빈 칸</i>';
     this.open('settings', `<div class="panel setPanel"><h2>설정</h2><div class="sub">이 브라우저에 저장됩니다.</div>
-      <div class="setList">${this.SETTINGS.map(row).join('')}</div><button class="btn" id="sBack">돌아가기</button></div>`);
+      <div class="setList">${this.SETTINGS.map(row).join('')}</div>
+      <div class="setH"><span>단축키 · ${G.CLASSES[cls].name}</span><a href="#" id="kReset">기본값으로</a></div>
+      <div class="keyList">${G.ACTION_KEYS.map(s => `<div class="keyRow"><span>${slotNames(s)}</span><button class="keyBtn" data-bind="${s}">${G.Keys.label(s)}</button></div>`).join('')}</div>
+      <div class="keyMsg" id="kMsg">${this.KEY_HINT}</div>
+      <button class="btn" id="sBack">돌아가기</button></div>`);
+    this.bindKeyEditor();
     this.el.modal.querySelectorAll('[data-set]').forEach(inp => (inp.oninput = () => {
       const o = this.SETTINGS.find(x => x.k === inp.dataset.set), v = o.type === 'range' ? +inp.value : inp.checked;
       S.set(o.k, v);
@@ -398,6 +406,45 @@ G.UI = {
     }));
     $('sBack').onclick = () => (G.state === 'play' ? this.showPause() : this.showMenu());
   },
+  KEY_HINT: '칸을 누른 뒤 새 키를 누르세요 (Esc 취소). 이미 쓰는 키면 두 칸이 맞바뀝니다. 마우스 휠 클릭 · 옆 버튼도 됩니다.',
+  // 단축키 편집: 버튼을 누르면 다음 키(또는 마우스 휠 · 옆 버튼) 하나를 가로채 그 칸에 넣는다
+  bindKeyEditor() {
+    const M = this.el.modal, msg = $('kMsg');
+    let wait = null;
+    const draw = () => M.querySelectorAll('[data-bind]').forEach(b => { b.textContent = b.dataset.bind === wait ? '키 입력…' : G.Keys.label(b.dataset.bind); b.classList.toggle('wait', b.dataset.bind === wait); });
+    const stop = () => { wait = null; removeEventListener('keydown', onKey, true); removeEventListener('mousedown', onMouse, true); if (M.contains(msg)) draw(); };
+    const assign = code => {
+      if (!G.Keys.allowed(code)) { msg.textContent = `${G.Keys.name(code)} 키는 이동 · 시스템 키라 주문에 쓸 수 없습니다. 다른 키를 누르세요.`; msg.classList.add('bad'); return; }
+      const other = G.Keys.slotOf(code);
+      G.Keys.set(wait, code); this.refreshKeys();
+      msg.textContent = other && other !== wait ? `${G.Keys.name(code)} 키를 쓰던 칸과 키를 맞바꿨습니다.` : this.KEY_HINT; msg.classList.remove('bad');
+      stop();
+    };
+    // 설정 창이 닫혔으면 가로채기를 그만둔다
+    const alive = () => { if (this.modalKind === 'settings' && M.contains(msg)) return true; stop(); return false; };
+    const onKey = e => {
+      if (!wait || !alive()) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (e.repeat) return;
+      if (e.code === 'Escape') { msg.textContent = this.KEY_HINT; msg.classList.remove('bad'); stop(); return; }
+      assign(e.code);
+    };
+    const onMouse = e => {
+      if (!wait || !alive()) return;
+      const code = G.Keys.mouseCode(e.button);
+      if (code) { e.preventDefault(); e.stopImmediatePropagation(); assign(code); }
+      else if (!e.target.closest('[data-bind]')) stop(); // 다른 곳을 클릭하면 취소
+    };
+    M.querySelectorAll('[data-bind]').forEach(b => (b.onclick = () => {
+      b.blur(); // 포커스가 남으면 Space가 버튼을 다시 누른다
+      if (wait === b.dataset.bind) { stop(); return; }
+      if (!wait) { addEventListener('keydown', onKey, true); addEventListener('mousedown', onMouse, true); }
+      wait = b.dataset.bind; draw();
+    }));
+    $('kReset').onclick = e => { e.preventDefault(); stop(); G.Keys.reset(); this.refreshKeys(); draw(); msg.textContent = '기본 단축키로 되돌렸습니다.'; msg.classList.remove('bad'); };
+  },
+  // 액션바 칸의 키 글자를 현재 설정으로
+  refreshKeys() { for (const k in this.slotEls) this.slotEls[k].querySelector('.key').textContent = G.Keys.label(k); },
 
   lvCard(o, i, d) {
     const r = G.RARITY[o.rarity];
@@ -406,7 +453,7 @@ G.UI = {
       ${o.nodeDesc ? `<div class="cnode">${o.nodeDesc}</div>` : ''}
       ${o.cast ? `<div class="tt-row" style="font-size:12px;margin-bottom:4px"><span>${o.cast}</span></div>` : ''}
       <div class="cdesc">${o.desc || ''}</div>
-      <div class="cfoot"><span style="color:${r.color}">${r.name}${o.wasSealed ? ' · 봉인됨' : ''}</span><span>${o.key ? `단축키 ${G.KEY_LABEL[o.key] || o.key} · ` : ''}<span class="ckey">${i + 1}</span></span></div>
+      <div class="cfoot"><span style="color:${r.color}">${r.name}${o.wasSealed ? ' · 봉인됨' : ''}</span><span>${o.key ? `단축키 ${G.Keys.label(o.key)} · ` : ''}<span class="ckey">${i + 1}</span></span></div>
       <div class="cacts">${this.lvActs(o, i)}</div></div>`;
   },
   // 달라란 도서관: 추방(이 판에서 영구 제외) · 봉인(다음 선택까지 보관)

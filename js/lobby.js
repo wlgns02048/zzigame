@@ -407,7 +407,7 @@ G.Lobby = {
     const real = G.player;
     G.player = { cls, stats: { dmg: 1 }, skills: {}, passives: {}, legend: {}, evo: {} };
     const safe = f => { try { return f(); } catch (e) { return ''; } };
-    const card = (def, body, sub = '') => `<div class="cdx"><img src="${G.icon(G.skIcon(def))}"><div><div class="cdxName">${G.skName(def)}${def.key ? ` <span class="cdxKey">${G.KEY_LABEL[def.key] || def.key}</span>` : ''}</div>
+    const card = (def, body, sub = '') => `<div class="cdx"><img src="${G.icon(G.skIcon(def))}"><div><div class="cdxName">${G.skName(def)}${def.key ? ` <span class="cdxKey">${G.Keys.label(def.key)}</span>` : ''}</div>
       ${sub ? `<div class="cdxSub">${sub}</div>` : ''}<div class="cdxDesc">${body}</div></div></div>`;
     const spell = def => card(def, safe(() => def.tip(Object.assign({}, def.base))) +
       (def.nodes && def.nodes.length ? `<div class="cdxNodes">${def.nodes.map(n => `<span><b>${n.name}</b> ${n.max}단계 · ${n.desc}</span>`).join('')}</div>` : ''), safe(() => def.castInfo(def.base)));

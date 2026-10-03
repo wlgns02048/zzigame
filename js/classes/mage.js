@@ -11,7 +11,7 @@ G.CLASSES.mage = {
   init(p) {
     Object.assign(p, {
       icicles: [], icAngle: 0,
-      fof: 0, fofT: 0, bf: 0, bfT: 0, ivT: 0, iceblockT: 0,
+      fof: 0, fofT: 0, bf: 0, bfT: 0, ivT: 0, iceblockT: 0, drT: 0, dr: 0,
       fbCast: 0, fbCount: 0, swT: 0, fwT: 0, splinterT: 8,
     });
   },
@@ -32,26 +32,23 @@ G.CLASSES.mage = {
   onCrit(e, p) { if (p.legend.coldhearted && Math.random() < 0.05) G.freeze(e, 2); },
 
   // ---------- 상태 ----------
-  busy(p) { return p.iceblockT > 0; },     // 행동/이동 불가
-  immune(p) { return p.iceblockT > 0; },   // 피해 면역
+  busy() { return false; },     // 행동/이동 불가
+  immune() { return false; },   // 피해 면역
   // 시전 가로채기: true/false 반환 시 그대로 사용, undefined면 일반 처리
-  activate(id, p) {
-    if (id === 'iceblock' && p.iceblockT > 0) { p.iceblockT = 0; G.Skills.endIceBlock(); return true; }
-    if (p.iceblockT > 0) return false;
-  },
-  // 치명상: 얼음 방패가 준비돼 있으면 자동으로 발동하고 생명력 1로 버틴다
+  activate() {},
+  // 치명상: 얼음장이 준비돼 있으면 자동으로 발동하고 생명력 일부(save)로 버틴다
   preventDeath(p) {
     const ib = p.skills.iceblock;
     if (!ib || ib.charges <= 0 || p.iceblockT > 0) return false;
-    p.hp = 1;
+    p.hp = Math.max(1, Math.round(p.maxHp * ib.s.save));
     G.SKILL_IMPL.iceblock.cast(ib); G.Skills.startCd(ib);
-    G.fx.text(p.x, p.y - 60, '얼음 방패!', '#bfe8ff', 22, true);
+    G.fx.text(p.x, p.y - 60, '얼음장!', '#bfe8ff', 22, true);
     return true;
   },
   // 핵심 주문 자동 시전 조건: false = 지금은 쓰지 않음, true = 적이 없어도 사용, undefined = 사거리 안에 적이 있으면 사용
   autoRule(id, p) {
     const hp = p.hp / p.maxHp, near = G.nearestEnemy(p.x, p.y, 160);
-    if (id === 'iceblock') return hp < 0.25 && p.iceblockT <= 0 ? true : false;
+    if (id === 'iceblock') return hp < 0.35 && p.iceblockT <= 0 ? true : false;
     if (id === 'icebarrier') return p.absorb <= 0 && !!near ? true : false;
     if (id === 'blink') return hp < 0.4 && !!near ? true : false;
     if (id === 'frostnova') return !!near;
@@ -63,9 +60,10 @@ G.CLASSES.mage = {
     if (p.fofT > 0 && (p.fofT -= dt) <= 0) p.fof = 0;
     if (p.bfT > 0 && (p.bfT -= dt) <= 0) p.bf = 0;
     if (p.ivT > 0) { p.ivT -= dt; if (Math.random() < 0.6) G.fx.part({ x: p.x + U.rand(-14, 14), y: p.y + U.rand(-8, 22), vy: U.rand(-90, -40), life: 0.6, size: U.rand(5, 10), rgb: '90,170,255' }); }
+    if (p.drT > 0) p.drT -= dt;
     if (p.iceblockT > 0) {
       p.iceblockT -= dt;
-      const ib = p.skills.iceblock; if (ib && ib.s.heal) G.P.heal(p.maxHp * ib.s.heal * dt);
+      const ib = p.skills.iceblock; if (ib && ib.s.heal) G.P.healSilent(p.maxHp * ib.s.heal * dt);
       if (p.iceblockT <= 0) G.Skills.endIceBlock();
     }
     p.icAngle += dt * 2.2;
@@ -93,12 +91,11 @@ G.CLASSES.mage = {
   },
   castbar(p) {
     const fb = p.skills.frostbolt;
-    if (!fb || p.iceblockT > 0 || !(fb.castT > 0 && fb.castT < 1)) return null;
+    if (!fb || !(fb.castT > 0 && fb.castT < 1)) return null;
     return { f: fb.castT, name: p.evo.frostfire ? '서리불꽃 화살' : '얼음화살', total: fb.s.cast / (1 + G.P.haste()) };
   },
   slotState(id, p, impl, sk) {
     return {
-      unusable: p.iceblockT > 0 && id !== 'iceblock',
       glow: id === 'glacialspike' && impl.usable(sk),
       active: id === 'iceblock' && p.iceblockT > 0,
     };
@@ -110,7 +107,7 @@ G.CLASSES.mage = {
     if (p.fof > 0) b.push(['fingersoffrost', p.fofT, p.fof > 1 ? p.fof : '', '서리의 손가락', '다음 얼음창이 얼어붙은 대상처럼 취급']);
     if (p.bf > 0) b.push(['brainfreeze', p.bfT, '', '두뇌 빙결', '다음 진눈깨비 강화']);
     if (p.absorb > 0) b.push(['icebarrier', -1, Math.round(p.absorb), '얼음 보호막', '피해 흡수']);
-    if (p.iceblockT > 0) b.push(['iceblock', p.iceblockT, '', '얼음 방패', '모든 피해 면역']);
+    if (p.iceblockT > 0) b.push(['icecold', p.iceblockT, '', '얼음장', `받는 피해 ${Math.round(p.dr * 100)}% 감소`]);
     return b;
   },
 
@@ -173,15 +170,17 @@ G.CLASSES.mage = {
       c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = 1;
       for (let i = 0; i < 6; i++) { const a = i * 1.047 + G.t * 0.3; c.beginPath(); c.moveTo(p.x + Math.cos(a) * r * 0.4, p.y - 12 + Math.sin(a) * r * 0.4); c.lineTo(p.x + Math.cos(a + 0.4) * r * 0.95, p.y - 12 + Math.sin(a + 0.4) * r * 0.95); c.stroke(); }
     }
-    // 얼음 방패
+    // 얼음장: 몸을 감싼 서리 빛 + 주위를 도는 얼음 조각 (움직일 수 있으니 갇힌 모습이 아니다)
     if (p.iceblockT > 0) {
       const x = p.x, y = p.y - 22;
-      c.beginPath(); c.moveTo(x - 30, y - 44); c.lineTo(x + 26, y - 50); c.lineTo(x + 36, y + 2); c.lineTo(x + 28, y + 44); c.lineTo(x - 28, y + 46); c.lineTo(x - 38, y - 4); c.closePath();
-      const g = c.createLinearGradient(x - 30, y - 50, x + 30, y + 46);
-      g.addColorStop(0, 'rgba(230,248,255,0.75)'); g.addColorStop(0.5, 'rgba(120,190,255,0.45)'); g.addColorStop(1, 'rgba(200,235,255,0.7)');
-      c.fillStyle = g; c.fill(); c.strokeStyle = '#ffffff'; c.lineWidth = 2; c.stroke();
-      c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 1.2;
-      c.beginPath(); c.moveTo(x - 20, y - 30); c.lineTo(x - 4, y - 8); c.lineTo(x + 12, y - 30); c.moveTo(x + 18, y + 10); c.lineTo(x + 4, y + 30); c.stroke();
+      c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.35 + Math.sin(G.t * 6) * 0.08;
+      c.drawImage(G.Spr.glow('150,220,255', 128), x - 40, y - 46, 80, 92);
+      c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+      c.fillStyle = 'rgba(220,245,255,0.85)'; c.strokeStyle = 'rgba(120,190,255,0.9)'; c.lineWidth = 1;
+      for (let i = 0; i < 5; i++) {
+        const a = i * 1.257 + G.t * 2.4, sx = x + Math.cos(a) * 30, sy = y + 8 + Math.sin(a) * 14;
+        c.beginPath(); c.moveTo(sx, sy - 7); c.lineTo(sx + 3, sy); c.lineTo(sx, sy + 7); c.lineTo(sx - 3, sy); c.closePath(); c.fill(); c.stroke();
+      }
     }
   },
 
@@ -199,7 +198,7 @@ G.CLASSES.mage = {
 
   // ---------- 자동 플레이 봇 ----------
   botUse(id, p) {
-    if (id === 'iceblock' && (p.hp > p.maxHp * 0.25 || p.iceblockT > 0)) return false;
+    if (id === 'iceblock' && (p.hp > p.maxHp * 0.35 || p.iceblockT > 0)) return false;
     if (id === 'blink' && p.hp > p.maxHp * 0.6) return false;
     return true;
   },

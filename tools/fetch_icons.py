@@ -181,6 +181,7 @@ ICONS = {
     'volley': ['ability_hunter_rapidkilling', 'ability_marksmanship'], 'freezingtrap': ['spell_frost_chainsofice'],
     'wailingarrow': ['ability_hunter_wailingarrow', 'spell_shadow_soulleech_3'], 'bindingshot': ['spell_shaman_bindelemental'],
     'trueshot': ['ability_trueshot'], 'disengage': ['ability_rogue_feint'], 'turtle': ['ability_hunter_pet_turtle'],
+    'survivalfittest': ['spell_nature_spiritarmor'], 'icecold': ['ability_mage_coldasice'],
     'exhilaration': ['ability_hunter_onewithnature'], 'feigndeath': ['ability_rogue_feigndeath'],
     'burstingshot': ['ability_hunter_burstingshot', 'spell_shaman_thunderstorm'],
     'preciseshots': ['ability_hunter_mastermarksman'], 'trickshots': ['ability_hunter_aspectofthefox', 'ability_hunter_quickshot'],

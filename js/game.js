@@ -1,6 +1,5 @@
 'use strict';
 // ================= 게임 루프 =================
-const KEYMAP = { KeyQ: 'Q', KeyE: 'E', KeyR: 'R', KeyF: 'F', KeyT: 'T', Space: 'SPACE', Digit1: '1', Digit2: '2', Digit3: '3', Digit4: '4', Digit5: '5', Digit6: '6' };
 
 G.timeScale = Math.max(1, Math.min(20, +(G.params.get('ts') || 1)));
 G.stats = { kills: 0, gold: 0, banked: 0, lust: 0 };
@@ -75,11 +74,20 @@ G.Input = () => {
       if (m) { const i = +m[1] - 1; if (i >= 0 && i < G.UI.lvOpts.length) G.pickUpgrade(i); }
       return;
     }
-    if (e.code === 'Space') e.preventDefault();
     G.keys[e.code] = true;
-    const k = KEYMAP[e.code];
-    if (k && !e.repeat && G.state === 'play' && !G.paused) { const id = G.UI.skillForKey(k); if (id) G.Skills.activate(id); }
+    const k = G.Keys.slotOf(e.code);
+    if (e.code === 'Space' || (k && G.state === 'play')) e.preventDefault(); // Alt 메뉴 · / 빠른 찾기 같은 브라우저 동작 막기
+    if (k && !e.repeat && G.state === 'play' && !G.paused) castSlot(k);
   });
+  // 단축키 칸 시전 (키보드 · 마우스 휠 클릭 · 옆 버튼)
+  const castSlot = k => { const id = G.UI.skillForKey(k); if (id) G.Skills.activate(id); };
+  addEventListener('mousedown', e => {
+    if (G.state !== 'play' || G.paused || G.UI.modalKind) return;
+    const k = G.Keys.slotOf(G.Keys.mouseCode(e.button)); if (!k) return;
+    e.preventDefault(); castSlot(k);
+  });
+  // 옆 버튼의 브라우저 뒤로/앞으로 가기 막기 (판 중이고 단축키로 쓰일 때)
+  addEventListener('mouseup', e => { if ((G.state === 'play' && G.Keys.slotOf(G.Keys.mouseCode(e.button))) || (e.button >= 3 && G.UI.modalKind === 'settings')) e.preventDefault(); });
   addEventListener('keyup', e => { G.keys[e.code] = false; });
   addEventListener('blur', () => { G.keys = {}; G.mouse.moveHeld = false; if (G.state === 'play' && !G.paused && !G.Bot.on) G.pause(); });
   addEventListener('mousemove', e => { [G.mouse.sx, G.mouse.sy] = G.R.toView(e.clientX, e.clientY); });

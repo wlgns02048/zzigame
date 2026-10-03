@@ -217,7 +217,7 @@ G.Skills = {
 
   endIceBlock() {
     const p = G.player, ib = p.skills.iceblock;
-    G.fx.shards(p.x, p.y, 30, 300); G.Audio.play('shatter');
+    G.fx.shards(p.x, p.y, 14, 200); G.Audio.play('shatter', 0.5);
     if (ib && ib.s.nova) {
       const R = 170 * p.stats.area;
       G.aoe(p.x, p.y, R, 20, 'iceblock', {}, e => G.freeze(e, 3));
@@ -557,7 +557,7 @@ const IMPL = G.SKILL_IMPL = {
   },
   iceblock: {
     cast(sk) {
-      const p = G.player; p.iceblockT = sk.s.dur; p.channel = null;
+      const p = G.player; p.iceblockT = p.drT = sk.s.dur; p.dr = sk.s.dr;
       G.fx.shards(p.x, p.y, 16, 180); G.Audio.play('freeze');
     },
   },

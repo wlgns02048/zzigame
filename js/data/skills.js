@@ -174,12 +174,13 @@ G.SKILLS = {
       node('reflect', '냉기 갑옷', 1, '공격자에게 <b class="v">30</b> 냉기 피해 반사', s => (s.reflect = 1), { icon: 'chillstreak' })],
   },
   iceblock: {
-    name: '얼음 방패', icon: 'iceblock', kind: 'active', key: '3', school: 'frost', color: '#bfe8ff',
-    base: { cd: 90, dur: 3, heal: 0, nova: 0 },
-    tip: s => `${N(s.dur, 0)}초 동안 얼음에 갇혀 모든 피해에 면역이 됩니다. 이동과 시전이 불가능합니다. 다시 누르면 취소됩니다.<br><b class="v">치명적인 피해</b>를 받으면 재사용 대기 중이 아닐 때 자동으로 발동합니다.` + (s.heal ? `<br>지속 중 초당 ${P(s.heal)} 회복` : '') + (s.nova ? '<br>종료 시 서리 회오리' : ''),
+    // 얼음장 (예전 얼음 방패): 면역 대신 피해 감소, 이동 · 시전은 그대로. 주문 id는 저장된 설정 · 특성 호환을 위해 iceblock 유지
+    name: '얼음장', icon: 'icecold', kind: 'active', key: '3', school: 'frost', color: '#bfe8ff',
+    base: { cd: 90, dur: 6, dr: 0.7, save: 0.2, heal: 0, nova: 0 },
+    tip: s => `${N(s.dur, 0)}초 동안 몸이 얼음장처럼 굳어 받는 피해가 ${P(s.dr)} 감소합니다. <b class="v">이동과 시전은 그대로 할 수 있습니다.</b><br><b class="v">치명적인 피해</b>를 받으면 재사용 대기 중이 아닐 때 자동으로 발동해 생명력 ${P(s.save)}로 버팁니다.` + (s.heal ? `<br>지속 중 초당 ${P(s.heal)} 회복` : '') + (s.nova ? '<br>종료 시 서리 회오리' : ''),
     castInfo: s => `즉시 시전 · 재사용 ${s.cd.toFixed(0)}초`,
     nodes: [node('cd', '빙하의 결계', 2, '재사용 대기시간 <b class="v">-20%</b>', s => (s.cd *= 0.8)),
-      node('heal', '빙하의 회복', 2, '지속 중 초당 생명력 <b class="v">10%</b> 회복', s => (s.heal += 0.1), { icon: 'regen' }),
+      node('heal', '빙하의 회복', 2, '지속 중 초당 생명력 <b class="v">5%</b> 회복', s => (s.heal += 0.05), { icon: 'regen' }),
       node('nova', '산산조각 나는 얼음', 1, '종료 시 주변 적 빙결', s => (s.nova = 1), { icon: 'frostnova' })],
   },
   shiftingpower: {
@@ -263,5 +264,36 @@ const COMMON_PASSIVES = ['arcaneint', 'haste', 'crit', 'stamina', 'speed', 'pick
 for (const id in G.SKILLS) G.SKILLS[id].cls ||= COMMON_PASSIVES.includes(id) ? 'any' : 'mage';
 
 G.ACTION_KEYS = ['Q', 'E', 'R', 'F', 'T', 'SPACE', '1', '2', '3', '4', '5', '6'];
-G.KEY_LABEL = { SPACE: 'Spc' };
+// 단축키 바꾸기: 액션바 칸(ACTION_KEYS의 이름)마다 실제 키(KeyboardEvent.code 또는 Mouse3~5)를 설정에 저장한다.
+// 주문 데이터의 key는 '어느 칸에 들어가는지'이고, 실제로 누르는 키는 여기서 정한다.
+G.Keys = {
+  DEFAULT: { Q: 'KeyQ', E: 'KeyE', R: 'KeyR', F: 'KeyF', T: 'KeyT', SPACE: 'Space', 1: 'Digit1', 2: 'Digit2', 3: 'Digit3', 4: 'Digit4', 5: 'Digit5', 6: 'Digit6' },
+  // 이동 · 시스템 키와 마우스 왼쪽/오른쪽은 주문에 쓸 수 없다
+  RESERVED: new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Escape', 'KeyM', 'KeyN', 'Enter', 'NumpadEnter', 'Mouse1', 'Mouse2', 'MetaLeft', 'MetaRight', 'ContextMenu']),
+  NAMES: { Space: 'Spc', Mouse3: '휠', Mouse4: 'M4', Mouse5: 'M5', ShiftLeft: 'Shift', ShiftRight: 'RShift', ControlLeft: 'Ctrl', ControlRight: 'RCtrl', AltLeft: 'Alt', AltRight: 'RAlt',
+    CapsLock: 'Caps', Backquote: '`', Minus: '-', Equal: '=', BracketLeft: '[', BracketRight: ']', Backslash: '\\', Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/', Backspace: 'BkSp', Delete: 'Del', Insert: 'Ins', Home: 'Home', End: 'End', PageUp: 'PgUp', PageDown: 'PgDn' },
+  // 마우스 버튼 → 와우식 이름 (가운데 = Mouse3, 뒤로 = Mouse4, 앞으로 = Mouse5). 왼쪽/오른쪽은 null
+  mouseCode(button) { return { 1: 'Mouse3', 3: 'Mouse4', 4: 'Mouse5' }[button] || null; },
+  map() { return { ...this.DEFAULT, ...(G.Settings.get('binds') || {}) }; },
+  code(slot) { return this.map()[slot]; },
+  slotOf(code) { const m = this.map(); for (const s of G.ACTION_KEYS) if (m[s] === code) return s; return null; },
+  name(code) {
+    if (!code) return '—';
+    if (this.NAMES[code]) return this.NAMES[code];
+    let m = code.match(/^(?:Key|Digit)(.)$/); if (m) return m[1];
+    m = code.match(/^Numpad(.+)$/); if (m) return 'N' + ({ Add: '+', Subtract: '-', Multiply: '*', Divide: '/', Decimal: '.' }[m[1]] || m[1]);
+    return code;
+  },
+  label(slot) { return this.name(this.code(slot)); },
+  allowed(code) { return !!code && !this.RESERVED.has(code); },
+  // 다른 칸이 이미 쓰는 키면 두 칸의 키를 맞바꾼다
+  set(slot, code) {
+    const m = this.map(), other = this.slotOf(code);
+    if (other && other !== slot) m[other] = m[slot];
+    m[slot] = code;
+    const diff = {}; for (const s of G.ACTION_KEYS) if (m[s] !== this.DEFAULT[s]) diff[s] = m[s];
+    G.Settings.set('binds', diff);
+  },
+  reset() { G.Settings.set('binds', {}); },
+};
 G.LIMITS = { auto: 6, active: 6, passive: 8 };

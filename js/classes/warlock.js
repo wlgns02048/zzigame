@@ -3,8 +3,17 @@
 // 지속 피해(부패 · 고통 · 생명력 착취 · 불안정한 고통)를 퍼뜨리고, 영혼의 조각을 모아 악의적인 환희로 터뜨린다.
 // 주문 데이터 · 구현 · 직업 훅 · 그림을 이 파일에 모은다. (공통 도우미 D/N/P/node/dmgNode/cdNode는 data/skills.js)
 
+// 흡혈(지속 피해 · 어둠의 화살 · 생명력 흡수로 회복)은 초당 최대 생명력의 LEECH_CAP까지만 — 피해가 커져도 회복은 생명력에 묶인다
+const LEECH_CAP = 0.05;
+
 // ---------- 지속 피해 시스템 (직업 공용) ----------
 G.Dots = {
+  // 흡혈 회복: 흑마법사는 1초분까지 쌓이는 회복 한도(leechPool)에서 깎아 쓴다
+  leech(v) {
+    const p = G.player; if (!(v > 0)) return;
+    if (p.leechPool === undefined) { G.P.healSilent(v); return; }
+    const h = Math.min(v, p.leechPool); p.leechPool -= h; G.P.healSilent(h);
+  },
   // o: { dmg(틱당), dur, interval, src, stack, maxStack, ramp(틱마다 중첩 +1), onTick, color, icon(적 머리 위 표시), heal(피해의 n배 회복) }
   apply(e, id, o) {
     if (e.dead) return null;
@@ -27,8 +36,8 @@ G.Dots = {
         if (d.ramp && d.stack < d.maxStack) d.stack++;
         const mul = st.dotMul * (e.haunted > G.t ? 1.25 : 1) * (1 + (e.embrace || 0) * 0.04) * (p.cls === 'warlock' ? soulReap(e) : 1);
         const dealt = G.hit(e, d.dmg * d.stack * mul, d.src, { school: 'shadow', small: true });
-        if (st.dotLeech && dealt) G.P.healSilent(dealt * st.dotLeech);
-        if (d.heal && dealt) G.P.healSilent(dealt * d.heal / st.dmg);
+        if (st.dotLeech && dealt) G.Dots.leech(dealt * st.dotLeech);
+        if (d.heal && dealt) G.Dots.leech(dealt * d.heal / st.dmg);
         if (d.onTick) d.onTick(e, d);
         if (e.dead) return;
         if (Math.random() < 0.25) G.fx.part({ x: e.x + U.rand(-10, 10), y: e.y - U.rand(0, 20), vy: -40, life: 0.5, size: U.rand(5, 9), rgb: d.color || '150,60,220' });
@@ -136,13 +145,14 @@ Object.assign(G.SKILLS, {
   },
   siphonlife: {
     cls: 'warlock', name: '생명력 착취', icon: 'siphonlife', kind: 'auto', school: 'shadow', color: '#50d070',
-    base: { dmg: 18, cd: 2, targets: 3, dur: 15, interval: 1.5, heal: 0.25 },
-    tip: s => `생명력 착취에 걸리지 않은 적 ${N(s.targets, 0)}명에게 생명력 착취를 겁니다. ${N(s.dur, 0)}초 동안 ${N(s.interval, 1)}초마다 ${D(s.dmg)}의 암흑 피해를 입히고 피해의 ${P(s.heal)}만큼 생명력을 회복합니다.`,
+    base: { dmg: 18, cd: 2, targets: 3, dur: 15, interval: 1.5, heal: 0.15 },
+    tip: s => `생명력 착취에 걸리지 않은 적 ${N(s.targets, 0)}명에게 생명력 착취를 겁니다. ${N(s.dur, 0)}초 동안 ${N(s.interval, 1)}초마다 ${D(s.dmg)}의 암흑 피해를 입히고 피해의 ${P(s.heal)}만큼 생명력을 회복합니다.` +
+      `<br>흡혈로 회복하는 생명력은 모두 합쳐 초당 최대 생명력의 <b class="v">${Math.round(LEECH_CAP * 100)}%</b>까지입니다.`,
     castInfo: s => `재사용 ${s.cd.toFixed(1)}초`,
     nodes: [
       node('targets', '번지는 착취', 3, '대상 <b class="v">+2</b>', s => (s.targets += 2), { icon: 'curseofweakness' }),
       dmgNode(0.3, 5, '향상된 생명력 착취'),
-      node('heal', '흡혈', 2, '회복 비율 <b class="v">+15%</b>', s => (s.heal += 0.15), { icon: 'soulleech' }),
+      node('heal', '흡혈', 2, '회복 비율 <b class="v">+10%</b>', s => (s.heal += 0.1), { icon: 'soulleech' }),
       node('dur', '오래가는 착취', 2, '지속시간 <b class="v">+5초</b>', s => (s.dur += 5), { icon: 'doom' }),
     ],
   },
@@ -263,7 +273,7 @@ Object.assign(G.SKILLS, {
     desc: v => `부패 피해 시 ${v}% 확률로 발동: 다음 어둠의 화살이 즉시 시전되며 피해 +50%`, apply: (st, v) => (st.nightfall += v / 100),
   },
   demonarmor: { cls: 'warlock', name: '악마의 갑옷', icon: 'demonarmor', kind: 'passive', max: 5, val: 6, unit: '%', desc: v => `받는 피해 -${v}%`, apply: (st, v) => (st.armor += v / 100) },
-  siphonlifeP: { cls: 'warlock', name: '영혼 흡수', icon: 'soulleech', kind: 'passive', max: 3, val: 2, unit: '%', desc: v => `지속 피해의 ${v}%만큼 생명력 회복`, apply: (st, v) => (st.dotLeech += v / 100) },
+  siphonlifeP: { cls: 'warlock', name: '영혼 흡수', icon: 'soulleech', kind: 'passive', max: 3, val: 2, unit: '%', desc: v => `지속 피해의 ${v}%만큼 생명력 회복 (흡혈 회복은 초당 최대 생명력의 ${Math.round(LEECH_CAP * 100)}%까지)`, apply: (st, v) => (st.dotLeech += v / 100) },
   shadowembraceP: { cls: 'warlock', name: '악의', icon: 'shadowembrace', kind: 'passive', max: 5, val: 8, unit: '%', desc: v => `지속 피해 +${v}%`, apply: (st, v) => (st.dotMul += v / 100) },
   cursehaste: { cls: 'warlock', name: '끝없는 저주', icon: 'doom', kind: 'passive', max: 5, val: 6, unit: '%', desc: v => `지속 피해 주기 +${v}% (가속과 합산)`, apply: (st, v) => (st.dotHaste += v / 100) },
   soulharvest: { cls: 'warlock', name: '영혼 수확', icon: 'soulshard', kind: 'passive', max: 2, val: 1, unit: '', fixed: true, rarity: 3, desc: () => '영혼의 조각 최대 +1, 적 처치 시 2% 확률로 영혼의 조각', apply: st => { st.shardMax += 1; st.shardOnKill = 0.02; } },
@@ -353,7 +363,7 @@ Object.assign(G.SKILL_IMPL, {
             if (!cast.shard && dots >= 2) { cast.shard = true; if (Math.random() < SB_SHARD) addShard(1); }
             if (ds && e.hp < e.maxHp * 0.2) m *= 2;
             const dealt = G.hit(e, base * m, src, { school: 'shadow' });
-            G.P.healSilent(dealt * 0.03); // 영혼 흡수
+            G.Dots.leech(dealt * 0.03); // 영혼 흡수
             G.chill(e, s.slow, 2);
             e.embrace = Math.min(5, (e.embrace || 0) + s.embrace * 0.34);
             if (s.extend && e.dots) for (const id in e.dots) { const d = e.dots[id]; d.dur = Math.min(d.dur + s.extend, d.t + 20); }
@@ -419,7 +429,7 @@ Object.assign(G.SKILL_IMPL, {
             dealt += G.hit(e, s.dmg, 'phantomsingularity', { school: 'shadow', small: true });
             if (s.pull && !e.boss && !e.dead) { const dx = z.x - e.x, dy = z.y - e.y, d = Math.hypot(dx, dy) || 1, k = Math.min(d, 16); e.x += dx / d * k; e.y += dy / d * k; }
           }
-          if (dealt) G.P.healSilent(dealt * 0.1 / p.stats.dmg);
+          if (dealt) G.Dots.leech(dealt * 0.1 / p.stats.dmg);
         },
       });
       G.Audio.play('shadow', 0.5);
@@ -590,7 +600,7 @@ function updateDemons(p, dt) {
     for (const d of p.drains) {
       if (d.e.dead || U.d2(p.x, p.y, d.e.x, d.e.y) > 420 * 420) { d.done = true; continue; }
       d.tickT -= dt * hs;
-      if (d.tickT <= 0) { d.tickT = 0.5; const dealt = G.hit(d.e, s.dmg, 'drainlife', { school: 'shadow', noText: true }); G.P.healSilent(dealt * s.heal / p.stats.dmg); }
+      if (d.tickT <= 0) { d.tickT = 0.5; const dealt = G.hit(d.e, s.dmg, 'drainlife', { school: 'shadow', noText: true }); G.Dots.leech(dealt * s.heal / p.stats.dmg); }
     }
     p.drains = p.drains.filter(d => !d.done);
     if (p.drainDur <= 0 || !p.drains.length || !s) p.drains = null;
@@ -671,10 +681,10 @@ G.CLASSES.warlock = {
   id: 'warlock', name: '고통 흑마법사', className: '흑마법사', spec: '고통', color: '#8788ee', icon: 'classwarlock',
   starter: 'shadowbolt', bar: 'shards', masteryText: '특화: 지속 피해 +2%/점',
 
-  init(p) { Object.assign(p, { siphons: [], shards: 0, shardMax: 5, demons: [], drains: null, nightfall: 0, nfT: 0, dsT: 0, drT: 0, dr: 0, circle: null, glare: null }); },
+  init(p) { Object.assign(p, { siphons: [], shards: 0, shardMax: 5, demons: [], drains: null, nightfall: 0, nfT: 0, dsT: 0, drT: 0, dr: 0, circle: null, glare: null, leechPool: 0 }); },
   recalc(st, p) {
     st.armor += 0.03; // 악마의 피부: 흑마법사 기본 피해 감소
-    st.dotLeech += 0.02; // 영혼 흡수: 지속 피해의 2% 회복
+    st.dotLeech += 0.01; // 영혼 흡수: 지속 피해의 1% 회복
     st.dotMul += st.mastery * 0.02;
     if (p.dsT > 0 && p.skills.darksoul) { st.haste += p.skills.darksoul.s.haste; st.dotMul += p.skills.darksoul.s.dot; }
     if (p.legend.darkharvest) { st.critMul += 0.25; st.shardOnKill = (st.shardOnKill || 0) + 0.03; }
@@ -711,6 +721,7 @@ G.CLASSES.warlock = {
     p.siphons = p.siphons.filter(sp => sp.t < sp.life);
     if (p.nfT > 0 && (p.nfT -= dt) <= 0) p.nightfall = 0;
     if (p.drT > 0) p.drT -= dt;
+    p.leechPool = Math.min(p.maxHp * LEECH_CAP, p.leechPool + p.maxHp * LEECH_CAP * dt);
     if (p.dsT > 0 && (p.dsT -= dt) <= 0) G.P.recalc();
   },
   skillsUpdate(p, dt) { updateDemons(p, dt); },

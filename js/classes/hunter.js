@@ -7,7 +7,7 @@
 
 const H = () => G.player;
 const H_ATTACKS = ['volley', 'wailingarrow', 'bindingshot', 'burstingshot', 'freezingtrap'];
-const H_DEFENSIVE = ['disengage', 'turtle', 'exhilaration', 'feigndeath', 'burstingshot'];
+const H_DEFENSIVE = ['disengage', 'turtle', 'exhilaration', 'survivalfittest', 'feigndeath', 'burstingshot'];
 const H_RANGE = 720; // 사냥꾼 사거리 (마법사 640보다 길다)
 const H_MOVE_AIM = 0.4; // 움직이는 동안 조준 사격을 겨누는 속도
 
@@ -152,6 +152,14 @@ Object.assign(G.SKILLS, {
     tip: s => `생명력을 ${P(s.heal)} 회복합니다.`,
     castInfo: s => `즉시 · 재사용 ${s.cd.toFixed(0)}초`,
     nodes: [node('heal', '생명의 활력', 2, '회복 <b class="v">+10%</b>', s => (s.heal += 0.1), { icon: 'regen' }), cdNode(0.15, 2)],
+  },
+  survivalfittest: {
+    cls: 'hunter', name: '적자생존', icon: 'survivalfittest', kind: 'active', key: '5', school: 'nature', color: '#70d070',
+    base: { cd: 45, dur: 8, dr: 0.25, heal: 0.06 },
+    tip: s => `${N(s.dur, 0)}초 동안 받는 피해가 ${P(s.dr)} 감소하고, 매초 최대 생명력의 ${P(s.heal)}를 회복합니다 (총 ${P(s.heal * s.dur)}). 공격과 이동은 그대로 할 수 있습니다.`,
+    castInfo: s => `즉시 · 재사용 ${s.cd.toFixed(0)}초`,
+    nodes: [node('heal', '생존자의 활력', 2, '초당 회복 <b class="v">+2%</b>', s => (s.heal += 0.02), { icon: 'regen' }),
+      node('dr', '질긴 생명력', 1, '피해 감소 <b class="v">+10%</b>', s => (s.dr += 0.1), { icon: 'survivalinstincts' }), cdNode(0.15, 2)],
   },
   feigndeath: {
     cls: 'hunter', name: '죽은 척하기', icon: 'feigndeath', kind: 'active', key: '3', school: 'physical', color: '#c0c0c0',
@@ -476,6 +484,9 @@ Object.assign(G.SKILL_IMPL, {
   exhilaration: {
     usable() { const p = H(); return p.hp < p.maxHp; },
     cast(sk) { const p = H(); G.P.heal(p.maxHp * sk.s.heal); G.fx.burst(p.x, p.y, 24, { rgb: '120,255,140', sp: 140, size: 10 }); G.Audio.play('buff', 0.6); },
+  },
+  survivalfittest: {
+    cast(sk) { const p = H(); p.sotfT = p.drT = sk.s.dur; p.dr = sk.s.dr; G.fx.ring(p.x, p.y, 10, 60, 0.5, '110,230,120', 5); G.fx.burst(p.x, p.y, 18, { rgb: '120,240,130', sp: 120, size: 9 }); G.Audio.play('buff', 0.7); },
   },
   feigndeath: {
     cast(sk) {
@@ -814,7 +825,7 @@ G.CLASSES.hunter = {
 
   init(p) {
     Object.assign(p, {
-      focus: 50, focusMax: 100, precise: 0, preciseT: 0, trickT: 0, lnl: 0, tsT: 0, turtleT: 0, leap: null, phT: 0, sfN: 0, sfT: 0,
+      focus: 50, focusMax: 100, precise: 0, preciseT: 0, trickT: 0, lnl: 0, tsT: 0, turtleT: 0, sotfT: 0, drT: 0, dr: 0, leap: null, phT: 0, sfN: 0, sfT: 0,
       bs: 0, mvt: 0, dtap: 0, rapid: null, barrage: null, eagle: null, spotted: [], sentList: [], lunarT: 6, aiming: false, aimTgt: null,
       ammo: hAmmo(),
     });
@@ -859,6 +870,7 @@ G.CLASSES.hunter = {
     const hp = p.hp / p.maxHp, near = G.nearestEnemy(p.x, p.y, 160), boss = !!(G.Waves.boss && !G.Waves.boss.dead);
     if (id === 'turtle') return hp < 0.25 && p.turtleT <= 0 ? true : false;
     if (id === 'exhilaration') return hp < 0.5 ? true : false;
+    if (id === 'survivalfittest') return hp < 0.6 && p.sotfT <= 0 ? true : false;
     if (id === 'feigndeath') return hp < 0.4 && !!near ? true : false;
     if (id === 'disengage') return !!G.nearestEnemy(p.x, p.y, 90);
     if (id === 'trueshot') return G.enemies.length >= 25 || boss ? true : false;
@@ -873,6 +885,11 @@ G.CLASSES.hunter = {
     if (p.sfT > 0) p.sfT -= dt;
     if (p.tsT > 0 && (p.tsT -= dt) <= 0) G.P.recalc();
     if (p.phT > 0 && (p.phT -= dt) <= 0) G.P.recalc();
+    if (p.drT > 0) p.drT -= dt;
+    if (p.sotfT > 0) {
+      p.sotfT -= dt;
+      const sf = p.skills.survivalfittest; if (sf) G.P.healSilent(p.maxHp * sf.s.heal * dt);
+    }
     if (p.turtleT > 0) {
       p.turtleT -= dt;
       const tt = p.skills.turtle; if (tt && tt.s.heal) G.P.healSilent(p.maxHp * tt.s.heal * dt);
@@ -901,7 +918,7 @@ G.CLASSES.hunter = {
   slotState(id, p) {
     return {
       unusable: p.turtleT > 0 && H_ATTACKS.includes(id),
-      active: (id === 'trueshot' && p.tsT > 0) || (id === 'turtle' && p.turtleT > 0),
+      active: (id === 'trueshot' && p.tsT > 0) || (id === 'turtle' && p.turtleT > 0) || (id === 'survivalfittest' && p.sotfT > 0),
     };
   },
   autoGlow(id, p) { return (id === 'aimedshot' && p.lnl > 0) || ((id === 'arcaneshot' || id === 'multishot') && p.precise > 0) || (id === 'rapidfire' && p.trickT > G.t); },
@@ -916,6 +933,7 @@ G.CLASSES.hunter = {
     if (p.mvt > 0) b.push(['movingtarget', -1, p.mvt > 1 ? p.mvt : '', '이동 표적', '다음 조준 사격 피해 증가']);
     if (p.dtap > 0) b.push(['doubletap', -1, p.dtap, '이중 사격', '조준 사격이 한 번 더 나감']);
     if (p.turtleT > 0) b.push(['turtle', p.turtleT, '', '거북의 상', '모든 피해 면역 · 공격 불가']);
+    if (p.sotfT > 0) b.push(['survivalfittest', p.sotfT, '', '적자생존', `받는 피해 ${Math.round(p.dr * 100)}% 감소 · 생명력 회복`]);
     if (p.phT > 0) b.push(['disengage', p.phT, '', '가속', '이동 속도 증가']);
     if (p.absorb > 0) b.push(['survivalinstincts', -1, Math.round(p.absorb), '생존 본능', '피해 흡수']);
     return b;
@@ -930,6 +948,7 @@ G.CLASSES.hunter = {
     c.save(); c.globalAlpha = alpha; c.translate(x, y + 14 + bob); if (face < 0) c.scale(-1, 1); c.drawImage(spr, -32, -74); c.restore();
   },
   drawUnder(c, p) {
+    if (p.sotfT > 0) { c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.3 + Math.sin(G.t * 5) * 0.08; c.drawImage(G.Spr.glow('110,230,120', 128), p.x - 44, p.y - 60, 88, 96); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; }
     if (p.tsT > 0) { c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.4 + Math.sin(G.t * 8) * 0.1; c.drawImage(G.Spr.glow('255,200,80', 128), p.x - 46, p.y - 64, 92, 100); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; }
     // 조준 사격을 겨누는 동안: 대상까지 이어지는 붉은 조준선 (차오를수록 진해짐)
     const am = p.skills.aimedshot;
@@ -992,6 +1011,7 @@ G.CLASSES.hunter = {
   botUse(id, p) {
     if (id === 'turtle' && (p.hp > p.maxHp * 0.25 || p.turtleT > 0)) return false;
     if (id === 'exhilaration' && p.hp > p.maxHp * 0.5) return false;
+    if (id === 'survivalfittest' && (p.hp > p.maxHp * 0.6 || p.sotfT > 0)) return false;
     if (id === 'feigndeath' && p.hp > p.maxHp * 0.4) return false;
     if (id === 'disengage') return !!G.nearestEnemy(p.x, p.y, 90);
     return true;
@@ -1003,7 +1023,7 @@ G.CLASSES.hunter = {
     if (x.type === 'new' && G.SKILLS[x.id].kind === 'auto') return p.order.length < 6 ? 55 : 20;
     if (x.type === 'node' && x.nodeId === 'dmg') return 45;
     if (x.type === 'passive' && ['arcaneint', 'haste', 'crit', 'projectile', 'preciseshotsP', 'lockandload', 'huntersmark'].includes(x.id)) return 40 + x.rarity * 5;
-    if (x.type === 'new' && ['volley', 'trueshot', 'wailingarrow', 'freezingtrap', 'exhilaration'].includes(x.id)) return 35;
+    if (x.type === 'new' && ['volley', 'trueshot', 'wailingarrow', 'freezingtrap', 'exhilaration', 'survivalfittest'].includes(x.id)) return 35;
     if (x.type === 'node') return 30;
     if (x.type === 'passive') return 25 + x.rarity * 5;
     return 10;
