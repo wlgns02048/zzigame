@@ -1,6 +1,6 @@
 'use strict';
 // ================= 얼음왕관의 시련 서버 =================
-// 정적 파일 + 계정 · 게임 경제(server/game.js) · 건의사항 API. 외부 의존성 없이 Node 내장 모듈(node:sqlite)만 사용.
+// 정적 파일 + 계정 · 게임 경제(server/game.js) · 건의사항 · 접속자/채팅(server/chat.js) API. 외부 의존성 없이 Node 내장 모듈(node:sqlite)만 사용.
 // 재화와 아이템은 서버만 바꾼다 — 브라우저는 결과를 받아 보여줄 뿐이다.
 const http = require('node:http');
 const fs = require('node:fs');
@@ -92,6 +92,7 @@ const routes = [];
 const route = (method, pattern, fn, opts = {}) => routes.push({ method, re: new RegExp('^' + pattern.replace(/:\w+/g, '(\\d+)') + '$'), fn, opts });
 
 const game = require('./game')({ db, route, fail, requireUser, limit, readJson, STATIC_DIR, log: (...a) => console.warn(...a) });
+require('./chat')({ db, route, fail, limit, readJson, clientIp, isAdmin: name => ADMINS.has(name.toLowerCase()) });
 
 route('POST', '/api/auth/register', async req => {
   limit('reg:' + clientIp(req), 30, 3600000);

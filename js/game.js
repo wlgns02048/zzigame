@@ -13,6 +13,7 @@ G.init = async () => {
   // 밸런스 시뮬레이터 전용 가상 장비 · 특성 (?gear=아이템레벨&talents=1)
   if (G.params.get('gear') || G.params.get('talents')) G.Meta.useSimLoadout(+G.params.get('gear') || 0, !!G.params.get('talents'));
   G.UI.init();
+  G.Chat.init();
   G.R.init();
   G.Input();
   G.cam.x = 0; G.cam.y = 0;

@@ -1,5 +1,5 @@
 'use strict';
-// ================= 서버 통신 (계정 / 세이브 / 건의사항) =================
+// ================= 서버 통신 (계정 / 세이브 / 건의사항) — 채팅은 js/chat.js =================
 G.Net = {
   token: null,
   user: null,         // { username, admin } — 로그인 중일 때만
@@ -39,11 +39,13 @@ G.Net = {
     this.token = token; this.user = user;
     try { localStorage.setItem('frostmage_token', token); } catch (e) { /* 무시 */ }
     G.Meta.useProfile(profile);
+    if (G.Chat.el) G.Chat.poll(); // 접속자 목록의 이름 · 채팅 입력창을 바로 바꾼다
   },
   dropSession() {
     this.token = null; this.user = null;
     try { localStorage.removeItem('frostmage_token'); } catch (e) { /* 무시 */ }
     G.Meta.reset();
+    if (G.Chat.el) G.Chat.poll();
   },
 
   async login(username, password) {
