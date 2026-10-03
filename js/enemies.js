@@ -116,7 +116,7 @@ G.EProj = {
     const p = G.player;
     for (const b of G.eprojs) {
       b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
-      if (Math.random() < 0.5) G.fx.part({ x: b.x, y: b.y, life: 0.3, size: 10, rgb: EPROJ_RGB[b.kind] || '140,40,220' });
+      if (G.fx.chance(0.5)) G.fx.part({ x: b.x, y: b.y, life: 0.3, size: 10, rgb: EPROJ_RGB[b.kind] || '140,40,220' });
       if (U.d2(b.x, b.y, p.x, p.y - 10) < (b.r + p.r) ** 2) { G.hurtPlayer(b.dmg); b.life = 0; G.fx.burst(b.x, b.y, 8, { rgb: '160,60,240', sp: 100, size: 9 }); }
       for (const im of G.images) if (U.d2(b.x, b.y, im.x, im.y) < 18 * 18) { im.hp -= b.dmg; b.life = 0; }
     }
@@ -379,7 +379,7 @@ G.Boss = {
       if (dist > e.r) { e.x += nx * sp * dt; e.y += ny * sp * dt; }
       ai.aura -= dt;
       if (ai.aura <= 0) { ai.aura = 0.5; if (playerIn(e.x, e.y, auraR)) G.hurtPlayer(hpPct < 0.4 ? 9 : 6); }
-      if (Math.random() < 0.7) { const a = Math.random() * 6.28, r = Math.random() * auraR; G.fx.part({ x: e.x + Math.cos(a) * r, y: e.y + Math.sin(a) * r, vx: 60, vy: 40, life: 0.8, size: 4, size1: 2, rgb: '230,245,255', type: 'snow', add: false }); }
+      if (G.fx.chance(0.7)) { const a = Math.random() * 6.28, r = Math.random() * auraR; G.fx.part({ x: e.x + Math.cos(a) * r, y: e.y + Math.sin(a) * r, vx: 60, vy: 40, life: 0.8, size: 4, size1: 2, rgb: '230,245,255', type: 'snow', add: false }); }
       ai.defile -= dt; ai.reaper -= dt; ai.summon -= dt; ai.spirits -= dt;
       if (ai.defile <= 0 && !casting) {
         ai.defile = 12;
@@ -435,7 +435,7 @@ G.Boss = {
       const st = Math.min(d, 620 * dt); e.x += dx / (d || 1) * st; e.y += dy / (d || 1) * st;
       if (!c.hit && playerIn(e.x, e.y, e.r + p.r + 8)) { c.hit = true; G.hurtPlayer(c.dmg); G.fx.shake(8); }
       if (d < 6 || c.t > 1.2) ai.charge = null;
-      if (Math.random() < 0.6) G.fx.part({ x: e.x + U.rand(-10, 10), y: e.y + U.rand(-10, 10), life: 0.4, size: 14, rgb: def.glow || '255,150,60' });
+      if (G.fx.chance(0.6)) G.fx.part({ x: e.x + U.rand(-10, 10), y: e.y + U.rand(-10, 10), life: 0.4, size: 14, rgb: def.glow || '255,150,60' });
       return;
     }
     if (dist > 520) spd *= 1 + (dist - 520) / 200;

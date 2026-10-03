@@ -37,6 +37,7 @@ G.Proj = {
     G.projs = G.projs.filter(p => !p.dead);
   },
   trail(pr) {
+    if (!G.fx.chance(1)) return; // 60fps 기준 프레임마다 한 번
     const k = pr.kind, back = Math.atan2(pr.vy, pr.vx) + Math.PI;
     const bx = pr.x + Math.cos(back) * 8, by = pr.y + Math.sin(back) * 8;
     if (k === 'frostbolt') {
@@ -243,10 +244,11 @@ G.Skills = {
         }
         if (pr.slowed) { const sp = Math.hypot(pr.vx, pr.vy), ns = Math.max(45, sp - 400 * dt); pr.vx *= ns / sp; pr.vy *= ns / sp; }
         for (let i = 0; i < 2; i++) {
+          if (!G.fx.chance(1)) continue;
           const aa = pr.spin + i * Math.PI + U.rand(-0.3, 0.3), rr = U.rand(R * 0.2, R * 0.9);
           G.fx.part({ x: pr.x + Math.cos(aa) * rr, y: pr.y + Math.sin(aa) * rr * 0.7, vx: -Math.sin(aa) * 120, vy: Math.cos(aa) * 80, life: 0.45, size: U.rand(3, 6), size1: 1, rgb: '220,245,255', type: 'shard', add: false, drag: 1 });
         }
-        if (Math.random() < 0.5) G.fx.part({ x: pr.x + U.rand(-R, R) * 0.6, y: pr.y + U.rand(-R, R) * 0.4, life: 0.6, size: U.rand(20, 34), rgb: '60,140,255' });
+        if (G.fx.chance(0.5)) G.fx.part({ x: pr.x + U.rand(-R, R) * 0.6, y: pr.y + U.rand(-R, R) * 0.4, life: 0.6, size: U.rand(20, 34), rgb: '60,140,255' });
       },
     });
     G.Audio.play('orb');
@@ -516,6 +518,7 @@ const IMPL = G.SKILL_IMPL = {
         G.Audio.play('tick', 0.4);
       }
       for (let i = 0; i < 4; i++) {
+        if (!G.fx.chance(1)) continue;
         const d = Math.random() * c.len;
         G.fx.part({ x: p.x + Math.cos(c.a) * d, y: p.y - 16 + Math.sin(c.a) * d, vx: U.rand(-40, 40), vy: U.rand(-40, 40), life: 0.35, size: U.rand(6, 14), rgb: Math.random() < 0.5 ? '200,240,255' : '100,180,255' });
       }
@@ -575,7 +578,7 @@ const IMPL = G.SKILL_IMPL = {
         G.fx.ring(p.x, p.y, R, 10, 0.6, '90,230,160', 5, 0.15);
         G.Audio.play('tick', 0.8);
       }
-      if (Math.random() < 0.8) { const a = Math.random() * 6.28; G.fx.part({ x: p.x + Math.cos(a) * R, y: p.y + Math.sin(a) * R, vx: -Math.cos(a) * R * 1.6, vy: -Math.sin(a) * R * 1.6, life: 0.55, size: 9, rgb: '90,230,160' }); }
+      if (G.fx.chance(0.8)) { const a = Math.random() * 6.28; G.fx.part({ x: p.x + Math.cos(a) * R, y: p.y + Math.sin(a) * R, vx: -Math.cos(a) * R * 1.6, vy: -Math.sin(a) * R * 1.6, life: 0.55, size: 9, rgb: '90,230,160' }); }
     },
   },
 };

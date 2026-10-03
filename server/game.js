@@ -147,7 +147,10 @@ module.exports = ({ db, route, fail, limit, readJson, STATIC_DIR, saveLog, log }
     const stacks = { gem: {}, enchant: {} };
     for (const r of db.prepare('SELECT kind, ref, count FROM stacks WHERE user_id = ?').all(uid)) (stacks[r.kind] ||= {})[r.ref] = r.count;
     const progress = {};
-    for (const r of db.prepare('SELECT * FROM progress WHERE user_id = ?').all(uid)) (progress[r.stage] ||= {})[r.difficulty] = { clears: r.clears, best: r.best_clear, endless: r.best_endless };
+    for (const r of db.prepare('SELECT * FROM progress WHERE user_id = ?').all(uid)) (progress[r.stage] ||= {})[r.difficulty] = { clears: r.clears, best: r.best_clear, endless: r.best_endless, score: null };
+    for (const r of db.prepare(`SELECT stage, difficulty, max(score) AS s FROM runs WHERE user_id = ? AND score IS NOT NULL AND status != 'rejected' GROUP BY stage, difficulty`).all(uid)) {
+      const p = progress[r.stage] && progress[r.stage][r.difficulty]; if (p) p.score = r.s;
+    }
     const gacha = {};
     for (const r of db.prepare('SELECT kind, pity, pulls FROM gacha_state WHERE user_id = ?').all(uid)) gacha[r.kind] = { pity: r.pity, pulls: r.pulls };
     const pr = db.prepare('SELECT best_time, wins FROM profiles WHERE user_id = ?').get(uid) || { best_time: 0, wins: 0 };
@@ -394,6 +397,27 @@ module.exports = ({ db, route, fail, limit, readJson, STATIC_DIR, saveLog, log }
     return ITEMS.makeItem(rng, named ? { slot: named.slot, quality, ilvl, named: { ...named, quality } } : { quality, ilvl });
   };
 
+  // 클리어 점수 재료 검증 → 서버가 다시 계산한 점수 (이상하면 null: 보상은 그대로, 랭킹에만 안 올라감)
+  // s = { kills, elites, bosses: [보스 순서별 걸린 초 | null] } (js/waves.js scoreIn)
+  const clearScore = (run, s, { clearT, kills, bossKills }) => {
+    const st = STAGES[run.stage], D = st.duration, L = RUN_LIMITS;
+    const int = v => Number.isInteger(v) && v >= 0;
+    if (!s || typeof s !== 'object' || !int(s.kills) || !int(s.elites) || !Array.isArray(s.bosses)) return [null, 'shape'];
+    if (s.kills > kills || s.kills > D * L.killsPerSec + L.killsFlat) return [null, 'kills'];
+    if (s.elites > s.kills || s.elites > 60) return [null, 'elites'];
+    if (s.bosses.length !== st.bosses.length) return [null, 'bossCount'];
+    let n = 0;
+    for (let i = 0; i < st.bosses.length; i++) {
+      const sec = s.bosses[i];
+      if (sec == null) { if (i === st.bosses.length - 1) return [null, 'final']; continue; }
+      if (!Number.isFinite(sec) || sec < 0.5 || st.bosses[i].at * D + sec > clearT + 1) return [null, 'bossTime'];
+      n++;
+    }
+    if (n > bossKills) return [null, 'bossKills'];
+    const sc = SD.scoreOf({ kills: s.kills, elites: s.elites, bosses: s.bosses.map(v => (v == null ? null : +v)) });
+    return [sc.total, null, { in: { kills: s.kills, elites: s.elites, bosses: s.bosses }, ...sc }];
+  };
+
   route('POST', '/api/runs/report', async (req, u) => {
     const b = await readJson(req, 196608); // 판 기록(log)이 실려 와서 다른 요청보다 크다
     const num = (v, name) => (Number.isFinite(v) && v >= 0 ? v : fail(400, `잘못된 값: ${name}`));
@@ -465,9 +489,20 @@ module.exports = ({ db, route, fail, limit, readJson, STATIC_DIR, saveLog, log }
       db.prepare(`UPDATE runs SET t = ?, kills = ?, gold = ?, level = ?, victory = ?, time_bonus = ?, paid = ?, paid_json = ?, boss_kills = ?,
         clear_t = ?, endless_lv = ?, status = ?, updated_at = ? WHERE id = ?`)
         .run(t, kills, gold, level, clearT != null ? 1 : 0, timeBonus, paid.gold || 0, JSON.stringify(paid), bossKills, clearT, Math.max(run.endless_lv, endlessLv), final ? 'done' : 'active', now, run.id);
+      // 클리어 점수: 처음 클리어를 보고할 때 한 번만 확정
+      let score = null;
+      if (firstWin) {
+        const [total, why, detail] = clearScore(run, b.score, { clearT, kills, bossKills });
+        if (why) log(`run score skipped user=${u.info.username} run=${run.id} reason=${why}`);
+        else {
+          const best = db.prepare(`SELECT max(score) AS s FROM runs WHERE user_id = ? AND stage = ? AND difficulty = ? AND status != 'rejected'`).get(u.id, run.stage, run.difficulty).s;
+          db.prepare('UPDATE runs SET score = ?, score_json = ? WHERE id = ?').run(total, JSON.stringify(detail), run.id);
+          score = { total, ...detail, best: best == null || total > best };
+        }
+      }
       // 판 기록은 분석용이라 저장에 실패해도 보상 정산은 그대로 진행한다
       if (b.log) try { saveLog(u.id, run.id, b.log); } catch (e) { log(`run log skipped run=${run.id}: ${e.message}`); }
-      return { gain, loot: given, endlessLv, ...ok(u.id) };
+      return { gain, loot: given, endlessLv, score, ...ok(u.id) };
     });
     if (out.rejected) fail(422, '런 기록을 확인할 수 없어 보상이 지급되지 않았습니다.');
     return out;
@@ -489,12 +524,12 @@ module.exports = ({ db, route, fail, limit, readJson, STATIC_DIR, saveLog, log }
     const where = `r.stage = ? AND r.difficulty = ? AND r.started_at >= ? AND r.status != 'rejected' ${f.cls ? 'AND r.cls = ?' : ''}`;
     const args = [stage, f.difficulty, f.since].concat(f.cls ? [f.cls] : []);
     const sql = f.kind === 'clear'
-      ? `SELECT us.username, r.cls, r.ilvl, min(r.clear_t) AS value FROM runs r JOIN users us ON us.id = r.user_id
-         WHERE ${where} AND r.clear_t IS NOT NULL GROUP BY r.user_id ORDER BY value ASC${limit ? ' LIMIT ' + limit : ''}`
+      ? `SELECT us.username, r.cls, r.ilvl, max(r.score) AS value, r.clear_t AS clearT FROM runs r JOIN users us ON us.id = r.user_id
+         WHERE ${where} AND r.score IS NOT NULL GROUP BY r.user_id ORDER BY value DESC, clearT ASC${limit ? ' LIMIT ' + limit : ''}`
       : `SELECT us.username, r.cls, r.ilvl, max(r.endless_lv) AS value FROM runs r JOIN users us ON us.id = r.user_id
          WHERE ${where} AND r.endless_lv > 0 GROUP BY r.user_id ORDER BY value DESC${limit ? ' LIMIT ' + limit : ''}`;
     const me = u && u.info.username.toLowerCase();
-    return db.prepare(sql).all(...args).map((r, i) => ({ rank: i + 1, username: r.username, cls: r.cls, ilvl: r.ilvl, value: r.value, me: !!me && r.username.toLowerCase() === me }));
+    return db.prepare(sql).all(...args).map((r, i) => ({ rank: i + 1, username: r.username, cls: r.cls, ilvl: r.ilvl, value: r.value, clearT: r.clearT, me: !!me && r.username.toLowerCase() === me }));
   };
   route('GET', '/api/rankings', async (req, u, url) => {
     const stage = url.searchParams.get('stage'), f = rankFilter(url);

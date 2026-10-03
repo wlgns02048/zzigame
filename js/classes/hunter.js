@@ -743,9 +743,9 @@ function hDrawArrow(c, pr, a) {
   c.restore();
 }
 function hArrowTrail(pr) {
-  if (pr.aimed) { if (Math.random() < 0.8) G.fx.part({ x: pr.x, y: pr.y, life: 0.25, size: 8, rgb: '255,235,170' }); }
-  else if (pr.tint && Math.random() < 0.45) G.fx.part({ x: pr.x, y: pr.y, life: 0.2, size: 6 * (pr.big || 1), rgb: pr.tint });
-  else if (pr.ammo === 'bullet' && Math.random() < 0.2) G.fx.part({ x: pr.x, y: pr.y, life: 0.3, size: 5, rgb: '120,120,120', type: 'smoke', add: false });
+  if (pr.aimed) { if (G.fx.chance(0.8)) G.fx.part({ x: pr.x, y: pr.y, life: 0.25, size: 8, rgb: '255,235,170' }); }
+  else if (pr.tint && G.fx.chance(0.45)) G.fx.part({ x: pr.x, y: pr.y, life: 0.2, size: 6 * (pr.big || 1), rgb: pr.tint });
+  else if (pr.ammo === 'bullet' && G.fx.chance(0.2)) G.fx.part({ x: pr.x, y: pr.y, life: 0.3, size: 5, rgb: '120,120,120', type: 'smoke', add: false });
 }
 // 연발 사격: 하늘에서 쏟아지는 화살 + 바닥 고리
 function hDrawVolley(c, z, life) {
@@ -899,7 +899,7 @@ G.CLASSES.hunter = {
     if (p.leap) {
       const l = p.leap; l.t += dt;
       p.x += l.vx * dt; p.y += l.vy * dt;
-      if (Math.random() < 0.6) G.fx.part({ x: p.x, y: p.y - 10, life: 0.3, size: 10, rgb: '200,230,180' });
+      if (G.fx.chance(0.6)) G.fx.part({ x: p.x, y: p.y - 10, life: 0.3, size: 10, rgb: '200,230,180' });
       if (l.t >= l.dur) { p.leap = null; p.phT = 3; G.P.recalc(); G.fx.burst(p.x, p.y + 10, 10, { rgb: '170,150,110', sp: 100, size: 9, type: 'smoke', add: false }); }
     }
   },

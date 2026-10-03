@@ -2,7 +2,7 @@
 // ================= 게임 루프 =================
 
 G.timeScale = Math.max(1, Math.min(20, +(G.params.get('ts') || 1)));
-G.stats = { kills: 0, gold: 0, banked: 0, lust: 0 };
+G.stats = { kills: 0, elites: 0, gold: 0, banked: 0, lust: 0 };
 // 피의 욕망 (드문 전리품): 실제 시간 dur초 동안 게임 전체가 speed배로 흐른다. stats.lust = 그 덕에 더 흐른 게임 시간 (서버 시계 검증용)
 G.LUST = { speed: 1.5, dur: 40 };
 G.lustT = 0;
@@ -29,6 +29,7 @@ G.init = async () => {
     requestAnimationFrame(frame);
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = Math.max(last, now);
     try {
+      G.fx.dt = 0; // 게임이 흐르지 않은 프레임(일시 정지 · 히트스톱)에는 그리기 중 입자를 뿌리지 않는다
       if (G.state === 'play' && !G.paused && !G.simulating) {
         // 히트스톱 동안은 게임을 진행하지 않고, 슬로모션 동안은 느리게 진행한다 (둘 다 실제 시간 기준)
         if (G.stopT > 0) G.stopT -= dt;
@@ -121,7 +122,7 @@ G.startRun = (cls, stage, diff) => {
   Object.assign(G, { t: 0, enemies: [], projs: [], eprojs: [], zones: [], tele: [], pickups: [], parts: [], texts: [], rings: [], pets: [], images: [], delayed: [], chests: [], corpses: [], decals: [],
     stopT: 0, stopCd: 0, stopLast: 0, slowT: 0, slowK: 1 });
   Object.assign(G.cam, { trauma: 0, kx: 0, ky: 0 });
-  G.stats = { kills: 0, gold: 0, banked: 0, lust: 0 }; G.lustT = 0;
+  G.stats = { kills: 0, elites: 0, gold: 0, banked: 0, lust: 0 }; G.lustT = 0;
   G.Aim.reset();
   G.state = 'play'; G.paused = false;
   G.moveTo = null; G.mouse.moveHeld = false;
@@ -161,7 +162,7 @@ G.resume = () => { G.UI.close(); G.paused = false; G.checkModals(); };
 
 G.update = dt => {
   const p = G.player;
-  G.t += dt;
+  G.t += dt; G.fx.dt = dt;
   G.mouse.x = G.cam.x + (G.mouse.sx - G.W / 2);
   G.mouse.y = G.cam.y + (G.mouse.sy - G.H / 2);
   if (G.Bot.on) G.Bot.update(dt);

@@ -1,7 +1,7 @@
 'use strict';
 // 전역 네임스페이스
 const G = window.G = {
-  VERSION: '2.18.0', // 화면 표시용. 릴리스 태그 v2.18.0과 같게 유지 (규칙: docs/NAS_DEPLOY.md '버전 관리')
+  VERSION: '2.19.0', // 화면 표시용. 릴리스 태그 v2.19.0과 같게 유지 (규칙: docs/NAS_DEPLOY.md '버전 관리')
   state: 'menu',      // menu | play | over
   paused: false,
   t: 0,               // 런 경과 시간(초)
@@ -55,7 +55,7 @@ G.U = {
 // 연출 · 소리 설정 (브라우저마다 저장, 로비 · 일시 정지의 '설정')
 G.Settings = {
   KEY: 'zzigame_settings',
-  d: { sfx: 1, music: 1, shake: 1, flash: true, hitstop: true, light: true },
+  d: { sfx: 1, music: 1, shake: 1, flash: true, hitstop: true, light: true, fx: 1 },
   load() { try { Object.assign(this.d, JSON.parse(localStorage.getItem(this.KEY) || '{}')); } catch { /* 저장소 사용 불가 */ } },
   get(k) { return this.d[k]; },
   set(k, v) { this.d[k] = v; try { localStorage.setItem(this.KEY, JSON.stringify(this.d)); } catch { /* 저장소 사용 불가 */ } },
@@ -69,7 +69,8 @@ G.later = (delay, fn) => G.delayed.push({ t: delay, fn });
 G.Grid = {
   cell: 80, map: new Map(),
   key(cx, cy) { return (cx + 5000) * 10007 + (cy + 5000); },
-  clear() { for (const a of this.map.values()) a.length = 0; },
+  // 지난 프레임에도 비어 있던 칸은 지운다 (돌아다닌 칸이 계속 쌓여 매 프레임 훑는 양이 늘지 않게)
+  clear() { for (const [k, a] of this.map) { if (a.length) a.length = 0; else this.map.delete(k); } },
   add(e) {
     const k = this.key(Math.floor(e.x / this.cell), Math.floor(e.y / this.cell));
     let a = this.map.get(k); if (!a) { a = []; this.map.set(k, a); } a.push(e);

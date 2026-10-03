@@ -112,7 +112,7 @@ G.Lobby = {
         <p class="sdDesc">${st.desc}</p>
         <div class="diffs">${Object.entries(df).map(([k, d]) => `<button class="btn small ${this.diff === k ? 'sel' : ''}" data-diff="${k}" ${this.stageOpen(this.stage, k) ? '' : 'disabled'}>${d.name}</button>`).join('')}</div>
         <div class="bossRow">${st.bosses.map(b => `<div class="boss" data-tip="<div class='tt-title'>${G.ENEMIES[b.id].name}</div><div class='tt-desc'>${G.ENEMIES[b.id].title || ''}</div>"><img src="${G.icon(G.ENEMIES[b.id].icon)}"><small>${G.ENEMIES[b.id].name}</small></div>`).join('')}</div>
-        <div class="sdRec">${p ? `클리어 ${p.clears}회 · 최고 기록 <b>${U.fmtTime(p.best)}</b>${p.endless ? ` · 엔드리스 최고 <b>${p.endless}단계</b>` : ''}` : '아직 클리어하지 못했습니다.'}</div>
+        <div class="sdRec">${p ? `클리어 ${p.clears}회${p.score != null ? ` · 최고 점수 <b>${p.score.toLocaleString()}점</b>` : ''}${p.endless ? ` · 엔드리스 최고 <b>${p.endless}단계</b>` : ''}` : '아직 클리어하지 못했습니다.'}</div>
         <div class="sdRew">보상 배율: 골드 <b>×${SD().goldMul(this.stage, this.diff)}</b> · 정의의 휘장 <b>×${df[this.diff].badge}</b>${this.diff === 'heroic' ? ' · 아이템 레벨 +' + df.heroic.ilvl + ' · 높은 품질 · 클리어 상자 +1' : ''}</div>
         <div class="sdLoot"><h4>주요 전리품</h4>${st.loot.map(l => `<span style="color:${qcol(3)}">${l.name}</span>`).join(' · ')}</div>
         <div class="sdAffix"><h4>이번 주 엔드리스 접두어</h4>${aff.map((a, i) => `<span data-tip="<div class='tt-title'>${E.affixes[a].name}</div><div class='tt-desc'>${E.affixes[a].desc}</div>"><img src="${G.icon(E.affixes[a].icon)}">${E.affixes[a].name}<small>${E.slots[i].at}단계~</small></span>`).join('')}</div>
@@ -437,17 +437,17 @@ G.Lobby = {
       `<a href="#" data-rk="${k}" data-v="${v}" class="${R[k] === v ? 'on' : ''}">${icon ? `<img src="${G.icon(icon)}">` : ''}${label}</a>`).join('')}</div>`;
     m.innerHTML = `<div class="rankWrap"><div class="rankFilters">
       ${seg('difficulty', [['normal', '일반'], ['heroic', '영웅']])}
-      ${seg('kind', [['clear', '최단 클리어'], ['endless', '엔드리스 최고 단계']])}
+      ${seg('kind', [['clear', '클리어 점수'], ['endless', '엔드리스 최고 단계']])}
       ${seg('scope', [['week', '이번 주'], ['all', '전체 기간']])}
       ${seg('cls', [['', '모든 직업']].concat(Object.values(G.CLASSES).map(c => [c.id, c.name, c.icon])))}</div>
       <div class="dim small">${R.kind === 'clear'
-        ? '순위 기준: 가장 빨리 클리어한 시간. 사람마다 최고 기록 하나만 올라가며, 더 빨리 깨야 순위가 오릅니다.'
+        ? `순위 기준: 클리어한 순간의 점수. 처치 ${SD().SCORE.kill}점(마지막 보스 등장 전까지) · 정예 +${SD().SCORE.elite} · 보스마다 ${SD().SCORE.boss.toLocaleString()} + 빨리 잡을수록 최대 ${SD().SCORE.speed.toLocaleString()}. 사람마다 최고 점수 하나만 올라갑니다.`
         : '순위 기준: 클리어 후 엔드리스로 도달한 가장 높은 단계. 사람마다 최고 기록 하나만 올라갑니다.'}</div>
       ${stage ? `<div class="rkHead"><a href="#" id="rkBack" class="btn small">← 모든 스테이지</a><img src="${G.icon(stage.icon)}"><b>${stage.name}</b></div>` : ''}
       <div id="rkBody" class="dim">불러오는 중…</div></div>`;
     m.querySelectorAll('[data-rk]').forEach(a => (a.onclick = e => { e.preventDefault(); R[a.dataset.rk] = a.dataset.v; this.render(); }));
     if (stage) $('rkBack').onclick = e => { e.preventDefault(); R.stage = ''; this.render(); };
-    const val = v => R.kind === 'clear' ? U.fmtTime(v) : v + '단계';
+    const val = v => R.kind === 'clear' ? v.toLocaleString() + '점' : v + '단계';
     const medal = n => `<span class="rkMedal r${n}">${n}</span>`;
     const who = x => `<span class="rkName">${esc(x.username)}</span><img class="rkCls" src="${G.icon(G.CLASSES[x.cls].icon)}" data-tip="${G.CLASSES[x.cls].name} · 아이템 레벨 ${x.ilvl}">`;
     try {
@@ -475,11 +475,12 @@ G.Lobby = {
       }
       const r = await this.api('GET', '/api/rankings?' + q);
       if (!body()) return;
-      const row = x => `<tr class="${x.me ? 'me' : ''}"><td>${x.rank <= 3 ? medal(x.rank) : x.rank}</td><td>${esc(x.username)}</td><td style="color:${G.CLASSES[x.cls].color}">${G.CLASSES[x.cls].name}</td><td>${x.ilvl}</td><td><b>${val(x.value)}</b></td></tr>`;
+      const clear = R.kind === 'clear';
+      const row = x => `<tr class="${x.me ? 'me' : ''}"><td>${x.rank <= 3 ? medal(x.rank) : x.rank}</td><td>${esc(x.username)}</td><td style="color:${G.CLASSES[x.cls].color}">${G.CLASSES[x.cls].name}</td><td>${x.ilvl}</td>${clear ? `<td class="dim">${x.clearT != null ? U.fmtTime(x.clearT) : '-'}</td>` : ''}<td><b>${val(x.value)}</b></td></tr>`;
       body().className = '';
       body().innerHTML = r.rows.length ? `<div class="dim small">${r.count}명 참여${r.count > 50 ? ' · 50위까지 표시' : ''}</div>
-        <table class="rankTable"><tr><th>순위</th><th>이름</th><th>직업</th><th>아이템 레벨</th><th>${R.kind === 'clear' ? '클리어 시간' : '단계'}</th></tr>
-        ${r.rows.map(row).join('')}${r.me ? `<tr class="gap"><td colspan="5">⋯</td></tr>${row(r.me)}` : ''}</table>`
+        <table class="rankTable"><tr><th>순위</th><th>이름</th><th>직업</th><th>아이템 레벨</th>${clear ? '<th>클리어 시간</th><th>점수</th>' : '<th>단계</th>'}</tr>
+        ${r.rows.map(row).join('')}${r.me ? `<tr class="gap"><td colspan="${clear ? 6 : 5}">⋯</td></tr>${row(r.me)}` : ''}</table>`
         : '<div class="dim">아직 기록이 없습니다.</div>';
     } catch (e) { const t = $('rkBody'); if (t) t.textContent = e.message; }
   },

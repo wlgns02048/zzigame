@@ -18,6 +18,11 @@ G.Spr = {
     });
     return (this.glowCache[k] = c);
   },
+  // 꽉 찬 원 (보통 합성 입자 · 연기). 입자마다 arc 경로를 채우는 것보다 그림 한 장을 찍는 게 훨씬 가볍다
+  dotCache: {},
+  dot(rgb) {
+    return this.dotCache[rgb] || (this.dotCache[rgb] = this.make(32, 32, x => { x.fillStyle = `rgb(${rgb})`; x.beginPath(); x.arc(16, 16, 15.5, 0, 7); x.fill(); }));
+  },
   // 기본 → 감속/빙결/피격 변형
   variants(base) {
     const w = base.width, h = base.height;

@@ -71,23 +71,25 @@ G.R = {
   zoneFx(z, dt) {
     if (z.kind === 'blizzard') {
       for (let i = 0; i < 4; i++) {
+        if (!G.fx.chance(1)) continue;
         const a = Math.random() * 6.28, r = Math.sqrt(Math.random()) * z.r, x = z.x + Math.cos(a) * r, y = z.y + Math.sin(a) * r * 0.75;
         G.fx.part({ x: x - 60, y: y - 160, vx: 300, vy: 800, life: 0.2, size: U.rand(4, 7), size1: 3, rgb: '230,248,255', type: 'shard', add: false, rot: 1.2, vr: 0 });
         if (Math.random() < 0.4) G.fx.part({ x, y, life: 0.3, size: U.rand(10, 18), rgb: '120,190,255' });
       }
-    } else if (z.kind === 'burn' && z.target && !z.target.dead && Math.random() < 0.5) {
+    } else if (z.kind === 'burn' && z.target && !z.target.dead && G.fx.chance(0.5)) {
       G.fx.part({ x: z.target.x + U.rand(-8, 8), y: z.target.y - U.rand(0, 20), vy: -60, life: 0.4, size: U.rand(6, 11), rgb: Math.random() < 0.5 ? '255,130,40' : '200,90,255' });
     } else if (z.kind === 'singularity') {
       // 바깥에서 중심으로 빨려 들어가는 입자
       for (let i = 0; i < 2; i++) {
+        if (!G.fx.chance(1)) continue;
         const a = Math.random() * 6.28, r = z.r * U.rand(0.7, 1), x = z.x + Math.cos(a) * r, y = z.y + Math.sin(a) * r * 0.75;
         G.fx.part({ x, y, vx: (z.x - x) * 2.2 - Math.sin(a) * 60, vy: (z.y - y) * 2.2 + Math.cos(a) * 45, life: 0.45, size: U.rand(5, 9), size1: 1, rgb: Math.random() < 0.5 ? '140,80,230' : '200,160,255' });
       }
-    } else if (z.kind === 'tinted' && Math.random() < 0.3) {
+    } else if (z.kind === 'tinted' && G.fx.chance(0.3)) {
       G.fx.part({ x: z.x + U.rand(-z.r, z.r) * 0.7, y: z.y + U.rand(-z.r, z.r) * 0.5, vy: -30, life: 0.8, size: U.rand(4, 8), rgb: z.color });
-    } else if (z.kind === 'poison' && Math.random() < 0.3) {
+    } else if (z.kind === 'poison' && G.fx.chance(0.3)) {
       G.fx.part({ x: z.x + U.rand(-z.r, z.r) * 0.7, y: z.y + U.rand(-z.r, z.r) * 0.5, vy: -30, life: 0.8, size: U.rand(4, 8), rgb: '120,255,60' });
-    } else if (z.kind === 'defile' && Math.random() < 0.6) {
+    } else if (z.kind === 'defile' && G.fx.chance(0.6)) {
       const a = Math.random() * 6.28;
       G.fx.part({ x: z.x + Math.cos(a) * z.r, y: z.y + Math.sin(a) * z.r * 0.8, vx: -Math.sin(a) * 60, vy: Math.cos(a) * 60 - 20, life: 0.7, size: U.rand(8, 14), rgb: '120,30,160' });
     }
@@ -431,7 +433,7 @@ G.R = {
     const fly = e.def.fly ? -10 + Math.sin(e.t * 3) * 4 : 0;
     const bob = moving ? Math.abs(Math.sin(e.t * 9)) * -2.5 : 0;
     const sq = moving ? 1 + Math.sin(e.t * 18) * 0.025 : 1;
-    if (e.affixes && Math.random() < 0.25) { // 접두어 기운: 몸 주변에서 피어오르는 입자
+    if (e.affixes && G.fx.chance(0.25)) { // 접두어 기운: 몸 주변에서 피어오르는 입자
       const A = G.ELITE_AFFIXES[U.choice(e.affixes)];
       G.fx.part({ x: e.x + U.rand(-e.r, e.r), y: e.y - U.rand(0, e.r * 2), vy: -50, life: 0.6, size: U.rand(6, 11), rgb: A.color });
     }
@@ -592,23 +594,31 @@ G.R = {
   },
 
   drawParts(c) {
-    const S = G.Spr;
+    // 입자는 수천 개라 하나마다 경로(arc)를 채우거나 save/restore 하지 않는다: 미리 그린 그림을 찍고, 회전은 변환 행렬을 직접 계산
+    const S = G.Spr, m = c.getTransform();
+    let turned = false;
     c.globalCompositeOperation = 'source-over';
     for (const p of G.parts) {
       if (p.add) continue;
       const f = p.life / p.max, s = p.size1 + (p.size - p.size1) * f;
       c.globalAlpha = Math.min(1, f * 1.5) * p.alpha;
-      if (p.type === 'shard') { c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.drawImage(S.shard, -s / 2, -s, s, s * 2); c.restore(); }
-      else if (p.type === 'bone') { c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.drawImage(S.bone, -6, -3); c.restore(); }
-      else if (p.type === 'smoke') { c.fillStyle = `rgba(${p.rgb},0.5)`; c.beginPath(); c.arc(p.x, p.y, s, 0, 7); c.fill(); }
-      else { c.fillStyle = `rgb(${p.rgb})`; c.beginPath(); c.arc(p.x, p.y, s * 0.5, 0, 7); c.fill(); }
+      if (p.type === 'shard' || p.type === 'bone') {
+        const co = Math.cos(p.rot), si = Math.sin(p.rot);
+        c.setTransform(m.a * co + m.c * si, m.b * co + m.d * si, m.c * co - m.a * si, m.d * co - m.b * si, m.a * p.x + m.c * p.y + m.e, m.b * p.x + m.d * p.y + m.f);
+        if (p.type === 'shard') c.drawImage(S.shard, -s / 2, -s, s, s * 2); else c.drawImage(S.bone, -6, -3);
+        turned = true; continue;
+      }
+      if (turned) { c.setTransform(m); turned = false; }
+      if (p.type === 'smoke') { c.globalAlpha *= 0.5; c.drawImage(p.img || (p.img = S.dot(p.rgb)), p.x - s, p.y - s, s * 2, s * 2); }
+      else c.drawImage(p.img || (p.img = S.dot(p.rgb)), p.x - s * 0.5, p.y - s * 0.5, s, s);
     }
+    c.setTransform(m);
     c.globalCompositeOperation = 'lighter';
     for (const p of G.parts) {
       if (!p.add) continue;
       const f = p.life / p.max, s = p.size1 + (p.size - p.size1) * f;
       c.globalAlpha = Math.min(1, f * 1.4) * p.alpha;
-      c.drawImage(S.glow(p.rgb, 32), p.x - s, p.y - s, s * 2, s * 2);
+      c.drawImage(p.img || (p.img = S.glow(p.rgb, 32)), p.x - s, p.y - s, s * 2, s * 2);
     }
     c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
   },

@@ -59,7 +59,7 @@ G.CLASSES.mage = {
   update(p, dt) {
     if (p.fofT > 0 && (p.fofT -= dt) <= 0) p.fof = 0;
     if (p.bfT > 0 && (p.bfT -= dt) <= 0) p.bf = 0;
-    if (p.ivT > 0) { p.ivT -= dt; if (Math.random() < 0.6) G.fx.part({ x: p.x + U.rand(-14, 14), y: p.y + U.rand(-8, 22), vy: U.rand(-90, -40), life: 0.6, size: U.rand(5, 10), rgb: '90,170,255' }); }
+    if (p.ivT > 0) { p.ivT -= dt; if (G.fx.chance(0.6)) G.fx.part({ x: p.x + U.rand(-14, 14), y: p.y + U.rand(-8, 22), vy: U.rand(-90, -40), life: 0.6, size: U.rand(5, 10), rgb: '90,170,255' }); }
     if (p.drT > 0) p.drT -= dt;
     if (p.iceblockT > 0) {
       p.iceblockT -= dt;

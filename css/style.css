@@ -431,6 +431,12 @@ select { cursor: pointer; }
 .card .cacts a { font-size: 11px; color: #999; text-decoration: none; border: 1px solid #444; border-radius: 3px; padding: 0 5px; background: rgba(0,0,0,.6); }
 .card .cacts a:hover { color: #fff; border-color: #aaa; } .card .cacts a.on { color: #4af; border-color: #4af; }
 .eRewards { text-align: center; margin: 10px 0; }
+.eScore { margin: 8px auto; max-width: 440px; padding: 8px 14px; border: 1px solid #5a4a1c; border-radius: 6px; background: rgba(40, 30, 8, 0.5); }
+.eScoreHead { text-align: center; font-size: 15px; margin-bottom: 4px; }
+.eScoreHead b { color: var(--wow-yellow); font-size: 24px; margin: 0 6px; }
+.eScoreRows div { display: flex; align-items: baseline; gap: 8px; font-size: 13px; padding: 1px 0; }
+.eScoreRows small { flex: 1; color: #889; font-size: 11px; }
+.eScoreRows b { color: #ffe9a0; }
 .eGain { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; font-size: 15px; color: #fff; }
 
 @media (max-width: 900px) {

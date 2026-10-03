@@ -150,6 +150,9 @@ module.exports = dataDir => {
   // 전문화: 캐릭터 = 직업, 전문화는 캐릭터에 저장 (빈 값 = 그 직업의 기본 전문화)
   ensure('characters', { spec: "TEXT NOT NULL DEFAULT ''" });
   ensure('runs', { spec: "TEXT NOT NULL DEFAULT ''" });
+  // 클리어 점수 (랭킹 기준, STAGE_DATA.scoreOf). score_json = 재료와 항목별 점수. 이 열이 생기기 전 클리어는 점수 없음
+  ensure('runs', { score: 'INTEGER', score_json: 'TEXT' });
+  db.exec('CREATE INDEX IF NOT EXISTS runs_score ON runs (stage, difficulty, score)');
   // 판 기록 (밸런스 분석용, js/runlog.js) — 보고마다 최신 스냅숏으로 덮어쓴다. 요약 열은 목록 · 집계용
   db.exec(`CREATE TABLE IF NOT EXISTS run_logs (
     run_id TEXT PRIMARY KEY REFERENCES runs(id) ON DELETE CASCADE,

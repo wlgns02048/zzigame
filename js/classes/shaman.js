@@ -759,8 +759,8 @@ function smDrawLava(c, pr) {
   c.fillStyle = '#fff0a0'; c.beginPath(); c.arc(pr.x - 2 * sc, pr.y - 2 * sc, 2 * sc, 0, 7); c.fill();
 }
 function smLavaTrail(pr) {
-  if (Math.random() < 0.8) G.fx.part({ x: pr.x, y: pr.y, life: 0.3, size: 9 * (pr.big || 1), rgb: Math.random() < 0.5 ? '255,120,30' : '255,190,80', vx: U.rand(-20, 20), vy: U.rand(-20, 20) });
-  if (Math.random() < 0.2) G.fx.part({ x: pr.x, y: pr.y, life: 0.5, size: 7, rgb: '60,40,30', type: 'smoke', add: false });
+  if (G.fx.chance(0.8)) G.fx.part({ x: pr.x, y: pr.y, life: 0.3, size: 9 * (pr.big || 1), rgb: Math.random() < 0.5 ? '255,120,30' : '255,190,80', vx: U.rand(-20, 20), vy: U.rand(-20, 20) });
+  if (G.fx.chance(0.2)) G.fx.part({ x: pr.x, y: pr.y, life: 0.5, size: 7, rgb: '60,40,30', type: 'smoke', add: false });
 }
 function smDrawBlast(c, pr) {
   c.globalCompositeOperation = 'lighter';
@@ -769,7 +769,7 @@ function smDrawBlast(c, pr) {
   c.drawImage(G.Spr.glow('255,170,80', 32), pr.x - 9, pr.y - 9, 18, 18);
   c.globalCompositeOperation = 'source-over';
 }
-function smBlastTrail(pr) { G.fx.part({ x: pr.x, y: pr.y, life: 0.3, size: 10, rgb: ['230,140,255', '255,160,80', '140,210,255', '140,255,170'][Math.floor(Math.random() * 4)] }); }
+function smBlastTrail(pr) { if (G.fx.chance(1)) G.fx.part({ x: pr.x, y: pr.y, life: 0.3, size: 10, rgb: ['230,140,255', '255,160,80', '140,210,255', '140,255,170'][Math.floor(Math.random() * 4)] }); }
 function smDrawQuake(c, z, life) {
   c.save(); c.translate(z.x, z.y); c.scale(1, 0.7);
   c.fillStyle = `rgba(110,80,40,${0.22 * life})`; c.beginPath(); c.arc(0, 0, z.r, 0, 7); c.fill();
@@ -833,7 +833,7 @@ function smDrawFireElemental(c, q) {
   c.fillStyle = 'rgba(255,230,140,0.9)'; c.beginPath(); c.ellipse(x, y - 4, 7, 12, 0, 0, 7); c.fill();
   c.globalCompositeOperation = 'source-over';
   c.fillStyle = '#401000'; c.fillRect(x - 5 + q.face * 2, y - 14, 3, 3); c.fillRect(x + 2 + q.face * 2, y - 14, 3, 3);
-  if (Math.random() < 0.5) G.fx.part({ x: x + U.rand(-8, 8), y: y - 20, vy: -60, life: 0.4, size: 7, rgb: '255,150,50' });
+  if (G.fx.chance(0.5)) G.fx.part({ x: x + U.rand(-8, 8), y: y - 20, vy: -60, life: 0.4, size: 7, rgb: '255,150,50' });
 }
 function smDrawAncestor(c, a) {
   const x = a.x, y = a.y, al = a.perm ? 0.85 : Math.max(0, Math.min(0.85, a.life * 1.5));
@@ -916,10 +916,10 @@ G.CLASSES.shaman = {
     if (p.gust) {
       const g = p.gust; g.t += dt;
       p.x += g.vx * dt; p.y += g.vy * dt;
-      if (Math.random() < 0.7) G.fx.part({ x: p.x + U.rand(-10, 10), y: p.y - U.rand(0, 30), life: 0.35, size: 10, rgb: '200,255,230' });
+      if (G.fx.chance(0.7)) G.fx.part({ x: p.x + U.rand(-10, 10), y: p.y - U.rand(0, 30), life: 0.35, size: 10, rgb: '200,255,230' });
       if (g.t >= g.dur) p.gust = null;
     }
-    if (p.ascT > 0 && Math.random() < 0.5) G.fx.part({ x: p.x + U.rand(-14, 14), y: p.y + U.rand(-30, 10), vy: U.rand(-120, -60), life: 0.5, size: U.rand(6, 11), rgb: Math.random() < 0.5 ? '255,140,40' : '255,200,90' });
+    if (p.ascT > 0 && G.fx.chance(0.5)) G.fx.part({ x: p.x + U.rand(-14, 14), y: p.y + U.rand(-30, 10), vy: U.rand(-120, -60), life: 0.5, size: U.rand(6, 11), rgb: Math.random() < 0.5 ? '255,140,40' : '255,200,90' });
   },
   skillsUpdate(p, dt) { smSkillsUpdate(p, dt); },
 

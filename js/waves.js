@@ -10,6 +10,8 @@ G.Waves = {
     this.roster = this.stage.roster.map(([id, t0, w]) => ({ id, t0, w }));
     this.spawnAcc = 0; this.eliteT = 75 / this.k; this.bossIdx = 0; this.swarmIdx = 0; this.boss = null; this.warned = {};
     this.endless = false; this.clearT = null; this.level = 0; this.bossKills = 0; this.volcT = 6;
+    // 클리어 점수 재료: 마지막 보스 등장 순간의 처치 수, 보스 순서별 걸린 초 → 마지막 보스를 잡는 순간 score로 확정
+    this.scoreKills = null; this.bossSecs = this.stage.bosses.map(() => null); this.score = this.scoreIn = null;
     this.affixes = G.run && G.run.affixes ? G.run.affixes : SD.weeklyAffixes(G.ITEMS.periodKeys().weekly);
     const tr = G.Meta.lib('treasure');
     this.eliteEvery = 65 * (1 - tr * 0.15) / this.k;
@@ -73,8 +75,10 @@ G.Waves = {
       if (t >= at - 6 && !this.warned[bs.id]) { this.warned[bs.id] = true; G.UI.warn(bs.warn, '#ff6a1a', 5); G.Audio.play('warn'); }
       if (t >= at) {
         this.bossIdx++;
+        if (this.bossIdx === st.bosses.length) this.scoreKills = { kills: G.stats.kills, elites: G.stats.elites };
         this.boss = this.spawnBoss(bs.id);
         this.boss.final = this.bossIdx === st.bosses.length;
+        this.boss.scoreIdx = this.bossIdx - 1; this.boss.spawnT = t;
       }
     }
     // 무리 습격
@@ -157,6 +161,12 @@ G.Waves = {
     G.RunLog.bossDead(e);
     G.UI.warn(`${e.def.name} 처치!`, '#ffd100', 3);
     G.fx.shake(14); G.Audio.play('victory');
-    if (e.final && !this.endless) G.later(2.5, () => G.endRun(true));
+    if (e.scoreIdx != null && !this.endless) this.bossSecs[e.scoreIdx] = +(G.t - e.spawnT).toFixed(2);
+    if (e.final && !this.endless) {
+      const k = this.scoreKills || { kills: G.stats.kills, elites: G.stats.elites };
+      this.scoreIn = { kills: k.kills, elites: k.elites, bosses: this.bossSecs.slice() };
+      this.score = G.STAGE_DATA.scoreOf(this.scoreIn);
+      G.later(2.5, () => G.endRun(true));
+    }
   },
 };

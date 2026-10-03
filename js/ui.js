@@ -383,6 +383,7 @@ G.UI = {
     { k: 'flash', type: 'check', name: '화면 번쩍임', desc: '큰 기술 · 보스 처치 때 화면이 잠깐 밝아짐' },
     { k: 'hitstop', type: 'check', name: '타격 멈춤', desc: '큰 타격 순간 아주 잠깐 멈칫함' },
     { k: 'light', type: 'check', name: '던전 조명', desc: '어두운 던전에서 빛이 닿는 곳만 밝게 (끄면 조금 가벼워짐)' },
+    { k: 'fx', type: 'range', name: '입자 효과', min: 0.25, max: 1, step: 0.25, fmt: v => Math.round(v * 100) + '%' + (v < 1 ? ' (가벼움)' : '') },
   ],
   showSettings() {
     const S = G.Settings, row = o => o.type === 'range'
@@ -553,6 +554,16 @@ G.UI = {
     box.innerHTML = (gain.length ? `<div class="eGain">${gain.map(([k, v]) => `<span><img class="ci" src="${G.icon(I.CURRENCIES[k].icon)}">+${v} ${I.CURRENCIES[k].name}</span>`).join('')}</div>` : '<div class="dim">새로 받은 재화가 없습니다.</div>') +
       (r.loot && r.loot.length ? `<div class="eLoot">${r.loot.map(it => `<div class="pull" style="--qc:${I.QUALITY[it.quality].color}" data-tip="${esc(G.Lobby.itemTip(it, G.runInfo && G.runInfo.cls))}"><img src="${G.icon(it.icon)}"><span>${esc(it.name)}</span><small>${it.ilvl}${it.autoDE ? ' · 가방 가득: 분해' : ''}</small></div>`).join('')}</div>` : '') +
       (r.endlessLv ? `<div class="dim">엔드리스 ${r.endlessLv}단계 도달</div>` : '');
+    const tag = $('eScoreTag');
+    if (tag && r.score) tag.innerHTML = r.score.best ? '<em class="newTag">개인 최고!</em>' : '<small class="dim">랭킹에 기록됨</small>';
+  },
+  // 클리어 점수 내역 (STAGE_DATA.scoreOf)
+  scoreHtml(sc, inp, st) {
+    const S = G.STAGE_DATA.SCORE;
+    const boss = st.bosses.map((b, i) => `<div>${esc(G.ENEMIES[b.id].name)}<small>${inp.bosses[i] != null ? inp.bosses[i].toFixed(1) + '초' : '못 잡음'}</small><b>${sc.bosses[i].toLocaleString()}</b></div>`).join('');
+    return `<div class="eScore"><div class="eScoreHead">클리어 점수 <b>${sc.total.toLocaleString()}</b><span id="eScoreTag"></span></div>
+      <div class="eScoreRows"><div>처치 ${inp.kills.toLocaleString()} × ${S.kill}<small>마지막 보스 전까지</small><b>${sc.kills.toLocaleString()}</b></div>
+      <div>정예 ${inp.elites} × ${S.elite}<small></small><b>${sc.elites.toLocaleString()}</b></div>${boss}</div></div>`;
   },
 
   showEnd(victory, mode) {
@@ -563,6 +574,7 @@ G.UI = {
       <h1 style="color:${victory ? '#ffd100' : '#ff4b3a'}">${title}</h1>
       <div class="sub">${st.name} · ${W.diff.name}${victory ? ' — 보상을 받고 끝내거나, 엔드리스로 계속 도전할 수 있습니다.' : ''}</div>
       <div class="summary"><div>시간<b>${U.fmtTime(G.t)}</b></div><div>레벨<b>${G.player.level}</b></div><div>처치<b>${G.stats.kills.toLocaleString()}</b></div><div>보스<b>${W.bossKills}</b></div><div>총 피해<b>${U.num(tot)}</b></div></div>
+      ${victory && W.score ? this.scoreHtml(W.score, W.scoreIn, st) : ''}
       <div id="eRewards" class="eRewards">${mode === 'account' ? '<div class="dim">정산 중…</div>' : '<div class="dim">게스트는 보상이 저장되지 않습니다. 로그인하면 골드 · 휘장 · 장비를 받을 수 있습니다.</div>'}</div>
       ${this.buildSummary()}
       <table class="statTable"><tr><th>주문</th><th>피해량</th><th>DPS</th><th>비율</th></tr>

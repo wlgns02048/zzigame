@@ -220,6 +220,16 @@
     for (const s of ENDLESS.slots) { const pool = s.pool.filter(a => !out.includes(a)); out.push(pool[h % pool.length]); h = Math.floor(h / 7) + 13; }
     return out;
   };
+  // 클리어 점수 (랭킹 기준). 클리어 순간에 확정되고, 서버가 같은 식으로 다시 계산한다.
+  //   처치: 마지막 보스가 나오기 전까지만 센다 (마지막 보스를 일부러 살려 두고 졸개를 잡는 게 이득이 되지 않게)
+  //   보스: 처치마다 boss점 + 빨리 잡을수록 speed × par / (par + 걸린 초) — 3초 4348 · 20초 2500 · 60초 1250
+  // s = { kills, elites, bosses: [보스 순서대로 걸린 초 또는 null(못 잡음)] }
+  const SCORE = { kill: 1, elite: 50, boss: 3000, speed: 5000, par: 20 };
+  const scoreOf = s => {
+    const kills = s.kills * SCORE.kill, elites = s.elites * SCORE.elite;
+    const bosses = s.bosses.map(sec => (sec == null ? 0 : Math.round(SCORE.boss + SCORE.speed * SCORE.par / (SCORE.par + sec))));
+    return { kills, elites, bosses, total: kills + elites + bosses.reduce((a, b) => a + b, 0) };
+  };
   // 클리어 판정 시각에 보스가 몇 마리 나왔는지 (서버 검증용)
   const bossesBy = (stage, t) => STAGES[stage].bosses.filter(b => b.at * STAGES[stage].duration <= t + 1).length;
   // 다음 스테이지 개방 조건: 이전 스테이지 일반 클리어
@@ -232,7 +242,7 @@
   // 판에서 줍는 골드 · 시간 보너스 · 클리어 보너스 모두에 붙는다 (브라우저는 줍는 골드, 서버는 나머지와 검증 한도)
   const goldMul = (stage, diff) => +((1 + (STAGES[stage].ilvl - 20) / 40) * DIFFICULTY[diff].gold).toFixed(3);
   for (const id in STAGES) STAGES[id].id = id;
-  const API = { STAGES, CHAPTERS, DIFFICULTY, ENDLESS, SWARMS, weeklyAffixes, bossesBy, prevStage, goldMul };
+  const API = { STAGES, CHAPTERS, DIFFICULTY, ENDLESS, SWARMS, SCORE, weeklyAffixes, bossesBy, prevStage, goldMul, scoreOf };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else Object.assign(root.G, { STAGE_DATA: API });
 })(this);

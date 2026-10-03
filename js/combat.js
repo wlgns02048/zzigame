@@ -3,8 +3,14 @@ const U = G.U;
 
 // ================= 이펙트 =================
 G.fx = {
+  // 이번 프레임에 흐른 게임 시간 (G.update가 정하고, 게임이 멈춘 프레임은 0)
+  dt: 0,
+  // 매 프레임 뿌리는 입자(꼬리 · 기운)는 이걸로: p는 60fps 기준 프레임당 확률. 주사율(60/144Hz)과 상관없이 초당 같은 양이 나온다
+  chance(p) { return Math.random() < p * this.dt * 60; },
   part(o) {
-    if (G.parts.length > 2600) return;
+    // 설정 '입자 효과' (1 = 전부, 낮출수록 솎아 냄)
+    const q = G.Settings.get('fx');
+    if (G.parts.length > 2600 * q || (q < 1 && Math.random() > q)) return;
     G.parts.push(Object.assign({ x: 0, y: 0, vx: 0, vy: 0, life: 0.5, max: 0.5, size: 6, size1: 0, rgb: '160,220,255', type: 'glow', add: true, rot: 0, vr: 0, drag: 0, grav: 0, alpha: 1 }, o, { max: o.life || 0.5 }));
   },
   burst(x, y, n, o = {}) {
@@ -179,6 +185,7 @@ G.aoe = (x, y, r, base, src, o = {}, each) => {
 G.killEnemy = (e, frozen, school) => {
   if (e.dead) return;
   e.dead = true; G.stats.kills++; G.Streak.kill();
+  if (e.elite && !e.boss) G.stats.elites++; // 클리어 점수
   const big = e.boss || e.elite, ds = e.r / 14;
   if (frozen || e.frozenT > 0) {
     G.fx.shards(e.x, e.y, e.boss ? 40 : e.elite ? 22 : 10, e.boss ? 400 : 220);
