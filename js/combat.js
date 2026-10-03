@@ -213,6 +213,7 @@ G.killEnemy = (e, frozen, school) => {
     if (Math.random() < 0.0035) G.dropPickup('magnet', e.x, e.y, 1);
     else if (Math.random() < 0.0006) G.dropPickup('bloodlust', e.x, e.y, 1); // 피의 욕망: 10분 판에 한두 번
   }
+  G.Events.onKill(e);
   G.cls().onKill(e, G.player);
   G.Waves.onKill(e);
   if (e.boss) G.Waves.onBossDeath(e);

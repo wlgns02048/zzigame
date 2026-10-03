@@ -174,6 +174,7 @@ G.UI = {
     const buffs = C.buffs(p);
     if (p.rootT > 0) buffs.push(['freeze', p.rootT, '', '서리 폭발', '이동 불가', true]);
     if (G.lustT > 0) buffs.push(['bloodlust', G.lustT, '', '피의 욕망', `게임 전체 속도 +${Math.round((G.LUST.speed - 1) * 100)}%`]);
+    const sb = G.Events.buff; if (sb) { const S = G.SHRINES[sb.type]; buffs.push([S.icon, sb.t, '', S.name, S.desc]); }
     const sig = buffs.map(b => b[0]).join();
     if (sig !== this.buffSig) {
       this.buffSig = sig;
@@ -190,7 +191,7 @@ G.UI = {
     if (!tgt) tgt = G.enemies.find(e => e.elite && U.d2(e.x, e.y, p.x, p.y) < 700 * 700) || null;
     if (tgt) {
       el.bossFrame.classList.remove('hidden');
-      if (this.bfTgt !== tgt) { this.bfTgt = tgt; el.bfIcon.src = G.icon(tgt.def.icon); el.bfName.textContent = tgt.boss ? `${tgt.def.name} - ${tgt.def.title}` : `${tgt.def.name} (정예)`; }
+      if (this.bfTgt !== tgt) { this.bfTgt = tgt; el.bfIcon.src = G.icon(tgt.def.icon); el.bfName.textContent = tgt.boss ? `${tgt.def.name} - ${tgt.def.title}` : `${tgt.affixes ? tgt.affixes.map(a => G.ELITE_AFFIXES[a].name).join(' ') + ' ' : ''}${tgt.def.name} (정예)`; }
       const f = Math.max(0, tgt.hp / tgt.maxHp);
       el.bfHp.style.width = (f * 100).toFixed(1) + '%'; el.bfPct.textContent = `${U.num(Math.max(0, tgt.hp))} (${(f * 100).toFixed(0)}%)`;
       if (tgt.cast) {
@@ -364,6 +365,7 @@ G.UI = {
     { k: 'shake', type: 'range', name: '화면 흔들림', min: 0, max: 1.5, step: 0.25, fmt: v => v ? Math.round(v * 100) + '%' : '끔' },
     { k: 'flash', type: 'check', name: '화면 번쩍임', desc: '큰 기술 · 보스 처치 때 화면이 잠깐 밝아짐' },
     { k: 'hitstop', type: 'check', name: '타격 멈춤', desc: '큰 타격 순간 아주 잠깐 멈칫함' },
+    { k: 'light', type: 'check', name: '던전 조명', desc: '어두운 던전에서 빛이 닿는 곳만 밝게 (끄면 조금 가벼워짐)' },
   ],
   showSettings() {
     const S = G.Settings, row = o => o.type === 'range'

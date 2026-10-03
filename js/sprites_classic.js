@@ -239,16 +239,17 @@ function drawGhost(x, o) {
 
 // ================= 스테이지 테마 (바닥 · 장식 · 입자) =================
 // pal: base(바탕) · a/b(얼룩) · hi(밝은 얼룩) · acc(강조 얼룩) · sp(반짝임) · crack(균열). particles: snow | dust | ash | ember | none
+// dark: 어두운 던전 조명 세기 (0~1, 없으면 조명 없음 — render.js drawLight)
 G.THEMES = {
   icecrown: { pal: null, decor: ['rock', 'pine', 'pine', 'tree', 'grave', 'grave', 'saronite', 'ice', 'bones', 'rock'], particles: 'snow' },
-  mine: { pal: { base: '#2a2016', a: '90,70,45', b: '20,15,10', hi: '160,130,90', acc: '200,150,60', sp: '200,180,140', crack: '120,90,60' }, decor: ['stone', 'stone', 'crate', 'crate', 'bones', 'stone', 'crate'], particles: 'dust', glow: { crate: '255,170,60' } },
-  forest: { pal: { base: '#1b241a', a: '50,70,45', b: '12,18,12', hi: '110,140,100', acc: '80,120,160', sp: '150,170,140', crack: '70,90,60' }, decor: ['tree', 'tree', 'tree', 'grave', 'stone'], particles: 'none' },
-  monastery: { pal: { base: '#2a2626', a: '90,80,80', b: '25,20,20', hi: '170,160,150', acc: '200,40,40', sp: '200,190,180', crack: '120,100,100' }, decor: ['pillar', 'pillar', 'grave', 'stone', 'crate'], particles: 'none' },
-  crypt: { pal: { base: '#1c1f24', a: '60,70,60', b: '10,12,10', hi: '120,130,120', acc: '80,255,120', sp: '160,200,160', crack: '60,120,70' }, decor: ['grave', 'bones', 'pillar', 'stone', 'bones'], particles: 'ash' },
-  ruins: { pal: { base: '#25201e', a: '80,60,50', b: '20,14,12', hi: '150,120,100', acc: '255,120,40', sp: '200,170,150', crack: '140,80,50' }, decor: ['tree', 'grave', 'bones', 'stone', 'crate'], particles: 'ember' },
+  mine: { dark: 0.5, pal: { base: '#2a2016', a: '90,70,45', b: '20,15,10', hi: '160,130,90', acc: '200,150,60', sp: '200,180,140', crack: '120,90,60' }, decor: ['stone', 'stone', 'crate', 'crate', 'bones', 'stone', 'crate'], particles: 'dust', glow: { crate: '255,170,60' } },
+  forest: { dark: 0.35, pal: { base: '#1b241a', a: '50,70,45', b: '12,18,12', hi: '110,140,100', acc: '80,120,160', sp: '150,170,140', crack: '70,90,60' }, decor: ['tree', 'tree', 'tree', 'grave', 'stone'], particles: 'none' },
+  monastery: { dark: 0.2, pal: { base: '#2a2626', a: '90,80,80', b: '25,20,20', hi: '170,160,150', acc: '200,40,40', sp: '200,190,180', crack: '120,100,100' }, decor: ['pillar', 'pillar', 'grave', 'stone', 'crate'], particles: 'none' },
+  crypt: { dark: 0.5, pal: { base: '#1c1f24', a: '60,70,60', b: '10,12,10', hi: '120,130,120', acc: '80,255,120', sp: '160,200,160', crack: '60,120,70' }, decor: ['grave', 'bones', 'pillar', 'stone', 'bones'], particles: 'ash' },
+  ruins: { dark: 0.15, pal: { base: '#25201e', a: '80,60,50', b: '20,14,12', hi: '150,120,100', acc: '255,120,40', sp: '200,170,150', crack: '140,80,50' }, decor: ['tree', 'grave', 'bones', 'stone', 'crate'], particles: 'ember' },
   lava: { pal: { base: '#2a140c', a: '120,40,10', b: '20,8,4', hi: '180,80,30', acc: '255,110,20', sp: '255,180,100', crack: '255,120,40' }, decor: ['lavarock', 'lavarock', 'stone', 'bones'], particles: 'ember', glow: { lavarock: '255,110,20' } },
-  lair: { pal: { base: '#1e1a1a', a: '70,50,50', b: '15,10,10', hi: '130,100,100', acc: '200,60,255', sp: '180,150,150', crack: '160,60,60' }, decor: ['stone', 'bones', 'lavarock', 'pillar'], particles: 'ash', glow: { lavarock: '255,90,30' } },
-  necropolis: { pal: { base: '#1a1f22', a: '50,80,70', b: '10,14,12', hi: '110,140,130', acc: '60,255,200', sp: '150,200,190', crack: '60,160,130' }, decor: ['web', 'bones', 'grave', 'pillar', 'saronite'], particles: 'ash' },
+  lair: { dark: 0.3, pal: { base: '#1e1a1a', a: '70,50,50', b: '15,10,10', hi: '130,100,100', acc: '200,60,255', sp: '180,150,150', crack: '160,60,60' }, decor: ['stone', 'bones', 'lavarock', 'pillar'], particles: 'ash', glow: { lavarock: '255,90,30' } },
+  necropolis: { dark: 0.45, pal: { base: '#1a1f22', a: '50,80,70', b: '10,14,12', hi: '110,140,130', acc: '60,255,200', sp: '150,200,190', crack: '60,160,130' }, decor: ['web', 'bones', 'grave', 'pillar', 'saronite'], particles: 'ash' },
 };
 G.theme = () => G.THEMES[(G.state !== 'menu' && G.Waves.stage && G.Waves.stage.theme) || 'icecrown'];
 

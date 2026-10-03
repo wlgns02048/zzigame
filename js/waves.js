@@ -92,8 +92,8 @@ G.Waves = {
       this.eliteT = this.eliteEvery;
       const [x, y] = this.ringPos();
       const tt = this.tt(), pool = this.roster.filter(d => !G.ENEMIES[d.id].ranged && tt >= d.t0);
-      G.Enemy.spawn(U.choice(pool).id, x, y, { elite: true });
-      G.UI.warn('정예 몬스터가 나타났습니다!', '#ffd100', 2);
+      const el = G.Enemy.spawn(U.choice(pool).id, x, y, { elite: true });
+      G.UI.warn(`정예 몬스터가 나타났습니다! (${el.affixes.map(a => G.ELITE_AFFIXES[a].name).join(' · ')})`, '#ffd100', 2);
     }
     // 엔드리스: 단계 · 주기 보스 · 화산
     if (this.endless) {

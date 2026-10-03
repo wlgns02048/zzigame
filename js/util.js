@@ -1,7 +1,7 @@
 'use strict';
 // 전역 네임스페이스
 const G = window.G = {
-  VERSION: '2.12.0', // 화면 표시용. 릴리스 태그 v2.12.0과 같게 유지 (규칙: docs/NAS_DEPLOY.md '버전 관리')
+  VERSION: '2.13.0', // 화면 표시용. 릴리스 태그 v2.13.0과 같게 유지 (규칙: docs/NAS_DEPLOY.md '버전 관리')
   state: 'menu',      // menu | play | over
   paused: false,
   t: 0,               // 런 경과 시간(초)
@@ -55,7 +55,7 @@ G.U = {
 // 연출 · 소리 설정 (브라우저마다 저장, 로비 · 일시 정지의 '설정')
 G.Settings = {
   KEY: 'zzigame_settings',
-  d: { sfx: 1, music: 1, shake: 1, flash: true, hitstop: true },
+  d: { sfx: 1, music: 1, shake: 1, flash: true, hitstop: true, light: true },
   load() { try { Object.assign(this.d, JSON.parse(localStorage.getItem(this.KEY) || '{}')); } catch { /* 저장소 사용 불가 */ } },
   get(k) { return this.d[k]; },
   set(k, v) { this.d[k] = v; try { localStorage.setItem(this.KEY, JSON.stringify(this.d)); } catch { /* 저장소 사용 불가 */ } },

@@ -27,6 +27,7 @@ G.P = {
     };
     m.applyLoadout(st, p.cls); // 특성 · 장비 · 보석 · 마법부여
     for (const id in p.passives) { const def = G.SKILLS[id]; def.apply(st, p.passives[id].total); }
+    G.Events.applyBuff(st); // 성소 강화
     G.cls(p).recalc(st, p);
     const oldMax = p.maxHp;
     p.stats = st;

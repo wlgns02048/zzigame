@@ -13,6 +13,12 @@ G.Enemy = {
       frozenT: 0, slowT: 0, slowAmt: 0, wc: 0, wcT: 0, flash: 0, atkT: 0, shootT: U.rand(1, 3), t: Math.random() * 10, face: -1,
       elite, boss: !!def.boss, scale: def.scale * (elite ? 1.4 : 1), ai: {},
     };
+    // 정예 접두어: 하나 (10분 척도 이후 · 엔드리스는 둘)
+    if (elite) {
+      const n = G.Waves.tt() > 600 || G.Waves.endless ? 2 : 1;
+      e.affixes = o.affixes || U.shuffle(Object.keys(G.ELITE_AFFIXES)).slice(0, n);
+      for (const a of e.affixes) { const A = G.ELITE_AFFIXES[a]; if (A.apply) A.apply(e); }
+    }
     G.enemies.push(e);
     return e;
   },
@@ -32,14 +38,15 @@ G.Enemy = {
       if (e.slowT > 0 && (e.slowT -= dt) <= 0) e.slowAmt = 0;
       if (e.dots) G.Dots.tick(e, dt);
       if (e.dead) continue;
+      if (e.regen) e.hp = Math.min(e.maxHp, e.hp + e.maxHp * e.regen * dt); // 흡혈 접두어
       if (e.stunT > 0) { e.stunT -= dt; continue; }
       if (e.frozenT > 0) { e.frozenT -= dt; continue; }
       // 대상 선택 (환영이 더 가까우면 환영)
       let tx = p.x, ty = p.y, tgtImg = null, bd = U.d2(e.x, e.y, p.x, p.y);
       for (const im of G.images) { const d = U.d2(e.x, e.y, im.x, im.y); if (d < bd) { bd = d; tx = im.x; ty = im.y; tgtImg = im; } }
-      // 공포: 플레이어에게서 도망
-      if (e.fearT > 0) {
-        e.fearT -= dt;
+      // 공포: 플레이어에게서 도망 (flee는 늘 도망치는 적 — 보물 코볼트)
+      if (e.fearT > 0 || e.flee) {
+        if (e.fearT > 0) e.fearT -= dt;
         const fx = e.x - p.x, fy = e.y - p.y, fd = Math.hypot(fx, fy) || 1, fs = e.speed * 0.8 * (1 - e.slowAmt);
         e.x += fx / fd * fs * dt; e.y += fy / fd * fs * dt; e.face = fx > 0 ? 1 : -1;
         continue;
@@ -198,6 +205,14 @@ const hurtZone = (x, y, r, life, color, dmg) => G.Zones.add({ kind: 'tinted', hu
 // 경고가 뜬 뒤 터지므로 피하면 맞지 않는다. 시전 중에는 제자리에 서 있고, 죽으면 취소된다.
 // 피해는 그 적의 근접 피해(e.dmg: 스테이지 · 정예 · 엔드리스 배율 포함) × mul.
 const ELITE_SKILLS = [{ type: 'slam', name: '강타', cd: 9, r: 95, mul: 1.8 }];
+// 정예 접두어: 색은 발밑 고리 · 오라 · 이름표에 쓴다. 죽을 때 효과(volatile · splitting)는 G.Events.onKill
+G.ELITE_AFFIXES = {
+  swift: { name: '신속한', color: '110,200,255', desc: '이동 속도 +35%', apply: e => { e.speed *= 1.35; } },
+  armored: { name: '강철', color: '200,205,215', desc: '받는 피해 -35%', apply: e => { e.dmgTaken = 0.65; } },
+  vampiric: { name: '흡혈', color: '235,40,60', desc: '초당 생명력 1.5% 회복', apply: e => { e.regen = 0.015; } },
+  volatile: { name: '폭발하는', color: '255,140,30', desc: '죽으면 잠시 뒤 주변이 폭발' },
+  splitting: { name: '분열하는', color: '120,235,90', desc: '죽으면 작은 무리로 갈라짐' },
+};
 G.Mob = {
   MAX_CASTING: 3, // 동시에 시전하는 적 수 상한 (화면이 경고로 뒤덮이지 않도록)
   casting: 0,

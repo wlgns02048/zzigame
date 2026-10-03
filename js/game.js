@@ -119,7 +119,7 @@ G.startRun = (cls, stage, diff) => {
   // 로그인 중이면 서버에 런 등록 (봇/시뮬레이션 제외)
   G.run = G.Meta.mode() === 'account' && !G.Bot.on ? G.Net.startRun(cls, stage, diff) : null;
   G.runInfo = { cls, stage, diff };
-  G.meter.reset(); G.Waves.reset(stage, diff); G.Streak.reset();
+  G.meter.reset(); G.Waves.reset(stage, diff); G.Streak.reset(); G.Events.reset();
   G.P.recalc();
   G.P.learn(G.CLASSES[cls].starter);
   // 달라란 도서관: 준비된 주문서
@@ -158,6 +158,7 @@ G.update = dt => {
   G.Skills.update(dt);
   G.Pets.update(dt);
   G.Waves.update(dt);
+  G.Events.update(dt);
   G.Proj.update(dt);
   G.EProj.update(dt);
   G.Zones.update(dt);

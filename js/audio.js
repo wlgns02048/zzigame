@@ -83,6 +83,12 @@ G.Audio = {
         [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(t + i * 0.06, 0.9, 'triangle', f, f, 0.08 * v, 0.01));
         this.tone(t, 1.6, 'sine', 131, 131, 0.15 * v, 0.02); this.noise(t + 0.2, 1.2, 'highpass', 6000, 10000, 0.12 * v);
         break;
+      // 보물 코볼트: 동전 짤랑 + 킬킬 / 성소 · 저주받은 상자: 울리는 종
+      case 'goblin':
+        for (let i = 0; i < 5; i++) this.tone(t + i * 0.05, 0.1, 'square', 1800 + i * 220, 2000 + i * 220, 0.025 * v);
+        [0, 0.09, 0.18].forEach(d => this.tone(t + 0.3 + d, 0.07, 'sawtooth', 700, 900, 0.04 * v));
+        break;
+      case 'shrine': [659, 988, 1319].forEach((f, i) => this.tone(t + i * 0.12, 1.2, 'sine', f, f, 0.06 * v, 0.02)); this.noise(t, 1, 'bandpass', 3000, 6000, 0.06 * v, 4); break;
       case 'heart': this.tone(t, 0.12, 'sine', 70, 45, 0.5 * v); this.tone(t + 0.16, 0.14, 'sine', 62, 40, 0.38 * v); break;
       case 'lance': this.noise(t, 0.12, 'highpass', 5000, 2000, 0.3 * v); this.tone(t, 0.12, 'sine', 2400, 3400, 0.08 * v); break;
       case 'icicle': this.tone(t, 0.1, 'sine', 3000, 4200, 0.06 * v); break;

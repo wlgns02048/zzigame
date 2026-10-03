@@ -120,13 +120,16 @@ G.R = {
       for (const z of G.zones) this.drawZone(c, z);
       for (const k of G.tele) this.drawTele(c, k);
       this.drawPickups(c);
+      G.Events.draw(c);
       this.drawUnits(c, vx0, vy0, vx1, vy1);
       this.drawProjs(c);
       this.drawParts(c);
       this.drawRings(c);
+      this.drawLight(c, cam, W, H, vx0, vy0, vx1, vy1);
       this.drawTexts(c);
     }
     c.restore();
+    if (G.state === 'play' && G.player) G.Events.drawArrows(c);
     this.drawSnow(c, realDt, theme.particles);
     c.drawImage(this.vig, 0, 0);
     const p = G.player;
@@ -234,6 +237,47 @@ G.R = {
     }
   },
 
+  // 어두운 던전 조명: 화면을 어둡게 덮고 플레이어 · 투사체 · 경고 · 장판 · 전리품 · 정예 주변만 밝힌다.
+  // 1/4 해상도 캔버스에 그려 늘리고, 흔들림에 가장자리가 드러나지 않게 여백(M)을 둔다.
+  drawLight(c, cam, W, H, x0, y0, x1, y1) {
+    const dark = G.theme().dark;
+    if (!dark || !G.Settings.get('light')) return;
+    const S = 4, M = 48, lw = Math.ceil((W + M * 2) / S), lh = Math.ceil((H + M * 2) / S);
+    if (!this.lc) {
+      this.lc = G.Spr.make(lw, lh, () => {}); this.lx = this.lc.getContext('2d');
+      this.hole = G.Spr.make(64, 64, (x, w) => {
+        const g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+        g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(0.45, 'rgba(0,0,0,0.8)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+        x.fillStyle = g; x.fillRect(0, 0, w, w);
+      });
+    }
+    const x = this.lx, bx = cam.x - W / 2 - M, by = cam.y - H / 2 - M, hole = this.hole;
+    x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
+    x.clearRect(0, 0, lw, lh); x.fillStyle = `rgba(3,5,12,${dark})`; x.fillRect(0, 0, lw, lh);
+    x.globalCompositeOperation = 'destination-out';
+    const L = (wx, wy, r, a = 1) => {
+      if (wx + r < x0 || wx - r > x1 || wy + r < y0 || wy - r > y1) return;
+      x.globalAlpha = a; x.drawImage(hole, (wx - bx - r) / S, (wy - by - r) / S, r * 2 / S, r * 2 / S);
+    };
+    const p = G.player;
+    if (!p.dead) { L(p.x, p.y - 10, 460); L(p.x, p.y - 10, 220); }
+    for (const q of G.pets) L(q.x, q.y, 130, 0.7);
+    for (const pr of G.projs) L(pr.x, pr.y, pr.kind === 'orb' ? 220 : 90, 0.8);
+    for (const b of G.eprojs) L(b.x, b.y, 80, 0.9);
+    for (const k of G.tele) L(k.x, k.y, k.r * 1.4, 0.85);
+    for (const z of G.zones) if (z.r > 0) L(z.x, z.y, z.r * 1.3, 0.6);
+    for (const r of G.rings) { const f = r.t / r.dur; L(r.x, r.y, (r.r1 || r.r || 60) * (0.4 + f), 0.6 * (1 - f)); }
+    let n = 0;
+    for (const k of G.pickups) {
+      if (k.kind === 'xp') { if (n++ < 120) L(k.x, k.y, 46, 0.45); } else L(k.x, k.y, k.kind === 'chest' ? 160 : 70, 0.8);
+    }
+    for (const e of G.enemies) if (e.boss || e.elite || e.goblin) L(e.x, e.y, e.r * 4, 0.7);
+    for (const o of G.Events.list) if (o.x !== undefined) L(o.x, o.y - 30, 170, 0.9);
+    n = 0;
+    for (const q of G.parts) if (q.add && q.size > 9 && n++ < 150) L(q.x, q.y, q.size * 3, 0.3 * q.life / q.max);
+    c.drawImage(this.lc, bx, by, lw * S, lh * S);
+  },
+
   drawDecals(c, x0, y0, x1, y1) {
     const D = this.decalImg;
     for (const d of G.decals) {
@@ -327,25 +371,27 @@ G.R = {
       : e.y - e.r * 2.6 * e.scale / 1.2;
     // 체력바 (피해 입은 적, 정예 · 보스는 이름표와 함께 항상)
     for (const e of list) {
-      if (e.hp >= e.maxHp && !e.elite && !e.boss) continue;
+      if (e.hp >= e.maxHp && !e.elite && !e.boss && !e.goblin) continue;
       const y = headY(e) - 6;
-      if (e.elite || e.boss) { this.drawNameBar(c, e, y); continue; }
+      if (e.elite || e.boss || e.goblin) { this.drawNameBar(c, e, y); continue; }
       const w = Math.max(24, e.r * 2);
       c.fillStyle = '#000'; c.fillRect(e.x - w / 2 - 1, y - 1, w + 2, 6);
       c.fillStyle = e.elite ? '#e0a020' : '#c81e1e'; c.fillRect(e.x - w / 2, y, w * Math.max(0, e.hp / e.maxHp), 4);
     }
     // 지속 피해 아이콘 (체력바 위)
-    for (const e of list) if (G.Dots.marks(e)) G.Dots.drawIcons(c, e, headY(e) - 26 + (e.def.fly && !e.boss ? -10 : 0) - (e.elite || e.boss ? 16 : 0));
+    for (const e of list) if (G.Dots.marks(e)) G.Dots.drawIcons(c, e, headY(e) - 26 + (e.def.fly && !e.boss ? -10 : 0) - (e.elite || e.boss || e.goblin ? 16 : 0) - (e.affixes ? 13 : 0));
   },
 
   // 정예 표시 ① 발밑: 금색 이중 고리 + 돌아가는 가시 (덩치 큰 일반 적과 구분)
+  // 접두어가 있으면 가시는 첫 접두어 색, 안쪽 고리는 둘째 접두어 색
   drawEliteRing(c, e) {
     const y = e.y + e.r * 0.8, rx = e.r * 1.45 + 6, ry = rx * 0.42, rot = G.t * 0.9;
+    const A = e.affixes || [], c1 = A[0] ? G.ELITE_AFFIXES[A[0]].color : '255,215,90', c2 = A[1] ? G.ELITE_AFFIXES[A[1]].color : '255,170,30';
     c.save(); c.translate(e.x, y); c.scale(1, ry / rx);
     c.fillStyle = 'rgba(255,190,40,0.12)'; c.beginPath(); c.arc(0, 0, rx, 0, 7); c.fill();
     c.strokeStyle = 'rgba(255,205,70,0.95)'; c.lineWidth = 3; c.beginPath(); c.arc(0, 0, rx, 0, 7); c.stroke();
-    c.strokeStyle = 'rgba(255,170,30,0.6)'; c.lineWidth = 1.5; c.beginPath(); c.arc(0, 0, rx - 7, 0, 7); c.stroke();
-    c.fillStyle = 'rgba(255,215,90,0.95)';
+    c.strokeStyle = `rgba(${c2},${A[1] ? 0.9 : 0.6})`; c.lineWidth = A[1] ? 2.5 : 1.5; c.beginPath(); c.arc(0, 0, rx - 7, 0, 7); c.stroke();
+    c.fillStyle = `rgba(${c1},0.95)`;
     for (let i = 0; i < 8; i++) {
       const a = rot + i * Math.PI / 4;
       c.beginPath(); c.moveTo(Math.cos(a) * (rx + 9), Math.sin(a) * (rx + 9));
@@ -356,15 +402,24 @@ G.R = {
   // 정예 표시 ② 머리 위: 이름표 + 금테 체력바 (항상 보임). 보스는 붉은 테 (화면 위 보스 프레임과 같은 색)
   drawNameBar(c, e, y) {
     const boss = e.boss, w = Math.max(boss ? 80 : 56, e.r * 2.6), x = e.x - w / 2;
-    const [dark, fill, rim] = boss ? ['#3a0c08', '#e0301e', '#ff6a4a'] : ['#3a2a08', '#ffb820', '#ffd25a'];
+    const [dark, fill, rim] = boss ? ['#3a0c08', '#e0301e', '#ff6a4a'] : e.goblin ? ['#3a3008', '#ffe040', '#fff080'] : ['#3a2a08', '#ffb820', '#ffd25a'];
     c.fillStyle = '#000'; c.fillRect(x - 2, y - 2, w + 4, 9);
     c.fillStyle = dark; c.fillRect(x, y, w, 5);
     c.fillStyle = fill; c.fillRect(x, y, w * Math.max(0, e.hp / e.maxHp), 5);
     c.strokeStyle = rim; c.lineWidth = 1; c.strokeRect(x - 1.5, y - 1.5, w + 3, 8);
     c.font = `bold ${boss ? 13 : 12}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
-    const label = (boss ? '보스 · ' : '정예 · ') + e.def.name;
+    const label = (boss ? '보스 · ' : e.goblin ? '' : '정예 · ') + e.def.name;
     c.lineWidth = 3; c.strokeStyle = '#000'; c.strokeText(label, e.x, y - 5);
     c.fillStyle = rim; c.fillText(label, e.x, y - 5);
+    // 정예 접두어: 이름 위에 접두어마다 제 색으로
+    if (e.affixes) {
+      const parts = e.affixes.map(a => G.ELITE_AFFIXES[a]), gap = 6;
+      c.font = 'bold 11px sans-serif';
+      const ws = parts.map(A => c.measureText(A.name).width), tot = ws.reduce((s, v) => s + v, 0) + gap * (parts.length - 1);
+      let ax = e.x - tot / 2;
+      c.textAlign = 'left';
+      parts.forEach((A, i) => { c.strokeText(A.name, ax, y - 19); c.fillStyle = `rgb(${A.color})`; c.fillText(A.name, ax, y - 19); ax += ws[i] + gap; });
+    }
     c.textAlign = 'left';
   },
 
@@ -375,9 +430,13 @@ G.R = {
     const fly = e.def.fly ? -10 + Math.sin(e.t * 3) * 4 : 0;
     const bob = moving ? Math.abs(Math.sin(e.t * 9)) * -2.5 : 0;
     const sq = moving ? 1 + Math.sin(e.t * 18) * 0.025 : 1;
-    if (e.elite || e.boss) {
+    if (e.affixes && Math.random() < 0.25) { // 접두어 기운: 몸 주변에서 피어오르는 입자
+      const A = G.ELITE_AFFIXES[U.choice(e.affixes)];
+      G.fx.part({ x: e.x + U.rand(-e.r, e.r), y: e.y - U.rand(0, e.r * 2), vy: -50, life: 0.6, size: U.rand(6, 11), rgb: A.color });
+    }
+    if (e.elite || e.boss || e.goblin) {
       c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.45 + Math.sin(e.t * 4) * 0.15;
-      const gr = e.boss ? (e.def.glow || '90,170,255') : '255,190,60';
+      const gr = e.boss ? (e.def.glow || '90,170,255') : e.goblin ? '255,220,80' : e.affixes ? G.ELITE_AFFIXES[e.affixes[0]].color : '255,190,60';
       c.drawImage(G.Spr.glow(gr, 128), e.x - e.r * 2.2, e.y - e.r * 2.2 + fly, e.r * 4.4, e.r * 4.4);
       c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
     }
