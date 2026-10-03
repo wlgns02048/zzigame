@@ -35,12 +35,14 @@ G.Lobby = {
       </div>
       <div class="lbBody">
         <nav class="lbNav">${this.TABS.map(([id, name, icon]) => `<a href="#" data-tab="${id}" class="${this.tab === id ? 'on' : ''}"><img src="${G.icon(icon)}"><span>${name}</span>${id === 'patch' && this.tab !== 'patch' && this.patchUnseen() ? '<em class="newTag">NEW</em>' : ''}</a>`).join('')}
-          <a href="#" data-help="1"><img src="${G.icon('reroll')}"><span>조작법</span></a></nav>
+          <a href="#" data-help="1"><img src="${G.icon('reroll')}"><span>조작법</span></a>
+          <a href="#" data-settings="1"><img src="${G.icon('scroll')}"><span>설정</span></a></nav>
         <main class="lbMain" id="lbMain"></main>
       </div></div>`);
     const root = G.UI.el.modal;
     root.querySelectorAll('[data-tab]').forEach(a => (a.onclick = e => { e.preventDefault(); this.show(a.dataset.tab); }));
     root.querySelector('[data-help]').onclick = e => { e.preventDefault(); G.UI.showHelp(); };
+    root.querySelector('[data-settings]').onclick = e => { e.preventDefault(); G.UI.showSettings(); };
     const lo = $('lbLogin'), lg = $('lbLogout');
     if (lo) lo.onclick = () => G.UI.showAuth();
     if (lg) lg.onclick = async () => { await G.Net.logout(); G.UI.toast('로그아웃했습니다.'); this.show('stage'); };

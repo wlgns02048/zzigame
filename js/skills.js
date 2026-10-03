@@ -407,7 +407,7 @@ const IMPL = G.SKILL_IMPL = {
               G.aoe(z.x, z.y, z.r, s.dmg, 'cometstorm', {}, e => G.chill(e, 0.4, 2));
               G.fx.ring(z.x, z.y, 5, z.r * 1.2, 0.35, '170,220,255', 5, 0.3);
               G.fx.burst(z.x, z.y, 14, { rgb: '150,210,255', sp: 220, size: 12 });
-              G.fx.shards(z.x, z.y, 8, 260); G.fx.shake(3); G.Audio.play('comet', 0.6);
+              G.fx.shards(z.x, z.y, 8, 260); G.fx.wave(z.x, z.y, z.r * 1.3, '170,220,255', 0.3); G.fx.shake(4); G.Audio.play('comet', 0.6);
             },
           });
         });
@@ -421,8 +421,9 @@ const IMPL = G.SKILL_IMPL = {
       const p = G.player, s = sk.s, R = s.radius * p.stats.area;
       const t = G.densestPoint(p.x, p.y, 480, R) || G.nearestEnemy(p.x, p.y, 480);
       if (!t) return false;
-      G.aoe(t.x, t.y, R, s.dmg, 'icenova', {}, e => G.freeze(e, s.freeze));
-      G.fx.ring(t.x, t.y, 5, R, 0.4, '200,240,255', 7, 0.35);
+      const n = G.aoe(t.x, t.y, R, s.dmg, 'icenova', {}, e => G.freeze(e, s.freeze));
+      G.fx.ring(t.x, t.y, 5, R, 0.4, '200,240,255', 7, 0.35); G.fx.wave(t.x, t.y, R * 1.2);
+      if (n >= 8) G.fx.hitStop(0.03);
       G.fx.burst(t.x, t.y, 26, { rgb: '170,225,255', sp: 260, size: 12, spread: 10 });
       G.fx.shards(t.x, t.y, 16, 300);
       G.Zones.add({ kind: 'novaice', x: t.x, y: t.y, r: R * 0.9, life: 1.2 });
@@ -471,7 +472,8 @@ const IMPL = G.SKILL_IMPL = {
           G.Grid.query(e.x, e.y, R).forEach(o => { if (o !== e) { G.hit(o, dmg * 0.6, 'glacialspike'); G.freeze(o, 2); } });
           G.fx.ring(e.x, e.y, 5, R, 0.4, '200,240,255', 6, 0.3);
           G.fx.shards(e.x, e.y, 26, 360); G.fx.burst(e.x, e.y, 18, { rgb: '170,225,255', sp: 220, size: 16 });
-          G.fx.shake(6); G.Audio.play('shatter'); G.Audio.play('explode', 0.6);
+          G.fx.wave(e.x, e.y, R * 1.4); G.fx.hitStop(0.06); G.fx.flash('190,230,255', 0.14, 0.16);
+          G.fx.shake(8, Math.cos(a), Math.sin(a)); G.Audio.play('shatter'); G.Audio.play('explode', 0.6);
         },
       });
       G.Audio.play('lance'); G.Audio.play('orb', 0.5);
@@ -480,8 +482,9 @@ const IMPL = G.SKILL_IMPL = {
   frostnova: {
     cast(sk) {
       const p = G.player, s = sk.s, R = s.radius * p.stats.area;
-      G.aoe(p.x, p.y, R, s.dmg, 'frostnova', {}, e => G.freeze(e, s.freeze));
-      G.fx.ring(p.x, p.y, 10, R, 0.45, '210,245,255', 10, 0.35);
+      const n = G.aoe(p.x, p.y, R, s.dmg, 'frostnova', {}, e => G.freeze(e, s.freeze));
+      G.fx.ring(p.x, p.y, 10, R, 0.45, '210,245,255', 10, 0.35); G.fx.wave(p.x, p.y, R * 1.25, '210,245,255', 0.4);
+      if (n >= 5) { G.fx.hitStop(0.04); G.fx.flash('200,240,255', 0.1, 0.15); }
       G.fx.burst(p.x, p.y, 50, { rgb: '170,225,255', sp: R * 2.2, spMin: R, size: 14, drag: 5 });
       G.fx.shards(p.x, p.y, 24, R * 2);
       G.Zones.add({ kind: 'novaice', x: p.x, y: p.y, r: R, life: 1.6 });

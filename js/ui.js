@@ -212,7 +212,7 @@ G.UI = {
   // ---------- 알림 ----------
   warn(text, color = '#ff6a1a', dur = 3) { const w = this.el.raidWarn; w.textContent = text; w.style.color = color; w.classList.add('show'); this.warnT = dur; },
   error(text) { if (G.autoCasting) return; this.el.err.textContent = text; this.el.err.style.opacity = 1; this.errT = 1.2; },
-  hurtFlash() { const f = this.el.flash; f.style.transition = 'none'; f.style.opacity = 1; requestAnimationFrame(() => { f.style.transition = 'opacity .4s'; f.style.opacity = 0; }); },
+  hurtFlash() { const f = this.el.flash; f.style.transition = 'none'; f.style.opacity = G.Settings.get('flash') ? 1 : 0.5; requestAnimationFrame(() => { f.style.transition = 'opacity .4s'; f.style.opacity = 0; }); },
   flashReady(id) { const k = G.SKILLS[id].key, d = k && this.slotEls[k]; if (!d) return; d.classList.remove('flashready'); void d.offsetWidth; d.classList.add('flashready'); },
   pressed(id) {
     const k = G.SKILLS[id].key, a = !k && this.autoEls && this.autoEls.find(x => x[0] === id), d = k ? this.slotEls[k] : a && a[1];
@@ -348,6 +348,28 @@ G.UI = {
       <button class="btn" id="hBack">돌아가기</button></div>`);
     $('hBack').onclick = () => (G.state === 'play' ? this.showPause() : this.showMenu());
   },
+  // ---------- 설정 (연출 · 소리) ----------
+  SETTINGS: [
+    { k: 'shake', type: 'range', name: '화면 흔들림', min: 0, max: 1.5, step: 0.25, fmt: v => v ? Math.round(v * 100) + '%' : '끔' },
+    { k: 'flash', type: 'check', name: '화면 번쩍임', desc: '큰 기술 · 보스 처치 때 화면이 잠깐 밝아짐' },
+    { k: 'hitstop', type: 'check', name: '타격 멈춤', desc: '큰 타격 순간 아주 잠깐 멈칫함' },
+  ],
+  showSettings() {
+    const S = G.Settings, row = o => o.type === 'range'
+      ? `<label class="setRow"><span>${o.name}</span><input type="range" data-set="${o.k}" min="${o.min}" max="${o.max}" step="${o.step}" value="${S.get(o.k)}"><b data-val="${o.k}">${o.fmt(S.get(o.k))}</b></label>`
+      : `<label class="setRow"><span>${o.name}${o.desc ? `<small>${o.desc}</small>` : ''}</span><input type="checkbox" data-set="${o.k}" ${S.get(o.k) ? 'checked' : ''}><b></b></label>`;
+    this.open('settings', `<div class="panel setPanel"><h2>설정</h2><div class="sub">이 브라우저에 저장됩니다.</div>
+      <div class="setList">${this.SETTINGS.map(row).join('')}</div><button class="btn" id="sBack">돌아가기</button></div>`);
+    this.el.modal.querySelectorAll('[data-set]').forEach(inp => (inp.oninput = () => {
+      const o = this.SETTINGS.find(x => x.k === inp.dataset.set), v = o.type === 'range' ? +inp.value : inp.checked;
+      S.set(o.k, v);
+      if (o.type === 'range') this.el.modal.querySelector(`[data-val="${o.k}"]`).textContent = o.fmt(v);
+      if (o.apply) o.apply(v);
+      if (o.k === 'shake' && v) G.fx.shake(10 * v); // 미리 보기
+    }));
+    $('sBack').onclick = () => (G.state === 'play' ? this.showPause() : this.showMenu());
+  },
+
   showLevelUp(opts, title, sub) {
     const p = G.player;
     this.lvOpts = opts;
@@ -385,9 +407,10 @@ G.UI = {
     this.open('pause', `<div class="panel"><h2>일시 정지</h2>
       <div class="summary"><div>시간<b>${U.fmtTime(G.t)}</b></div><div>레벨<b>${G.player.level}</b></div><div>처치<b>${G.stats.kills}</b></div><div>주문력<b>${Math.round(st.dmg * 100)}%</b></div><div>가속<b>${Math.round(G.P.haste() * 100)}%</b></div><div>치명타<b>${Math.round(st.crit * 100)}%</b></div></div>
       ${this.buildSummary()}
-      <button class="btn" id="pResume">계속하기</button><button class="btn" id="pHelp">조작법</button><button class="btn" id="pQuit">포기하고 메인 메뉴로</button></div>`);
+      <button class="btn" id="pResume">계속하기</button><button class="btn" id="pHelp">조작법</button><button class="btn" id="pSet">설정</button><button class="btn" id="pQuit">포기하고 메인 메뉴로</button></div>`);
     $('pResume').onclick = () => G.resume();
     $('pHelp').onclick = () => this.showHelp();
+    $('pSet').onclick = () => this.showSettings();
     $('pQuit').onclick = () => G.endRun(false);
   },
 

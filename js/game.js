@@ -31,11 +31,17 @@ G.init = async () => {
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = Math.max(last, now);
     try {
       if (G.state === 'play' && !G.paused && !G.simulating) {
-        for (let i = 0; i < G.timeScale; i++) {
-          G.update(dt);
-          // 피의 욕망: 남는 배속만큼 한 번 더 진행 (한 번에 큰 dt로 돌리면 빠른 투사체가 적을 뚫고 지나갈 수 있어서)
-          if (G.lustT > 0 && G.state === 'play' && !G.paused) { const x = dt * (G.LUST.speed - 1); G.update(x); G.stats.lust += x; }
+        // 히트스톱 동안은 게임을 진행하지 않고, 슬로모션 동안은 느리게 진행한다 (둘 다 실제 시간 기준)
+        if (G.stopT > 0) G.stopT -= dt;
+        else {
+          const gdt = G.slowT > 0 ? dt * G.slowK : dt;
+          for (let i = 0; i < G.timeScale; i++) {
+            G.update(gdt);
+            // 피의 욕망: 남는 배속만큼 한 번 더 진행 (한 번에 큰 dt로 돌리면 빠른 투사체가 적을 뚫고 지나갈 수 있어서)
+            if (G.lustT > 0 && G.state === 'play' && !G.paused) { const x = gdt * (G.LUST.speed - 1); G.update(x); G.stats.lust += x; }
+          }
         }
+        G.slowT = Math.max(0, G.slowT - dt);
         G.lustT = Math.max(0, G.lustT - dt);
       }
       else if (G.state === 'menu') { G.cam.x += dt * 25; G.cam.y += dt * 8; }
@@ -60,7 +66,7 @@ G.Input = () => {
     if (e.code === 'Escape') {
       if (G.state !== 'play') return;
       if (G.UI.modalKind === 'pause') G.resume();
-      else if (G.UI.modalKind === 'help') G.UI.showPause();
+      else if (G.UI.modalKind === 'help' || G.UI.modalKind === 'settings') G.UI.showPause();
       else if (!G.UI.modalKind) G.pause();
       return;
     }
@@ -102,7 +108,9 @@ G.startRun = (cls, stage, diff) => {
   cls ||= G.selectedClass || G.params.get('cls') || 'mage';
   stage ||= G.selectedStage || G.params.get('stage') || 'icecrown';
   diff ||= G.selectedDiff || G.params.get('diff') || 'normal';
-  Object.assign(G, { t: 0, enemies: [], projs: [], eprojs: [], zones: [], tele: [], pickups: [], parts: [], texts: [], rings: [], pets: [], images: [], delayed: [], chests: [] });
+  Object.assign(G, { t: 0, enemies: [], projs: [], eprojs: [], zones: [], tele: [], pickups: [], parts: [], texts: [], rings: [], pets: [], images: [], delayed: [], chests: [], corpses: [], decals: [],
+    stopT: 0, stopCd: 0, stopLast: 0, slowT: 0, slowK: 1 });
+  Object.assign(G.cam, { trauma: 0, kx: 0, ky: 0 });
   G.stats = { kills: 0, gold: 0, banked: 0, lust: 0 }; G.lustT = 0;
   G.Aim.reset();
   G.state = 'play'; G.paused = false;
@@ -166,7 +174,6 @@ G.update = dt => {
   // 카메라
   const k = Math.min(1, dt * 8);
   G.cam.x += (p.x - G.cam.x) * k; G.cam.y += (p.y - G.cam.y) * k;
-  G.cam.shake = Math.max(0, G.cam.shake - dt * 40);
   G.checkModals();
 };
 

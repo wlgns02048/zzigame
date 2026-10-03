@@ -5,8 +5,30 @@ G.R = {
     this.cv = $('cv'); this.c = this.cv.getContext('2d');
     this.snow = [];
     for (let i = 0; i < 160; i++) this.snow.push({ x: Math.random(), y: Math.random(), s: U.rand(0.6, 2.4), v: U.rand(20, 60), ph: Math.random() * 6 });
+    this.buildDecals();
     addEventListener('resize', () => this.resize());
     this.resize();
+  },
+  // 바닥 자국 그림 (종류마다 3가지 모양). 결정적 해시로 모양을 정해 매번 같다
+  buildDecals() {
+    const blob = (x, cx, cy, r, s, n) => {
+      x.beginPath();
+      for (let i = 0; i <= n; i++) { const a = i / n * 6.283, rr = r * (0.7 + U.hash(i, s, 7) * 0.5); x.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.6); }
+      x.closePath(); x.fill();
+    };
+    const K = { ichor: ['rgba(30,40,24,0.55)', 'rgba(70,90,40,0.35)'], scorch: ['rgba(15,8,12,0.6)', 'rgba(120,50,150,0.22)'], frost: ['rgba(190,230,255,0.4)', 'rgba(255,255,255,0.5)'] };
+    this.decalImg = {};
+    for (const k in K) {
+      this.decalImg[k] = [0, 1, 2].map(v => G.Spr.make(72, 72, x => {
+        x.fillStyle = K[k][0]; blob(x, 36, 36, 22, v + 1, 14);
+        x.fillStyle = K[k][1];
+        if (k === 'frost') { x.strokeStyle = K[k][1]; x.lineWidth = 1.5; for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283 + v; x.beginPath(); x.moveTo(36, 36); x.lineTo(36 + Math.cos(a) * 26, 36 + Math.sin(a) * 15); x.stroke(); } }
+        else blob(x, 36, 36, 12, v + 9, 10);
+        // 튄 방울
+        x.fillStyle = K[k][0];
+        for (let i = 0; i < 5; i++) { const a = U.hash(i, v, 3) * 6.283, d = 24 + U.hash(i, v, 4) * 10; x.beginPath(); x.ellipse(36 + Math.cos(a) * d, 36 + Math.sin(a) * d * 0.6, 3, 2, 0, 0, 7); x.fill(); }
+      }));
+    }
   },
   // 시야 고정: 해상도 · 화면비와 상관없이 세상은 항상 VIEW_W × VIEW_H만 보인다 (랭킹 공정성).
   // 화면에 맞게 확대/축소하고, 16:9보다 넓거나 좁으면 남는 띠에는 바닥만 어둡게 이어 그린다.
@@ -41,8 +63,10 @@ G.R = {
     G.parts = G.parts.filter(p => p.life > 0);
     for (const r of G.rings) r.t += dt;
     G.rings = G.rings.filter(r => r.t < r.dur);
-    for (const t of G.texts) { t.t += dt; t.y += t.vy * dt; t.x += t.vx * dt; t.vy *= 0.94; }
+    for (const t of G.texts) { t.t += dt; t.y += t.vy * dt; t.x += t.vx * dt; t.vy *= 0.94; if (t.pop > 0) t.pop = Math.max(0, t.pop - dt * 7); }
     G.texts = G.texts.filter(t => t.t < t.max);
+    if (G.corpses.length) { for (const k of G.corpses) k.t += dt; G.corpses = G.corpses.filter(k => k.t < k.max); }
+    if (G.decals.length) { for (const d of G.decals) d.t += dt; G.decals = G.decals.filter(d => d.t < d.max); }
   },
   zoneFx(z, dt) {
     if (z.kind === 'blizzard') {
@@ -72,8 +96,12 @@ G.R = {
   draw(realDt) {
     const c = this.c, W = G.W, H = G.H, cam = G.cam, k = this.dpr * this.s;
     c.setTransform(k, 0, 0, k, this.dpr * this.ox, this.dpr * this.oy);
-    let sx = 0, sy = 0;
-    if (cam.shake > 0) { sx = U.rand(-cam.shake, cam.shake); sy = U.rand(-cam.shake, cam.shake); }
+    // 화면 흔들림: 세기(trauma)의 제곱 × 부드러운 노이즈 + 맞은 방향으로 밀림. 실제 시간으로 줄어든다 (히트스톱 중에도 흔들림)
+    cam.trauma = Math.max(0, cam.trauma - realDt * 2.2);
+    const kd = Math.exp(-realDt * 14); cam.kx *= kd; cam.ky *= kd;
+    const sk = G.Settings.get('shake'), amp = cam.trauma * cam.trauma * 18 * sk, nt = performance.now() / 1000;
+    const sx = amp * (Math.sin(nt * 53) * 0.6 + Math.sin(nt * 87 + 1.3) * 0.4) + cam.kx * sk;
+    const sy = amp * (Math.sin(nt * 61 + 2.1) * 0.6 + Math.sin(nt * 79 + 0.4) * 0.4) + cam.ky * sk;
     const ox = Math.round(W / 2 - cam.x + sx), oy = Math.round(H / 2 - cam.y + sy);
     // 화면 전체(띠 포함)의 논리 좌표 범위
     const bx = this.ox / this.s, by = this.oy / this.s, sx0 = -bx, sy0 = -by, sx1 = W + bx, sy1 = H + by;
@@ -88,6 +116,7 @@ G.R = {
     c.save(); c.beginPath(); c.rect(0, 0, W, H); c.clip(); c.translate(ox, oy);
     const vx0 = cam.x - W / 2 - 100, vy0 = cam.y - H / 2 - 120, vx1 = cam.x + W / 2 + 100, vy1 = cam.y + H / 2 + 160;
     if (G.state !== 'menu' && G.player) {
+      this.drawDecals(c, vx0, vy0, vx1, vy1);
       for (const z of G.zones) this.drawZone(c, z);
       for (const k of G.tele) this.drawTele(c, k);
       this.drawPickups(c);
@@ -102,6 +131,13 @@ G.R = {
     c.drawImage(this.vig, 0, 0);
     const p = G.player;
     if (G.state === 'play' && p && p.hp / p.maxHp < 0.3) { c.globalAlpha = 0.5 + Math.sin(performance.now() / 200) * 0.3; c.drawImage(this.lowhp, 0, 0); c.globalAlpha = 1; }
+    // 화면 빛 (큰 기술 · 보스 처치)
+    const f = this.scr;
+    if (f) {
+      f.t += realDt;
+      if (f.t >= f.dur) this.scr = null;
+      else { c.globalCompositeOperation = 'lighter'; c.fillStyle = `rgba(${f.rgb},${f.a * (1 - f.t / f.dur)})`; c.fillRect(0, 0, W, H); c.globalCompositeOperation = 'source-over'; }
+    }
     if (bx > 0.5 || by > 0.5) this.drawBars(c, W, H, bx, by);
   },
   // 시야 밖 띠: 어둡게 덮고 경계는 그라데이션으로 부드럽게
@@ -198,6 +234,32 @@ G.R = {
     }
   },
 
+  drawDecals(c, x0, y0, x1, y1) {
+    const D = this.decalImg;
+    for (const d of G.decals) {
+      if (d.x < x0 || d.x > x1 || d.y < y0 || d.y > y1) continue;
+      const f = d.t / d.max, img = D[d.kind][d.v], s = 72 * d.s;
+      c.globalAlpha = Math.min(1, d.t * 8, (1 - f) * 3);
+      c.save(); c.translate(d.x, d.y); c.rotate(d.rot * 0.15); c.drawImage(img, -s / 2, -s / 2, s, s); c.restore();
+    }
+    c.globalAlpha = 1;
+  },
+  // 쓰러지는 적: 하얗게 번쩍 → 옆으로 퍼지며 납작하게 눌리고 사라진다. 보스는 오래 번쩍이며 가라앉는다
+  drawCorpse(c, k) {
+    const e = k.e, set = G.Spr.enemy[e.id], f = k.t / k.max, img = set.n;
+    const w = img.width * e.scale, h = img.height * e.scale, fly = e.def.fly ? -10 : 0;
+    const ease = f * f;
+    c.save();
+    c.translate(e.x, e.y + e.r * 0.85 + fly * (1 - f));
+    if (e.face < 0) c.scale(-1, 1);
+    c.scale(1 + ease * 0.35, 1 - ease * 0.8);
+    c.globalAlpha = 1 - ease;
+    c.drawImage(img, -w / 2, -h * 0.94, w, h);
+    const fl = e.boss ? 0.5 + Math.sin(k.t * 30) * 0.5 : Math.max(0, 1 - f * 2.5);
+    if (fl > 0) { c.globalAlpha = (1 - ease) * fl * 0.9; c.drawImage(set.flash, -w / 2, -h * 0.94, w, h); }
+    c.restore(); c.globalAlpha = 1;
+  },
+
   drawTele(c, k) {
     const f = k.t / k.max;
     if (k.shape === 'cone') { // 부채꼴: 판정과 같은 평면 좌표로 그린다
@@ -247,6 +309,7 @@ G.R = {
     c.fillStyle = 'rgba(0,0,10,0.35)';
     for (const e of list) { c.beginPath(); c.ellipse(e.x, e.y + e.r * 0.75, e.r * 1.05, e.r * 0.38, 0, 0, 7); c.fill(); }
     c.beginPath(); c.ellipse(p.x, p.y + 12, 15, 6, 0, 0, 7); c.fill();
+    for (const k of G.corpses) if (k.e.x > x0 && k.e.x < x1 && k.e.y > y0 && k.e.y < y1 + 60) this.drawCorpse(c, k);
     for (const e of list) this.drawEnemy(c, e);
     // 보스 오라
     for (const e of list) if (e.boss && e.auraR) {
@@ -320,10 +383,11 @@ G.R = {
     }
     if (e.elite) this.drawEliteRing(c, e);
     if (e.dots || e.seedEnd > G.t) G.Dots.drawRing(c, e);
+    const kb = e.kb || 0, hit = e.flash > 0 ? e.flash / 0.07 : 0; // 맞으면 밀려나며 살짝 눌린다
     c.save();
-    c.translate(e.x, e.y + e.r * 0.85 + fly + bob);
+    c.translate(e.x + kb * (e.kbx || 0), e.y + e.r * 0.85 + fly + bob + kb * (e.kby || 0) * 0.5);
     if (e.face < 0) c.scale(-1, 1);
-    c.scale(1, sq);
+    c.scale(1 + hit * 0.08, sq * (1 - hit * 0.1));
     c.drawImage(img, -w / 2, -h * 0.94, w, h);
     if (e.flash > 0) { c.globalAlpha = e.boss ? 0.25 : 0.6; c.drawImage(set.flash, -w / 2, -h * 0.94, w, h); c.globalAlpha = 1; }
     c.restore();
@@ -451,6 +515,15 @@ G.R = {
         c.fillStyle = g; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, r.r * e, r.a - r.half, r.a + r.half); c.closePath(); c.fill();
         c.restore(); continue;
       }
+      if (r.kind === 'wave') { // 충격파: 굵고 밝은 띠 + 얇은 바깥 테
+        const rad = r.r0 + (r.r1 - r.r0) * e;
+        c.save(); c.translate(r.x, r.y); c.scale(1, 0.75); c.globalCompositeOperation = 'lighter';
+        c.strokeStyle = `rgba(${r.color},${0.45 * (1 - f)})`; c.lineWidth = 22 * (1 - f) + 2;
+        c.beginPath(); c.arc(0, 0, rad * 0.94, 0, 7); c.stroke();
+        c.strokeStyle = `rgba(255,255,255,${0.8 * (1 - f)})`; c.lineWidth = 2.5;
+        c.beginPath(); c.arc(0, 0, rad, 0, 7); c.stroke();
+        c.restore(); continue;
+      }
       const rad = r.r0 + (r.r1 - r.r0) * e;
       c.save(); c.translate(r.x, r.y); c.scale(1, 0.75);
       if (r.fill) { c.fillStyle = `rgba(${r.color},${r.fill * (1 - f)})`; c.beginPath(); c.arc(0, 0, rad, 0, 7); c.fill(); }
@@ -463,12 +536,19 @@ G.R = {
     c.textAlign = 'center'; c.lineJoin = 'round';
     for (const t of G.texts) {
       const f = t.t / t.max;
-      let sz = t.size;
+      let sz = t.size * (1 + t.pop * 0.3);
       if (t.crit) sz *= f < 0.12 ? 1 + (0.12 - f) * 6 : 1;
       c.font = `900 ${Math.round(sz)}px 'Noto Sans KR','Malgun Gothic',sans-serif`;
       c.globalAlpha = f > 0.6 ? 1 - (f - 0.6) / 0.4 : 1;
+      if (t.crit) {
+        // 치명타: 기울어진 큰 숫자, 처음 순간 하얗게 번쩍
+        c.save(); c.translate(t.x, t.y); c.rotate(t.rot);
+        c.lineWidth = 5; c.strokeStyle = '#000'; c.strokeText(t.str, 0, 0);
+        c.fillStyle = f < 0.06 ? '#fff' : t.col; c.fillText(t.str, 0, 0);
+        c.restore(); continue;
+      }
       c.lineWidth = 3.5; c.strokeStyle = '#000'; c.strokeText(t.str, t.x, t.y);
-      c.fillStyle = t.col; c.fillText(t.str, t.x, t.y);
+      c.fillStyle = t.pop > 0.6 ? '#fff' : t.col; c.fillText(t.str, t.x, t.y);
     }
     c.globalAlpha = 1;
   },

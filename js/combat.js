@@ -24,10 +24,46 @@ G.fx = {
     G.rings.push({ x, y, r0, r1, t: 0, dur, color, width, fill });
   },
   text(x, y, str, col = '#fff', size = 16, crit = false) {
-    if ((G.texts.length > 90 && !crit) || G.texts.length > 160) return;
-    G.texts.push({ x: x + U.rand(-8, 8), y, vy: -60, str, col, size, t: 0, max: crit ? 1.0 : 0.75, crit, vx: U.rand(-20, 20) });
+    if ((G.texts.length > 90 && !crit) || G.texts.length > 160) return null;
+    const t = { x: x + U.rand(-8, 8), y, vy: crit ? -110 : -60, str, col, size, t: 0, max: crit ? 1.0 : 0.75, crit, vx: U.rand(-20, 20), pop: 0, rot: crit ? U.rand(-0.12, 0.12) : 0 };
+    G.texts.push(t);
+    return t;
   },
-  shake(v) { G.cam.shake = Math.min(18, Math.max(G.cam.shake, v)); },
+  // 화면 흔들림: v는 최대 흔들림 픽셀(18까지). dx, dy를 주면 그 방향으로 화면이 한 번 밀린다
+  shake(v, dx = 0, dy = 0) {
+    const cam = G.cam;
+    cam.trauma = Math.min(1, Math.max(cam.trauma, Math.sqrt(Math.min(18, v) / 18)));
+    if (dx || dy) { cam.kx += dx * v * 0.7; cam.ky += dy * v * 0.7; }
+  },
+  // 히트스톱: 큰 타격 순간 실제 시간 sec초 동안 게임을 멈춘다 (연달아 걸려 끊겨 보이지 않게 0.25초 간격, 더 큰 멈춤은 간격을 무시)
+  hitStop(sec) {
+    if (!G.Settings.get('hitstop') || G.Bot.on || G.simulating || (G.t < G.stopCd && sec <= G.stopLast)) return;
+    G.stopT = Math.max(G.stopT, Math.min(0.15, sec)); G.stopCd = G.t + 0.25; G.stopLast = sec;
+  },
+  // 슬로모션: 실제 시간 dur초 동안 게임이 k배 속도로 흐른다
+  slowMo(k, dur) {
+    if (G.Bot.on || G.simulating) return;
+    G.slowK = k; G.slowT = Math.max(G.slowT, dur);
+  },
+  // 화면 전체가 잠깐 물드는 빛 (설정에서 끌 수 있음)
+  flash(rgb = '255,255,255', a = 0.25, dur = 0.18) {
+    if (!G.Settings.get('flash') || G.simulating) return;
+    G.R.scr = { rgb, a, t: 0, dur };
+  },
+  // 충격파: 굵고 밝은 띠가 빠르게 퍼진다
+  wave(x, y, r, rgb = '220,245,255', dur = 0.35) { G.rings.push({ kind: 'wave', x, y, r0: r * 0.15, r1: r, t: 0, dur, color: rgb }); },
+  // 적이 쓰러지는 모습 (하얗게 번쩍 → 납작하게 눌리며 사라짐)
+  corpse(e) {
+    if (G.simulating) return;
+    if (G.corpses.length > 80) G.corpses.shift();
+    G.corpses.push({ e, t: 0, max: e.boss ? 1.4 : 0.32 });
+  },
+  // 바닥 자국: kind = ichor(일반) · frost(빙결) · scorch(화염 · 암흑)
+  decal(x, y, kind, s = 1) {
+    if (G.simulating) return;
+    if (G.decals.length > 140) G.decals.shift();
+    G.decals.push({ x, y, kind, s: s * U.rand(0.8, 1.2), rot: Math.random() * 6.28, v: U.randi(0, 2), t: 0, max: U.rand(7, 10) });
+  },
 };
 
 // ================= 피해 미터 =================
@@ -81,14 +117,29 @@ G.hit = (e, base, src, o = {}) => {
   if (e.boss && G.t < 0) d = 0;
   d = Math.max(1, Math.round(d * U.rand(0.93, 1.07) * (e.dmgTaken || 1)));
   if (o.consumeWC && e.wc > 0 && e.frozenT <= 0) e.wc--;
-  e.hp -= d; e.flash = 0.05;
+  e.hp -= d; e.flash = 0.07;
   G.meter.add(src, d);
+  // 맞은 적이 플레이어 반대쪽으로 살짝 밀려 보인다 (그림만, 실제 위치는 그대로)
+  if (!e.boss && !o.small) {
+    const kx = e.x - p.x, ky = e.y - p.y, kd = Math.hypot(kx, ky) || 1;
+    e.kbx = kx / kd; e.kby = ky / kd; e.kb = Math.min(12, (e.kb || 0) + (crit ? 7 : 3));
+  }
   if (!o.noText) {
     const col = o.school === 'fire' ? (crit ? '#ffb347' : '#ff8a3c') : o.school === 'arcane' ? (crit ? '#ff9cff' : '#e4a6ff') : o.school === 'shadow' ? (crit ? '#e6b3ff' : '#c58bff') : (crit ? '#ffe14d' : '#ffffff');
-    G.fx.text(e.x, e.y - e.r - 6, crit ? U.num(d) + '!' : U.num(d), col, crit ? (o.small ? 18 : 24) : (o.small ? 12 : 15), crit);
+    // 짧은 간격으로 같은 적에게 들어간 일반 피해는 숫자 하나로 합쳐 커지게 한다 (지속 피해 · 다단 히트가 화면을 덮지 않도록)
+    const tx = e.dtx;
+    if (!crit && tx && tx.col === col && tx.t < 0.45) {
+      tx.val += d; tx.str = U.num(tx.val); tx.pop = 1; tx.t = Math.min(tx.t, 0.2); tx.size = Math.min(tx.base * 1.45, tx.size + 0.7);
+    } else {
+      const t = G.fx.text(e.x, e.y - e.r - 6, crit ? U.num(d) + '!' : U.num(d), col, crit ? (o.small ? 18 : 24) : (o.small ? 12 : 15), crit);
+      if (t && !crit) { t.val = d; t.base = t.size; e.dtx = t; }
+    }
   }
-  if (crit) G.cls(p).onCrit(e, p);
-  if (e.hp <= 0) G.killEnemy(e, frozen);
+  if (crit) {
+    G.cls(p).onCrit(e, p);
+    if ((e.boss || e.elite) && d >= e.maxHp * 0.04) G.fx.hitStop(0.035);
+  }
+  if (e.hp <= 0) G.killEnemy(e, frozen, o.school);
   return d;
 };
 
@@ -99,16 +150,26 @@ G.aoe = (x, y, r, base, src, o = {}, each) => {
   return list.length;
 };
 
-G.killEnemy = (e, frozen) => {
+G.killEnemy = (e, frozen, school) => {
   if (e.dead) return;
   e.dead = true; G.stats.kills++;
+  const big = e.boss || e.elite, ds = e.r / 14;
   if (frozen || e.frozenT > 0) {
-    G.fx.shards(e.x, e.y, e.boss ? 40 : 10, e.boss ? 400 : 220);
+    G.fx.shards(e.x, e.y, e.boss ? 40 : e.elite ? 22 : 10, e.boss ? 400 : 220);
     G.fx.burst(e.x, e.y, 5, { rgb: '190,235,255', sp: 100, size: 14 });
+    G.fx.decal(e.x, e.y + e.r * 0.6, 'frost', ds);
     G.Audio.play('shatter', 0.6);
   } else {
+    G.fx.corpse(e);
     G.fx.burst(e.x, e.y, 6, { rgb: '30,30,40', add: false, type: 'smoke', sp: 60, size: 12, life: 0.6, drag: 4 });
     if (Math.random() < 0.4) G.fx.burst(e.x, e.y, 2, { type: 'bone', add: false, sp: 120, size: 1, sMin: 1, size1: 1, life: 0.7, grav: 200, drag: 1 });
+    G.fx.decal(e.x, e.y + e.r * 0.6, school === 'fire' || school === 'shadow' ? 'scorch' : 'ichor', ds);
+  }
+  if (big) {
+    G.fx.wave(e.x, e.y, e.boss ? 260 : 120, e.boss ? '255,230,160' : '255,210,110', e.boss ? 0.6 : 0.4);
+    G.fx.shake(e.boss ? 16 : 7);
+    G.fx.hitStop(e.boss ? 0.15 : 0.07);
+    if (e.boss) { G.fx.slowMo(0.3, 1.1); G.fx.flash('255,240,200', 0.35, 0.5); }
   }
   // 전리품
   let xp = e.xp;
@@ -160,6 +221,10 @@ G.hurtPlayer = (dmg, src) => {
   p.hp -= dmg; p.hurtT = 0.15;
   if (G.Bot.sync) { (G.dmgLog ||= []).push([G.t.toFixed(1), src && src.id ? src.id : 'proj', dmg]); if (G.dmgLog.length > 30) G.dmgLog.shift(); }
   G.fx.text(p.x, p.y - 34, '-' + dmg, '#ff4040', 17);
+  // 맞은 방향으로 화면이 밀린다. 큰 피해(최대 생명력 12% 이상)는 잠깐 멈칫
+  const sx = src && src.x !== undefined ? p.x - src.x : 0, sy = src && src.x !== undefined ? p.y - src.y : 0, sd = Math.hypot(sx, sy) || 1;
+  G.fx.shake(Math.min(10, 3 + 40 * dmg / p.maxHp), sx / sd, sy / sd);
+  if (dmg >= p.maxHp * 0.12) G.fx.hitStop(0.05);
   G.Audio.play('hurt', 0.7);
   G.UI.hurtFlash();
   if (p.hp <= 0 && !G.cls(p).preventDeath(p)) G.playerDeath();

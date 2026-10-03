@@ -459,3 +459,12 @@ select { cursor: pointer; }
   #chat { left: 8px; bottom: 8px; }
   .chatBox { width: calc(100vw - 16px); height: 55vh; }
 }
+
+/* ---------- 설정 ---------- */
+.setPanel { width: 440px; max-width: calc(100vw - 32px); }
+.setList { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.setRow { display: grid; grid-template-columns: 1fr 150px 48px; align-items: center; gap: 10px; padding: 7px 10px; background: rgba(0,0,0,.35); border: 1px solid #2c2416; border-radius: 4px; cursor: pointer; color: #dde; font-size: 14px; }
+.setRow small { display: block; color: #889; font-size: 11.5px; }
+.setRow input[type=range] { width: 100%; accent-color: #c9a24a; }
+.setRow input[type=checkbox] { justify-self: end; width: 18px; height: 18px; accent-color: #c9a24a; }
+.setRow b { color: var(--wow-yellow); font-size: 13px; text-align: right; }

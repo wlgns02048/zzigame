@@ -444,6 +444,7 @@ Object.assign(G.SKILL_IMPL, {
       G.aoe(x, y, R, s.dmg, 'viletaint', { school: 'shadow' }, e => { G.Dots.apply(e, 'agony', ag); G.Dots.apply(e, 'corruption', co); if (ua) applyUA(e, ua, false); });
       G.Zones.add({ kind: 'tinted', color: '140,60,210', x, y, r: R, life: 1.4 });
       G.fx.ring(x, y, 5, R, 0.45, '170,80,240', 8, 0.35); G.fx.burst(x, y, 40, { rgb: '150,70,230', sp: 240, size: 12, spread: R * 0.4 });
+      G.fx.wave(x, y, R * 1.2, '190,110,255'); G.fx.shake(5);
       G.Audio.play('shadow'); G.Audio.play('explode', 0.4);
     },
   },
@@ -459,6 +460,8 @@ Object.assign(G.SKILL_IMPL, {
         G.fx.burst(e.x, e.y - 10, 6, { rgb: '230,100,255', sp: 140, size: 10 }); hits++;
       }
       G.fx.ring(p.x, p.y, 10, s.radius, 0.5, '230,100,255', 4, 0.1);
+      if (hits) G.fx.wave(p.x, p.y, Math.min(s.radius, 420), '230,120,255', 0.45);
+      if (hits >= 3) { G.fx.hitStop(0.05); G.fx.flash('200,90,255', 0.14, 0.2); G.fx.shake(7); }
       G.Audio.play('shatter', 0.7);
       if (!hits) G.UI.error('지속 피해가 걸린 적이 없습니다.');
     },

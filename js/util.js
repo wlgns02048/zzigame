@@ -1,14 +1,15 @@
 'use strict';
 // 전역 네임스페이스
 const G = window.G = {
-  VERSION: '2.9.0', // 화면 표시용. 릴리스 태그 v2.9.0과 같게 유지 (규칙: docs/NAS_DEPLOY.md '버전 관리')
+  VERSION: '2.10.0', // 화면 표시용. 릴리스 태그 v2.10.0과 같게 유지 (규칙: docs/NAS_DEPLOY.md '버전 관리')
   state: 'menu',      // menu | play | over
   paused: false,
   t: 0,               // 런 경과 시간(초)
   W: 1280, H: 720,
   enemies: [], projs: [], eprojs: [], zones: [], tele: [], pickups: [],
-  parts: [], texts: [], rings: [], pets: [], images: [], delayed: [],
-  cam: { x: 0, y: 0, shake: 0 },
+  parts: [], texts: [], rings: [], pets: [], images: [], delayed: [], corpses: [], decals: [],
+  cam: { x: 0, y: 0, trauma: 0, kx: 0, ky: 0 }, // trauma: 흔들림 세기(0~1, 제곱해서 씀) · kx/ky: 방향 있는 밀림
+  stopT: 0, stopCd: 0, stopLast: 0, slowT: 0, slowK: 1, // 히트스톱(실제 시간 동안 정지) · 슬로모션
   mouse: { sx: 0, sy: 0, x: 0, y: 0, down: false },
   keys: {},
   params: new URLSearchParams(location.search),
@@ -50,6 +51,16 @@ G.U = {
   // 결정적 해시 랜덤 (장식물 배치용)
   hash(x, y, s = 0) { let h = (x * 374761393 + y * 668265263 + s * 982451653) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967295; },
 };
+
+// 연출 · 소리 설정 (브라우저마다 저장, 로비 · 일시 정지의 '설정')
+G.Settings = {
+  KEY: 'zzigame_settings',
+  d: { shake: 1, flash: true, hitstop: true },
+  load() { try { Object.assign(this.d, JSON.parse(localStorage.getItem(this.KEY) || '{}')); } catch { /* 저장소 사용 불가 */ } },
+  get(k) { return this.d[k]; },
+  set(k, v) { this.d[k] = v; try { localStorage.setItem(this.KEY, JSON.stringify(this.d)); } catch { /* 저장소 사용 불가 */ } },
+};
+G.Settings.load();
 
 // 게임 시간 기준 지연 실행
 G.later = (delay, fn) => G.delayed.push({ t: delay, fn });
