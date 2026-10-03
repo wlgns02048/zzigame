@@ -23,7 +23,7 @@ G.P = {
       dmg: 1, haste: 0, crit: 0.08, critMul: 2, area: 1, dur: 1, proj: 0,
       hpMul: 1, hpFlat: 0, regen: 0.5, pickupMul: 1, luck: 0, armor: 0,
       movePenalty: 0.15, fof: 0, bf: 0, shatterCrit: 0.35, speedMul: 1, xpMul: 1,
-      mastery: 0, vers: 0, dotMul: 1, dotLeech: 0, nightfall: 0, shardMax: 0,
+      mastery: 0, vers: 0, dotMul: 1, dotLeech: 0, dotHaste: 0, nightfall: 0, shardMax: 0,
     };
     m.applyLoadout(st, p.cls); // 특성 · 장비 · 보석 · 마법부여
     for (const id in p.passives) { const def = G.SKILLS[id]; def.apply(st, p.passives[id].total); }

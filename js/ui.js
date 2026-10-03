@@ -87,7 +87,7 @@ G.UI = {
       const def = G.SKILLS[id]; if (def.kind !== 'auto') continue;
       const d = document.createElement('div'); d.className = 'slot small'; d.dataset.skill = id;
       const icon = G.cls(p).skillIcon(id, p);
-      d.innerHTML = `<img src="${G.icon(icon)}"><div class="cd"></div><div class="cdt"></div><span class="lv">${p.skillLevel(id)}</span><span class="chg"></span>`;
+      d.innerHTML = `<img src="${G.icon(icon)}"><span class="lv">${p.skillLevel(id)}</span><span class="chg"></span>`;
       ab.appendChild(d); this.autoEls.push([id, d]);
     }
     for (let i = this.autoEls.length; i < G.LIMITS.auto; i++) { const d = document.createElement('div'); d.className = 'slot small empty'; ab.appendChild(d); }
@@ -156,11 +156,8 @@ G.UI = {
       d.classList.toggle('active', !!(p.channel && p.channel.id === id) || ss.active);
       d.classList.toggle('autocast', !!sk.autoCast);
     }
-    for (const [id, d] of this.autoEls) {
-      const sk = p.skills[id];
-      if (sk.s.cd) this.setCd(d, sk);
-      d.classList.toggle('glow', !!C.autoGlow(id, p));
-    }
+    // 자동 주문 칸은 재사용 대기 표시를 그리지 않는다 (재사용이 1~2초라 계속 깜빡임). 시전할 때 한 번 눌리는 것으로 보여준다.
+    for (const [id, d] of this.autoEls) d.classList.toggle('glow', !!C.autoGlow(id, p));
 
     // 버프
     const buffs = C.buffs(p);
@@ -214,7 +211,11 @@ G.UI = {
   error(text) { if (G.autoCasting) return; this.el.err.textContent = text; this.el.err.style.opacity = 1; this.errT = 1.2; },
   hurtFlash() { const f = this.el.flash; f.style.transition = 'none'; f.style.opacity = 1; requestAnimationFrame(() => { f.style.transition = 'opacity .4s'; f.style.opacity = 0; }); },
   flashReady(id) { const k = G.SKILLS[id].key, d = k && this.slotEls[k]; if (!d) return; d.classList.remove('flashready'); void d.offsetWidth; d.classList.add('flashready'); },
-  pressed(id) { const k = G.SKILLS[id].key, d = k && this.slotEls[k]; if (!d) return; d.classList.add('pressed'); setTimeout(() => d.classList.remove('pressed'), 90); },
+  pressed(id) {
+    const k = G.SKILLS[id].key, a = !k && this.autoEls && this.autoEls.find(x => x[0] === id), d = k ? this.slotEls[k] : a && a[1];
+    if (!d) return;
+    d.classList.add('pressed'); setTimeout(() => d.classList.remove('pressed'), 120);
+  },
   toggleMeter() { this.el.meter.classList.toggle('hidden'); this.meterT = 0; },
 
   // ---------- 모달 ----------

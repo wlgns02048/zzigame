@@ -192,13 +192,14 @@ G.SKILLS = {
 
   // ================= 특성/능력치 =================
   arcaneint: { name: '신비한 지능', icon: 'arcaneint', alt: { warlock: ['어둠의 지식', 'shadowmastery'] }, kind: 'passive', max: 5, val: 8, unit: '%', desc: v => `주문력 +${v}%`, apply: (st, v) => (st.dmg += v / 100) },
-  haste: { name: '가속', icon: 'haste', kind: 'passive', max: 5, val: 6, unit: '%', desc: v => `시전 속도 및 재사용 속도 +${v}%`, apply: (st, v) => (st.haste += v / 100) },
+  haste: { name: '가속', icon: 'haste', kind: 'passive', max: 5, val: 6, unit: '%', desc: v => `시전 속도 및 재사용 속도 +${v}%` + (G.player && G.player.cls === 'warlock' ? ', 지속 피해 주기 빨라짐' : ''), apply: (st, v) => (st.haste += v / 100) },
   crit: { name: '치명타', icon: 'crit', kind: 'passive', max: 5, val: 4, unit: '%', desc: v => `치명타 확률 +${v}%`, apply: (st, v) => (st.crit += v / 100) },
   stamina: { name: '체력', icon: 'stamina', kind: 'passive', max: 5, val: 15, unit: '%', desc: v => `최대 생명력 +${v}%`, apply: (st, v) => (st.hpMul += v / 100) },
   speed: { name: '질주', icon: 'speed', kind: 'passive', max: 4, val: 7, unit: '%', desc: v => `이동 속도 +${v}%`, apply: (st, v) => (st.speedMul += v / 100) },
   pickup: { name: '마력 흡수', icon: 'pickup', kind: 'passive', max: 4, val: 25, unit: '%', desc: v => `획득 반경 +${v}%`, apply: (st, v) => (st.pickupMul += v / 100) },
   area: { name: '북극의 바람', icon: 'area', alt: { warlock: ['음산한 손길', 'grimreach'] }, kind: 'passive', max: 5, val: 10, unit: '%', desc: v => `주문 범위 +${v}%`, apply: (st, v) => (st.area += v / 100) },
-  duration: { name: '영원한 겨울', icon: 'duration', alt: { warlock: ['끝없는 저주', 'doom'] }, kind: 'passive', max: 5, val: 12, unit: '%', desc: v => `주문 지속시간 +${v}%`, apply: (st, v) => (st.dur += v / 100) },
+  // 흑마법사는 지속시간 대신 '끝없는 저주'(지속 피해 주기, classes/warlock.js)를 받는다: 졸개는 지속 피해가 끝나기 전에 죽어 지속시간 증가가 거의 버려진다
+  duration: { name: '영원한 겨울', icon: 'duration', req: p => p.cls !== 'warlock', kind: 'passive', max: 5, val: 12, unit: '%', desc: v => `주문 지속시간 +${v}%`, apply: (st, v) => (st.dur += v / 100) },
   regen: { name: '창조된 물', icon: 'regen', alt: { warlock: ['생명력 전환', 'lifetap'] }, kind: 'passive', max: 5, val: 0.8, unit: '', desc: v => `초당 생명력 회복 +${v.toFixed(1)}`, apply: (st, v) => (st.regen += v) },
   frostarmor: { name: '서리 갑옷', icon: 'frostarmor', kind: 'passive', max: 5, val: 6, unit: '%', desc: v => `받는 피해 -${v}%`, apply: (st, v) => (st.armor += v / 100) },
   luck: { name: '행운', icon: 'luck', kind: 'passive', max: 3, val: 15, unit: '%', desc: v => `높은 등급 선택지 확률 +${v}%`, apply: (st, v) => (st.luck += v / 100) },

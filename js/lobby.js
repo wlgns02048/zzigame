@@ -7,12 +7,12 @@ const qcol = q => IT().QUALITY[q].color;
 const fmtNum = n => Math.floor(n).toLocaleString();
 
 G.Lobby = {
-  tab: 'stage', cls: null, stage: 'deadmines', diff: 'normal', selItem: null, tree: null, pending: null,
+  tab: 'stage', codexCls: 'mage', cls: null, stage: 'deadmines', diff: 'normal', selItem: null, tree: null, pending: null,
   rank: { stage: 'deadmines', difficulty: 'normal', kind: 'clear', scope: 'week', cls: '' }, bagSort: 'new',
 
   TABS: [
     ['stage', '출정', 'portal'], ['char', '캐릭터', 'bag'], ['talent', '특성', 'talents'], ['shop', '상점', 'gacha_equip'],
-    ['quest', '퀘스트', 'quest'], ['vault', '위대한 금고', 'vault'], ['ranking', '랭킹', 'ranking'], ['board', '게시판', 'board'],
+    ['quest', '퀘스트', 'quest'], ['vault', '위대한 금고', 'vault'], ['ranking', '랭킹', 'ranking'], ['codex', '주문 도감', 'scroll'], ['board', '게시판', 'board'],
   ],
   needLogin: ['char', 'talent', 'shop', 'quest', 'vault'],
 
@@ -50,7 +50,7 @@ G.Lobby = {
       return;
     }
     if (this.tab === 'board') { G.UI.showBoard(); return; }
-    this[{ stage: 'renderStage', char: 'renderChar', talent: 'renderTalent', shop: 'renderShop', quest: 'renderQuest', vault: 'renderVault', ranking: 'renderRanking' }[this.tab]](m);
+    this[{ stage: 'renderStage', char: 'renderChar', talent: 'renderTalent', shop: 'renderShop', quest: 'renderQuest', vault: 'renderVault', ranking: 'renderRanking', codex: 'renderCodex' }[this.tab]](m);
   },
   refreshTop() { const c = G.UI.el.modal.querySelector('.lbCur'); if (c) c.innerHTML = this.currencyBar(); },
   currencyBar() {
@@ -125,7 +125,7 @@ G.Lobby = {
 
   // ===================== 캐릭터 · 장비 · 가방 =====================
   statSheet(cls) {
-    const st = { dmg: 1, haste: 0, crit: 0.08, critMul: 2, area: 1, dur: 1, proj: 0, hpMul: 1, hpFlat: 0, regen: 0.5, pickupMul: 1, luck: 0, armor: 0, movePenalty: 0.15, fof: 0, bf: 0, shatterCrit: 0.35, speedMul: 1, xpMul: 1, mastery: 0, vers: 0, dotMul: 1, dotLeech: 0, nightfall: 0, shardMax: 0 };
+    const st = { dmg: 1, haste: 0, crit: 0.08, critMul: 2, area: 1, dur: 1, proj: 0, hpMul: 1, hpFlat: 0, regen: 0.5, pickupMul: 1, luck: 0, armor: 0, movePenalty: 0.15, fof: 0, bf: 0, shatterCrit: 0.35, speedMul: 1, xpMul: 1, mastery: 0, vers: 0, dotMul: 1, dotLeech: 0, dotHaste: 0, nightfall: 0, shardMax: 0 };
     G.Meta.applyLoadout(st, cls);
     return st;
   },
@@ -372,6 +372,36 @@ G.Lobby = {
   },
 
   // ===================== 랭킹 =====================
+  // 주문 도감: 직업마다 배울 수 있는 모든 주문 · 능력치 · 전설 · 진화를 기본 수치로 보여준다 (로그인 불필요)
+  renderCodex(m) {
+    const cls = G.CLASSES[this.codexCls] ? this.codexCls : 'mage', C = G.CLASSES[cls];
+    // 설명 함수들이 G.player(주문력 · 직업별 이름)를 읽으므로 기본값 플레이어로 잠시 바꿔 그린다
+    const real = G.player;
+    G.player = { cls, stats: { dmg: 1 }, skills: {}, passives: {}, legend: {}, evo: {} };
+    const safe = f => { try { return f(); } catch (e) { return ''; } };
+    const card = (def, body, sub = '') => `<div class="cdx"><img src="${G.icon(G.skIcon(def))}"><div><div class="cdxName">${G.skName(def)}${def.key ? ` <span class="cdxKey">${G.KEY_LABEL[def.key] || def.key}</span>` : ''}</div>
+      ${sub ? `<div class="cdxSub">${sub}</div>` : ''}<div class="cdxDesc">${body}</div></div></div>`;
+    const spell = def => card(def, safe(() => def.tip(Object.assign({}, def.base))) +
+      (def.nodes && def.nodes.length ? `<div class="cdxNodes">${def.nodes.map(n => `<span><b>${n.name}</b> ${n.max}단계 · ${n.desc}</span>`).join('')}</div>` : ''), safe(() => def.castInfo(def.base)));
+    const all = Object.values(G.SKILLS), mine = all.filter(d => d.cls === cls);
+    const commons = all.filter(d => d.cls === 'any' && (!d.req || safe(() => d.req(G.player))));
+    const sec = (title, list, f) => list.length ? `<h3 class="cdxH">${title} <small>${list.length}</small></h3><div class="cdxGrid">${list.map(f).join('')}</div>` : '';
+    const passive = d => card(d, safe(() => d.desc(d.val * d.max)), `최대 ${d.max}단계 (단계당 ${d.val}${d.unit})`);
+    let html;
+    try {
+      html = `<div class="cdxWrap"><div class="talTabs">${Object.values(G.CLASSES).map(c => `<a href="#" data-cdx="${c.id}" class="${c.id === cls ? 'on' : ''}"><img src="${G.icon(c.icon)}">${c.name}</a>`).join('')}</div>
+        <div class="dim small">수치는 강화 · 특성 · 장비가 없는 기본값입니다. 능력치는 최대 단계 기준.</div>
+        ${sec('자동 시전 주문', mine.filter(d => d.kind === 'auto'), spell)}
+        ${sec('핵심 주문', mine.filter(d => d.kind === 'active'), spell)}
+        ${sec('진화 · 영웅 특성', mine.filter(d => d.kind === 'evolution'), d => card(d, safe(() => d.desc()), '조건: ' + d.reqText))}
+        ${sec('전설 효과', mine.filter(d => d.kind === 'legendary'), d => card(d, safe(() => d.desc())))}
+        ${sec(C.name + ' 전용 능력치', mine.filter(d => d.kind === 'passive'), passive)}
+        ${sec('공용 능력치', commons, passive)}</div>`;
+    } finally { G.player = real; }
+    m.innerHTML = html;
+    m.querySelectorAll('[data-cdx]').forEach(a => (a.onclick = e => { e.preventDefault(); this.codexCls = a.dataset.cdx; this.render(); }));
+  },
+
   async renderRanking(m) {
     const R = this.rank, S = SD().STAGES;
     m.innerHTML = `<div class="rankWrap"><div class="rankFilters">

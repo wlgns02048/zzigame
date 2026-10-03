@@ -200,6 +200,14 @@ G.R = {
 
   drawTele(c, k) {
     const f = k.t / k.max;
+    if (k.shape === 'cone') { // 부채꼴: 판정과 같은 평면 좌표로 그린다
+      const a0 = k.a - k.arc / 2, a1 = k.a + k.arc / 2;
+      c.save(); c.translate(k.x, k.y);
+      c.fillStyle = `rgba(${k.color},0.13)`; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, k.r, a0, a1); c.closePath(); c.fill();
+      c.fillStyle = `rgba(${k.color},0.3)`; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, k.r * f, a0, a1); c.closePath(); c.fill();
+      c.strokeStyle = `rgba(${k.color},0.9)`; c.lineWidth = 3; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, k.r, a0, a1); c.closePath(); c.stroke();
+      c.restore(); return;
+    }
     c.save(); c.translate(k.x, k.y); c.scale(1, 0.75);
     c.fillStyle = `rgba(${k.color},0.13)`; c.beginPath(); c.arc(0, 0, k.r, 0, 7); c.fill();
     c.fillStyle = `rgba(${k.color},0.3)`; c.beginPath(); c.arc(0, 0, k.r * f, 0, 7); c.fill();
@@ -253,12 +261,43 @@ G.R = {
     // 체력바 (피해 입은 적, 정예)
     for (const e of list) {
       if (e.boss || (e.hp >= e.maxHp && !e.elite)) continue;
-      const w = Math.max(24, e.r * 2), y = e.y - e.r * 2.6 * e.scale / 1.2 - 6;
+      const y = e.y - e.r * 2.6 * e.scale / 1.2 - 6;
+      if (e.elite) { this.drawEliteBar(c, e, y); continue; }
+      const w = Math.max(24, e.r * 2);
       c.fillStyle = '#000'; c.fillRect(e.x - w / 2 - 1, y - 1, w + 2, 6);
       c.fillStyle = e.elite ? '#e0a020' : '#c81e1e'; c.fillRect(e.x - w / 2, y, w * Math.max(0, e.hp / e.maxHp), 4);
     }
     // 지속 피해 아이콘 (체력바 위)
-    for (const e of list) if (e.dots || e.haunted > G.t) G.Dots.drawIcons(c, e, e.y - e.r * 2.6 * e.scale / 1.2 - 26 + (e.def.fly ? -10 : 0));
+    for (const e of list) if (e.dots || e.haunted > G.t) G.Dots.drawIcons(c, e, e.y - e.r * 2.6 * e.scale / 1.2 - 26 + (e.def.fly ? -10 : 0) - (e.elite ? 16 : 0));
+  },
+
+  // 정예 표시 ① 발밑: 금색 이중 고리 + 돌아가는 가시 (덩치 큰 일반 적과 구분)
+  drawEliteRing(c, e) {
+    const y = e.y + e.r * 0.8, rx = e.r * 1.45 + 6, ry = rx * 0.42, rot = G.t * 0.9;
+    c.save(); c.translate(e.x, y); c.scale(1, ry / rx);
+    c.fillStyle = 'rgba(255,190,40,0.12)'; c.beginPath(); c.arc(0, 0, rx, 0, 7); c.fill();
+    c.strokeStyle = 'rgba(255,205,70,0.95)'; c.lineWidth = 3; c.beginPath(); c.arc(0, 0, rx, 0, 7); c.stroke();
+    c.strokeStyle = 'rgba(255,170,30,0.6)'; c.lineWidth = 1.5; c.beginPath(); c.arc(0, 0, rx - 7, 0, 7); c.stroke();
+    c.fillStyle = 'rgba(255,215,90,0.95)';
+    for (let i = 0; i < 8; i++) {
+      const a = rot + i * Math.PI / 4;
+      c.beginPath(); c.moveTo(Math.cos(a) * (rx + 9), Math.sin(a) * (rx + 9));
+      c.lineTo(Math.cos(a - 0.09) * rx, Math.sin(a - 0.09) * rx); c.lineTo(Math.cos(a + 0.09) * rx, Math.sin(a + 0.09) * rx); c.fill();
+    }
+    c.restore();
+  },
+  // 정예 표시 ② 머리 위: 이름표 + 금테 체력바 (항상 보임)
+  drawEliteBar(c, e, y) {
+    const w = Math.max(56, e.r * 2.6), x = e.x - w / 2;
+    c.fillStyle = '#000'; c.fillRect(x - 2, y - 2, w + 4, 9);
+    c.fillStyle = '#3a2a08'; c.fillRect(x, y, w, 5);
+    c.fillStyle = '#ffb820'; c.fillRect(x, y, w * Math.max(0, e.hp / e.maxHp), 5);
+    c.strokeStyle = '#ffd25a'; c.lineWidth = 1; c.strokeRect(x - 1.5, y - 1.5, w + 3, 8);
+    c.font = 'bold 12px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+    const label = '정예 · ' + e.def.name;
+    c.lineWidth = 3; c.strokeStyle = '#000'; c.strokeText(label, e.x, y - 5);
+    c.fillStyle = '#ffd25a'; c.fillText(label, e.x, y - 5);
+    c.textAlign = 'left';
   },
 
   drawEnemy(c, e) {
@@ -274,6 +313,7 @@ G.R = {
       c.drawImage(G.Spr.glow(gr, 128), e.x - e.r * 2.2, e.y - e.r * 2.2 + fly, e.r * 4.4, e.r * 4.4);
       c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
     }
+    if (e.elite) this.drawEliteRing(c, e);
     if (e.dots) G.Dots.drawRing(c, e);
     c.save();
     c.translate(e.x, e.y + e.r * 0.85 + fly + bob);

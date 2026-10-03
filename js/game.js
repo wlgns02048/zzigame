@@ -246,7 +246,7 @@ G.Bot = {
         const dot = (dx * cx + dy * cy) / (d || 1);
         if (dot > 0.3) sc += (e.boss ? 8 : 1) * (dot) * (400 - d) / 400 * (d < 80 ? 3 : 1);
       }
-      for (const z of G.zones) if ((z.kind === 'defile' || z.kind === 'poison') && U.d2(p.x + cx * 80, p.y + cy * 80, z.x, z.y) < (z.r + 30) ** 2) sc += 30;
+      for (const z of G.zones) if ((z.hurt || z.kind === 'defile' || z.kind === 'poison') && U.d2(p.x + cx * 80, p.y + cy * 80, z.x, z.y) < (z.r + 30) ** 2) sc += 30;
       for (const k of G.tele) if (U.d2(p.x + cx * 80, p.y + cy * 80, k.x, k.y) < (k.r + 30) ** 2) sc += 30;
       for (const k of G.pickups) {
         const dx = k.x - p.x, dy = k.y - p.y, d = Math.hypot(dx, dy);

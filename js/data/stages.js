@@ -180,7 +180,7 @@
       fortified: { name: '경화', icon: 'affix_fortified', desc: '보스가 아닌 적의 생명력 +20%, 공격력 +30%' },
       tyrannical: { name: '폭군', icon: 'affix_tyrannical', desc: '보스와 정예의 생명력 +30%, 공격력 +15%' },
       raging: { name: '분노', icon: 'affix_raging', desc: '생명력 30% 이하의 적이 공격력 +50%' },
-      bolstering: { name: '강화', icon: 'affix_bolstering', desc: '적이 죽으면 주변 적의 생명력 +10% (최대 10중첩)' },
+      bolstering: { name: '강화', icon: 'affix_bolstering', desc: '정예가 죽으면 주변 적의 생명력 +10%, 공격력 +5% (최대 10중첩)' },
       sanguine: { name: '피웅덩이', icon: 'affix_sanguine', desc: '적이 죽은 자리에 피웅덩이: 적은 회복, 당신은 피해' },
       volcanic: { name: '화산', icon: 'affix_volcanic', desc: '주기적으로 발밑에서 화염이 분출' },
     },

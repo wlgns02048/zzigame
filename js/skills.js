@@ -145,7 +145,7 @@ G.Skills = {
       }
       const impl = IMPL[id]; if (!impl) continue;
       if (impl.update) impl.update(sk, dt, busy);
-      if (sk.def.kind === 'auto' && !busy && impl.auto && s.cd && sk.charges > 0) { if (impl.auto(sk)) this.startCd(sk); }
+      if (sk.def.kind === 'auto' && !busy && impl.auto && s.cd && sk.charges > 0) { if (impl.auto(sk)) { this.startCd(sk); G.UI.pressed(id); } }
       if (sk.autoCast && impl.cast) this.autoUpdate(sk, dt, busy);
     }
     // 정신 집중 (자동 시전한 정신 집중은 적 밀집 지점을 계속 조준)

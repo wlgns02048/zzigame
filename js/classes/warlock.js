@@ -16,8 +16,9 @@ G.Dots = {
   },
   has(e, id) { return !!(e.dots && e.dots[id]); },
   count(e) { return e.dots ? Object.keys(e.dots).length : 0; },
+  // 틱 주기는 가속과 '끝없는 저주'(dotHaste)를 더한 값으로 빨라진다. 둘을 곱하지 않는다.
   tick(e, dt) {
-    const p = G.player, st = p.stats, hs = 1 + G.P.haste();
+    const p = G.player, st = p.stats, hs = 1 + G.P.haste() + (st.dotHaste || 0);
     for (const id in e.dots) {
       const d = e.dots[id];
       d.t += dt; d.tickT -= dt * hs;
@@ -62,12 +63,16 @@ G.Dots = {
       const f = d ? Math.max(0, 1 - d.t / d.dur) : Math.max(0, (e.haunted - G.t) / 10);
       c.fillStyle = '#000'; c.fillRect(x - 1, top + sz + 1, sz + 2, 3);
       c.fillStyle = `rgb(${col})`; c.fillRect(x, top + sz + 1.5, sz * f, 2);
-      if (d && d.stack > 1) { c.fillStyle = '#000'; c.fillText(d.stack, x + sz + 1, top + sz); c.fillStyle = '#fff'; c.fillText(d.stack, x + sz, top + sz - 1); }
+      const n = d ? d.uaN || d.stack : 0;
+      if (n > 1) { c.fillStyle = '#000'; c.fillText(n, x + sz + 1, top + sz); c.fillStyle = '#fff'; c.fillText(n, x + sz, top + sz - 1); }
       x += sz + gap;
     }
     c.textAlign = 'left';
   },
 };
+
+// 불안정한 고통 중첩: 최대 중첩 · 중첩당 피해 증가 (합연산, 3중첩이면 1.8배)
+const UA_MAX = 3, UA_STEP = 0.4;
 
 // ---------- 주문 데이터 ----------
 // 고통 특성 주문만 쓴다 (파괴 · 악마 특성 주문인 불의 비 · 지옥불정령 · 어둠의 격노 · 임프 · 공허방랑자 · 혼돈의 화살은 제외)
@@ -162,10 +167,12 @@ Object.assign(G.SKILLS, {
   // ===== 단축키 주문 =====
   unstableaffliction: {
     cls: 'warlock', name: '불안정한 고통', icon: 'unstableaffliction', kind: 'active', key: 'Q', school: 'shadow', color: '#c060ff',
-    base: { dmg: 36, cd: 7, targets: 3, dur: 8, interval: 1, burst: 0 },
-    tip: s => `조준 방향에서 가장 가까운 적 ${N(s.targets, 0)}명에게 불안정한 고통을 겁니다. ${N(s.dur, 0)}초 동안 매초 ${D(s.dmg)}의 피해.` + (s.burst ? '<br>대상이 죽으면 주변에 폭발' : ''),
+    base: { dmg: 36, cd: 7, targets: 3, dur: 8, interval: 1, burst: 0, stackable: 0 },
+    tip: s => `조준 방향에서 가장 가까운 적 ${N(s.targets, 0)}명에게 불안정한 고통을 겁니다. ${N(s.dur, 0)}초 동안 매초 ${D(s.dmg)}의 피해.` + (s.burst ? '<br>대상이 죽으면 주변에 폭발' : '') +
+      (s.stackable ? `<br>이미 걸린 적에게 다시 걸면 중첩 +1 (최대 ${UA_MAX}중첩), 중첩당 피해 <b class="v">+${Math.round(UA_STEP * 100)}%</b>` : ''),
     castInfo: s => `즉시 시전 · 재사용 ${s.cd.toFixed(0)}초`,
-    nodes: [node('targets', '번지는 고통', 4, '대상 <b class="v">+2</b>', s => (s.targets += 2)), dmgNode(0.3, 5), node('burst', '폭발하는 고통', 1, '대상이 죽으면 주변에 피해', s => (s.burst = 1), { icon: 'hellfire' }), cdNode(0.15, 2)],
+    nodes: [node('targets', '번지는 고통', 4, '대상 <b class="v">+2</b>', s => (s.targets += 2)), dmgNode(0.3, 5), node('burst', '폭발하는 고통', 1, '대상이 죽으면 주변에 피해', s => (s.burst = 1), { icon: 'hellfire' }), cdNode(0.15, 2),
+      node('stackable', '고통의 누적', 1, `다시 걸면 중첩 <b class="v">+1</b> (최대 ${UA_MAX}), 중첩당 피해 +${Math.round(UA_STEP * 100)}% · 지속시간 +2초`, s => { s.stackable = 1; s.dur += 2; }, { icon: 'amplifycurse' })],
   },
   viletaint: {
     cls: 'warlock', name: '사악한 오염', icon: 'viletaint', kind: 'active', key: 'E', school: 'shadow', color: '#9a50e0',
@@ -177,7 +184,7 @@ Object.assign(G.SKILLS, {
   },
   maleficrapture: {
     cls: 'warlock', name: '악의적인 환희', icon: 'maleficrapture', kind: 'active', key: 'R', school: 'shadow', color: '#e060ff', req: p => !!(p.skills.agony || p.skills.corruption || p.skills.siphonlife),
-    base: { dmg: 18, cd: 4, radius: 400 },
+    base: { dmg: 24, cd: 4, radius: 400 },
     tip: s => `영혼의 조각을 모두 소모해, 주변 모든 적에게 걸린 지속 피해 하나당 ${D(s.dmg)} × 조각 수의 피해를 입힙니다. 조각이 3개 이상이어야 사용할 수 있습니다.`,
     castInfo: s => `즉시 시전 · 영혼의 조각 3개 이상 · 재사용 ${s.cd.toFixed(0)}초`,
     nodes: [dmgNode(0.3, 5)],
@@ -191,8 +198,9 @@ Object.assign(G.SKILLS, {
   },
   darkglare: {
     cls: 'warlock', name: '암흑시선 소환', icon: 'darkglare', kind: 'active', key: 'F', school: 'shadow', color: '#a070ff',
-    base: { cd: 60, dur: 12, dmg: 16, ext: 6 },
-    tip: s => `암흑시선을 소환합니다. 소환하는 순간 주변 모든 적의 지속 피해 지속시간이 ${N(s.ext, 0)}초 늘어납니다.<br>암흑시선은 ${N(s.dur, 0)}초 동안 지속 피해가 가장 많이 걸린 적에게 0.5초마다 ${D(s.dmg)} × (지속 피해 수 + 1)의 피해를 입힙니다.`,
+    base: { cd: 60, dur: 12, dmg: 20, ext: 6 },
+    tip: s => `암흑시선을 소환합니다. 소환하는 순간 주변 모든 적의 지속 피해 지속시간이 ${N(s.ext, 0)}초 늘어납니다.<br>암흑시선은 ${N(s.dur, 0)}초 동안 0.5초마다 ${D(s.dmg)} × (지속 피해 수 + 1)의 피해를 입힙니다.` +
+      '<br><b class="v">저격</b>: 보스 → 정예 → 원거리 적 순으로 노리고, 같은 등급이면 지속 피해가 많이 걸린 적을 노립니다.',
     castInfo: s => `즉시 시전 · 재사용 ${s.cd.toFixed(0)}초`,
     nodes: [dmgNode(0.3, 4), node('dur', '오래 머무는 시선', 2, '지속시간 <b class="v">+4초</b>', s => (s.dur += 4), { icon: 'duration' }),
       node('ext', '어둠의 응시', 2, '지속 피해 연장 <b class="v">+3초</b>', s => (s.ext += 3), { icon: 'doom' }), cdNode(0.15, 2)],
@@ -241,6 +249,7 @@ Object.assign(G.SKILLS, {
   demonarmor: { cls: 'warlock', name: '악마의 갑옷', icon: 'demonarmor', kind: 'passive', max: 5, val: 6, unit: '%', desc: v => `받는 피해 -${v}%`, apply: (st, v) => (st.armor += v / 100) },
   siphonlifeP: { cls: 'warlock', name: '영혼 흡수', icon: 'soulleech', kind: 'passive', max: 3, val: 2, unit: '%', desc: v => `지속 피해의 ${v}%만큼 생명력 회복`, apply: (st, v) => (st.dotLeech += v / 100) },
   shadowembraceP: { cls: 'warlock', name: '악의', icon: 'shadowembrace', kind: 'passive', max: 5, val: 8, unit: '%', desc: v => `지속 피해 +${v}%`, apply: (st, v) => (st.dotMul += v / 100) },
+  cursehaste: { cls: 'warlock', name: '끝없는 저주', icon: 'doom', kind: 'passive', max: 5, val: 6, unit: '%', desc: v => `지속 피해 주기 +${v}% (가속과 합산)`, apply: (st, v) => (st.dotHaste += v / 100) },
   soulharvest: { cls: 'warlock', name: '영혼 수확', icon: 'soulshard', kind: 'passive', max: 2, val: 1, unit: '', fixed: true, rarity: 3, desc: () => '영혼의 조각 최대 +1, 적 처치 시 2% 확률로 영혼의 조각', apply: st => { st.shardMax += 1; st.shardOnKill = 0.02; } },
 
   // ===== 전설 =====
@@ -283,6 +292,12 @@ const agonyOpts = (s, p) => ({ dmg: s.dmg * (p.legend.eternalagony ? 1.4 : 1), d
   // 조각 생성은 대상 수와 상관없이 2초에 한 번까지 (적이 많을 때 무한히 차지 않도록)
   onTick: (e, d) => { if (p.evo.soulrot && d.stack < d.maxStack) d.stack++; if (G.t >= (p.shardICD || 0) && Math.random() < s.shardCh * 4) { p.shardICD = G.t + 2; addShard(1); } } });
 const uaOpts = s => ({ dmg: s.dmg, dur: s.dur, interval: s.interval, src: 'unstableaffliction', color: '230,110,255', icon: 'unstableaffliction' });
+// 불안정한 고통 걸기. add: 중첩을 올릴지 (사악한 오염은 올리지 않고 지금 중첩을 유지)
+const applyUA = (e, s, add) => {
+  const prev = e.dots && e.dots.ua, n = prev ? Math.min(UA_MAX, (prev.uaN || 1) + (add && s.stackable ? 1 : 0)) : 1;
+  const d = G.Dots.apply(e, 'ua', Object.assign(uaOpts(s), { dmg: s.dmg * (1 + UA_STEP * (n - 1)) }));
+  if (d) d.uaN = n;
+};
 const siphonOpts = s => ({ dmg: s.dmg, dur: s.dur, interval: s.interval, src: 'siphonlife', color: '70,220,110', icon: 'siphonlife', heal: s.heal });
 // 아직 그 지속 피해가 없는 적에게 거는 자동 주문 (부패 · 생명력 착취)
 const spreadDot = (id, s, opts) => {
@@ -322,6 +337,7 @@ Object.assign(G.SKILL_IMPL, {
             e.embrace = Math.min(5, (e.embrace || 0) + s.embrace * 0.34);
             if (s.extend && e.dots) for (const id in e.dots) { const d = e.dots[id]; d.dur = Math.min(d.dur + s.extend, d.t + 20); }
             if (ds && e.dead && Math.random() < 0.05) addShard(1);
+            if (ds) p.siphons.push({ e, x: e.x, y: e.y, t: 0, life: 0.45 }); // 영혼 흡수: 대상에서 영혼을 빨아들이는 줄기 (그림만)
             G.fx.burst(e.x, e.y, 8, { rgb: ds ? '210,120,255' : '170,90,255', sp: 130, size: 10 });
             G.Audio.play('hit', 0.5);
           },
@@ -403,7 +419,7 @@ Object.assign(G.SKILL_IMPL, {
       const tg = nearestN(cx, cy, s.targets, 400);
       if (!tg.length) { G.UI.error('대상이 없습니다.'); return false; }
       for (const e of tg) {
-        G.Dots.apply(e, 'ua', uaOpts(s));
+        applyUA(e, s, true);
         if (s.burst) e.onDeath = () => { G.aoe(e.x, e.y, 90 * p.stats.area, s.dmg * 2, 'uaburst'); G.fx.ring(e.x, e.y, 5, 90, 0.35, '200,100,255', 5, 0.2); };
         G.fx.burst(e.x, e.y - 10, 10, { rgb: '200,100,255', sp: 120, size: 10 });
       }
@@ -413,8 +429,8 @@ Object.assign(G.SKILL_IMPL, {
   viletaint: {
     cast(sk) {
       const p = W(), s = sk.s, [x, y] = aimSpot(320), R = s.radius * p.stats.area;
-      const ag = agonyOpts(dotStats('agony'), p), co = corruptionOpts(dotStats('corruption')), ua = s.ua && uaOpts(dotStats('unstableaffliction'));
-      G.aoe(x, y, R, s.dmg, 'viletaint', { school: 'shadow' }, e => { G.Dots.apply(e, 'agony', ag); G.Dots.apply(e, 'corruption', co); if (ua) G.Dots.apply(e, 'ua', ua); });
+      const ag = agonyOpts(dotStats('agony'), p), co = corruptionOpts(dotStats('corruption')), ua = s.ua && dotStats('unstableaffliction');
+      G.aoe(x, y, R, s.dmg, 'viletaint', { school: 'shadow' }, e => { G.Dots.apply(e, 'agony', ag); G.Dots.apply(e, 'corruption', co); if (ua) applyUA(e, ua, false); });
       G.Zones.add({ kind: 'tinted', color: '140,60,210', x, y, r: R, life: 1.4 });
       G.fx.ring(x, y, 5, R, 0.45, '170,80,240', 8, 0.35); G.fx.burst(x, y, 40, { rgb: '150,70,230', sp: 240, size: 12, spread: R * 0.4 });
       G.Audio.play('shadow'); G.Audio.play('explode', 0.4);
@@ -523,9 +539,13 @@ function updateDemons(p, dt) {
     gl.t += dt; gl.life -= dt; gl.tickT -= dt * hs;
     const tx = p.x + Math.cos(gl.t * 1.3) * 46, ty = p.y - 70 + Math.sin(gl.t * 2.1) * 8;
     gl.x += (tx - gl.x) * Math.min(1, dt * 3); gl.y += (ty - gl.y) * Math.min(1, dt * 3);
-    if (!gl.tgt || gl.tgt.dead || U.d2(gl.x, gl.y, gl.tgt.x, gl.tgt.y) > 650 * 650) {
+    if (gl.tickT <= 0) {
+      // 저격: 매 틱 다시 고른다. 보스 > 정예 > 원거리 적, 같은 등급이면 지속 피해 수
       gl.tgt = null; let best = -1;
-      for (const e of G.Grid.query(p.x, p.y, 600)) { const c = G.Dots.count(e) + (e.boss ? 0.5 : 0); if (c > best) { best = c; gl.tgt = e; } }
+      for (const e of G.Grid.query(p.x, p.y, 600)) {
+        const c = (e.boss ? 1000 : e.elite ? 500 : e.def.ranged ? 100 : 0) + G.Dots.count(e) * 10 - U.d2(p.x, p.y, e.x, e.y) / 1e5;
+        if (c > best) { best = c; gl.tgt = e; }
+      }
     }
     if (gl.tickT <= 0 && gl.tgt) {
       gl.tickT = 0.5;
@@ -579,6 +599,20 @@ function drawFelhunter(c, q) {
   c.fillStyle = '#c0ff60'; c.fillRect(20, -14, 2, 2);
   c.restore();
 }
+// 영혼 흡수: 대상 → 시전자로 이어지는 줄기와, 줄기를 타고 빨려 오는 영혼 방울
+function drawSiphon(c, p, sp) {
+  const f = 1 - sp.t / sp.life, x0 = sp.x, y0 = sp.y - 12, x1 = p.x + p.face * 14, y1 = p.y - 24;
+  const mx = (x0 + x1) / 2 + Math.sin(G.t * 9) * 10, my = (y0 + y1) / 2 - 18;
+  c.globalCompositeOperation = 'lighter'; c.lineCap = 'round';
+  c.strokeStyle = `rgba(160,70,255,${0.35 * f})`; c.lineWidth = 9; c.beginPath(); c.moveTo(x0, y0); c.quadraticCurveTo(mx, my, x1, y1); c.stroke();
+  c.strokeStyle = `rgba(235,200,255,${0.85 * f})`; c.lineWidth = 2; c.stroke();
+  for (let i = 0; i < 4; i++) {
+    const u = (sp.t * 2.6 + i / 4) % 1, a = 1 - u; // 대상(0) → 시전자(1)
+    const bx = a * a * x0 + 2 * a * u * mx + u * u * x1, by = a * a * y0 + 2 * a * u * my + u * u * y1;
+    c.globalAlpha = f; c.drawImage(G.Spr.glow('210,140,255', 32), bx - 7, by - 7, 14, 14);
+  }
+  c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+}
 // 암흑시선: 촉수 달린 보라색 눈알 + 대상에게 광선
 function drawDarkglare(c, g) {
   const x = g.x, y = g.y + Math.sin(g.t * 3) * 3, fade = Math.min(1, g.life * 2);
@@ -608,7 +642,7 @@ G.CLASSES.warlock = {
   id: 'warlock', name: '고통 흑마법사', className: '흑마법사', spec: '고통', color: '#8788ee', icon: 'classwarlock',
   starter: 'shadowbolt', masteryText: '특화: 지속 피해 +2%/점',
 
-  init(p) { Object.assign(p, { shards: 0, shardMax: 5, demons: [], drains: null, nightfall: 0, nfT: 0, dsT: 0, drT: 0, dr: 0, circle: null, glare: null }); },
+  init(p) { Object.assign(p, { siphons: [], shards: 0, shardMax: 5, demons: [], drains: null, nightfall: 0, nfT: 0, dsT: 0, drT: 0, dr: 0, circle: null, glare: null }); },
   recalc(st, p) {
     st.armor += 0.03; // 악마의 피부: 흑마법사 기본 피해 감소
     st.dotLeech += 0.02; // 영혼 흡수: 지속 피해의 2% 회복
@@ -644,6 +678,8 @@ G.CLASSES.warlock = {
     if (id === 'darkglare') return G.enemies.filter(e => e.dots).length >= 8 || (boss && G.Dots.count(G.Waves.boss) >= 2);
   },
   update(p, dt) {
+    for (const sp of p.siphons) { sp.t += dt; if (!sp.e.dead) { sp.x = sp.e.x; sp.y = sp.e.y; } }
+    p.siphons = p.siphons.filter(sp => sp.t < sp.life);
     if (p.nfT > 0 && (p.nfT -= dt) <= 0) p.nightfall = 0;
     if (p.drT > 0) p.drT -= dt;
     if (p.dsT > 0 && (p.dsT -= dt) <= 0) G.P.recalc();
@@ -696,6 +732,7 @@ G.CLASSES.warlock = {
       c.globalCompositeOperation = 'source-over';
     }
     for (const q of p.demons) drawFelhunter(c, q);
+    for (const sp of p.siphons || []) drawSiphon(c, p, sp);
   },
   drawOver(c, p) {
     if (p.glare) drawDarkglare(c, p.glare);

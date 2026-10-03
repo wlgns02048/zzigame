@@ -134,8 +134,10 @@ G.Waves = {
 
   onKill(e) {
     if (!this.endless || e.boss) return;
-    if (this.affix('bolstering')) {
-      for (const o of G.Grid.query(e.x, e.y, 150)) {
+    // 강화: 정예가 죽을 때만 (졸개마다 터지면 몹이 몰리는 이 게임에선 금방 전부 10중첩이 된다)
+    if (this.affix('bolstering') && e.elite) {
+      G.fx.ring(e.x, e.y, 10, 260, 0.5, '255,140,60', 6, 0.25);
+      for (const o of G.Grid.query(e.x, e.y, 260)) {
         if (o === e || o.boss || o.dead || (o.bolster || 0) >= 10) continue;
         o.bolster = (o.bolster || 0) + 1; o.maxHp *= 1.1; o.hp *= 1.1; o.dmg *= 1.05;
       }

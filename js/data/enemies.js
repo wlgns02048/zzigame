@@ -2,6 +2,8 @@
 // 적 데이터. 능력치는 "스테이지 배율 1" 기준이고, 스테이지(js/data/stages.js)의 power가 곱해진다.
 // 등장 시점 · 출현 가중치는 스테이지 roster에 있다.
 // ranged.kind: 투사체 색 (shadow | frost | fire | holy | arcane)
+// skills (보스가 아닌 적): 바닥 경고가 뜨는 기술. G.Mob(js/enemies.js)이 쓴다. mul은 그 적의 근접 피해 배수, cd는 초.
+//   slam 제자리 원형 · blast 플레이어 위치 원형(root: 속박 초) · zones 플레이어 위치에 장판 · cone 부채꼴 숨결 · leap 플레이어 위치로 도약
 G.ENEMIES = {
   // ---- 스컬지 (얼음왕관 · 스칼로맨스 · 스트라솔름 · 낙스라마스) ----
   ghoul: { name: '구울', hp: 16, speed: 90, dmg: 5, r: 13, xp: 1, icon: 'ghoul', scale: 1 },
@@ -9,40 +11,50 @@ G.ENEMIES = {
   zombie: { name: '역병 좀비', hp: 62, speed: 56, dmg: 10, r: 16, xp: 3, icon: 'zombie', scale: 1 },
   gargoyle: { name: '가고일', hp: 26, speed: 150, dmg: 8, r: 13, xp: 2, icon: 'gargoyle', scale: 0.9, fly: true },
   necromancer: { name: '강령술사', hp: 48, speed: 72, dmg: 8, r: 14, xp: 4, icon: 'necromancer', scale: 1, ranged: { range: 280, cd: 2.8, dmg: 11, speed: 240 } },
-  cryptfiend: { name: '지하 마귀', hp: 150, speed: 74, dmg: 16, r: 20, xp: 7, icon: 'cryptfiend', scale: 1 },
-  abomination: { name: '누더기골렘', hp: 440, speed: 58, dmg: 24, r: 30, xp: 16, icon: 'abomination', scale: 1 },
+  cryptfiend: { name: '지하 마귀', hp: 150, speed: 74, dmg: 16, r: 20, xp: 7, icon: 'cryptfiend', scale: 1,
+    skills: [{ type: 'blast', name: '거미줄 분사', cd: 12, r: 65, mul: 1.2, root: 1.2, color: '220,220,200' }] },
+  abomination: { name: '누더기골렘', hp: 440, speed: 58, dmg: 24, r: 30, xp: 16, icon: 'abomination', scale: 1,
+    skills: [{ type: 'slam', name: '짓밟기', cd: 8, r: 105, mul: 2 }, { type: 'zones', name: '역병 구름', cd: 14, r: 65, mul: 0.3, life: 6, color: '120,255,60' }] },
   spider: { name: '낙스라마스 거미', hp: 22, speed: 115, dmg: 6, r: 14, xp: 2, icon: 'spider', scale: 1 },
   // ---- 죽음의 폐광 ----
   kobold: { name: '코볼트 광부', hp: 14, speed: 95, dmg: 5, r: 12, xp: 1, icon: 'kobold', scale: 1 },
   defias_thug: { name: '데피아즈 강도', hp: 24, speed: 88, dmg: 6, r: 13, xp: 2, icon: 'defias', scale: 1 },
   defias_mage: { name: '데피아즈 마법사', hp: 34, speed: 70, dmg: 6, r: 13, xp: 3, icon: 'defias', scale: 1, ranged: { range: 260, cd: 3, dmg: 9, speed: 230, kind: 'fire' } },
-  defias_goon: { name: '데피아즈 행동대원', hp: 90, speed: 66, dmg: 12, r: 18, xp: 5, icon: 'defias', scale: 1 },
-  defias_ogre: { name: '데피아즈 오우거', hp: 300, speed: 58, dmg: 20, r: 26, xp: 12, icon: 'rhahkzor', scale: 1 },
+  defias_goon: { name: '데피아즈 행동대원', hp: 90, speed: 66, dmg: 12, r: 18, xp: 5, icon: 'defias', scale: 1,
+    skills: [{ type: 'leap', name: '덮치기', cd: 11, r: 60, mul: 1.6 }] },
+  defias_ogre: { name: '데피아즈 오우거', hp: 300, speed: 58, dmg: 20, r: 26, xp: 12, icon: 'rhahkzor', scale: 1,
+    skills: [{ type: 'slam', name: '분쇄', cd: 8, r: 100, mul: 2 }] },
   // ---- 그림자송곳니 ----
   wolf: { name: '굶주린 늑대', hp: 16, speed: 120, dmg: 5, r: 13, xp: 1, icon: 'wolf', scale: 1 },
   worgen: { name: '그림자송곳니 늑대인간', hp: 34, speed: 92, dmg: 8, r: 15, xp: 2, icon: 'worgen', scale: 1 },
   ghost: { name: '원혼', hp: 30, speed: 80, dmg: 7, r: 13, xp: 3, icon: 'ghost', scale: 1, fly: true, ranged: { range: 240, cd: 3.2, dmg: 9, speed: 220 } },
-  worgen_brute: { name: '늑대인간 도살자', hp: 320, speed: 70, dmg: 20, r: 26, xp: 12, icon: 'worgen', scale: 1 },
+  worgen_brute: { name: '늑대인간 도살자', hp: 320, speed: 70, dmg: 20, r: 26, xp: 12, icon: 'worgen', scale: 1,
+    skills: [{ type: 'leap', name: '도약', cd: 9, r: 75, mul: 1.8 }, { type: 'cone', name: '할퀴기', cd: 7, r: 150, arc: 1.4, mul: 1.6, color: '220,60,60' }] },
   // ---- 붉은십자군 ----
   scarlet_soldier: { name: '붉은십자군 병사', hp: 28, speed: 84, dmg: 7, r: 14, xp: 2, icon: 'scarlet', scale: 1 },
   scarlet_hound: { name: '붉은십자군 사냥개', hp: 18, speed: 125, dmg: 5, r: 13, xp: 1, icon: 'hound', scale: 1 },
   scarlet_mage: { name: '붉은십자군 마법사', hp: 36, speed: 70, dmg: 7, r: 13, xp: 3, icon: 'scarlet', scale: 1, ranged: { range: 270, cd: 2.8, dmg: 10, speed: 240, kind: 'fire' } },
   scarlet_monk: { name: '붉은십자군 수도사', hp: 40, speed: 115, dmg: 8, r: 14, xp: 3, icon: 'scarlet', scale: 1 },
-  scarlet_knight: { name: '붉은십자군 기사', hp: 340, speed: 62, dmg: 22, r: 26, xp: 14, icon: 'scarlet', scale: 1 },
+  scarlet_knight: { name: '붉은십자군 기사', hp: 340, speed: 62, dmg: 22, r: 26, xp: 14, icon: 'scarlet', scale: 1,
+    skills: [{ type: 'slam', name: '신성한 강타', cd: 8, r: 100, mul: 1.9, color: '255,220,120' }, { type: 'zones', name: '신성화', cd: 13, r: 70, mul: 0.3, life: 6, color: '255,210,100', self: true }] },
   // ---- 스칼로맨스 ----
   student: { name: '스칼로맨스 학생', hp: 30, speed: 78, dmg: 6, r: 13, xp: 2, icon: 'student', scale: 1, ranged: { range: 250, cd: 4, dmg: 6, speed: 220 } },
   // ---- 화산 심장부 ----
   fireling: { name: '화염 정령 새끼', hp: 18, speed: 100, dmg: 6, r: 12, xp: 1, icon: 'fireelemental', scale: 1 },
   corehound: { name: '심장부 사냥개', hp: 60, speed: 110, dmg: 10, r: 18, xp: 3, icon: 'corehound', scale: 1 },
   flamewaker: { name: '화염피조물', hp: 70, speed: 80, dmg: 12, r: 16, xp: 4, icon: 'flamewaker', scale: 1 },
-  fireelemental: { name: '화염 군주의 하수인', hp: 140, speed: 72, dmg: 16, r: 20, xp: 7, icon: 'fireelemental', scale: 1, ranged: { range: 260, cd: 3, dmg: 14, speed: 230, kind: 'fire' } },
-  lavagiant: { name: '용암 거인', hp: 480, speed: 55, dmg: 26, r: 32, xp: 18, icon: 'fireelemental', scale: 1 },
+  fireelemental: { name: '화염 군주의 하수인', hp: 140, speed: 72, dmg: 16, r: 20, xp: 7, icon: 'fireelemental', scale: 1, ranged: { range: 260, cd: 3, dmg: 14, speed: 230, kind: 'fire' },
+    skills: [{ type: 'zones', name: '불기둥', cd: 13, r: 60, mul: 0.3, life: 5, color: '255,110,20' }] },
+  lavagiant: { name: '용암 거인', hp: 480, speed: 55, dmg: 26, r: 32, xp: 18, icon: 'fireelemental', scale: 1,
+    skills: [{ type: 'slam', name: '용암 분출', cd: 9, r: 110, mul: 2, color: '255,110,20', zone: { mul: 0.3, life: 5 } }] },
   // ---- 검은날개 둥지 ----
   whelp: { name: '검은 새끼용', hp: 16, speed: 130, dmg: 5, r: 12, xp: 1, icon: 'whelp', scale: 1, fly: true },
   blackrock: { name: '검은바위 투사', hp: 36, speed: 86, dmg: 8, r: 15, xp: 2, icon: 'blackrock', scale: 1 },
-  drakonid: { name: '용혈족', hp: 110, speed: 80, dmg: 14, r: 20, xp: 6, icon: 'drakonid', scale: 1 },
+  drakonid: { name: '용혈족', hp: 110, speed: 80, dmg: 14, r: 20, xp: 6, icon: 'drakonid', scale: 1,
+    skills: [{ type: 'cone', name: '화염 숨결', cd: 12, r: 190, arc: 0.9, mul: 1.6, color: '255,120,30' }] },
   dragon_tech: { name: '고블린 기술자', hp: 50, speed: 75, dmg: 8, r: 14, xp: 4, icon: 'blackrock', scale: 1, ranged: { range: 260, cd: 2.6, dmg: 10, speed: 250, kind: 'arcane' } },
-  chromatic: { name: '오색 용혈족', hp: 460, speed: 60, dmg: 26, r: 32, xp: 18, icon: 'drakonid', scale: 1 },
+  chromatic: { name: '오색 용혈족', hp: 460, speed: 60, dmg: 26, r: 32, xp: 18, icon: 'drakonid', scale: 1,
+    skills: [{ type: 'cone', name: '오색 숨결', cd: 8, r: 230, arc: 1.0, mul: 2, color: '200,120,255' }, { type: 'slam', name: '꼬리 휘두르기', cd: 10, r: 110, mul: 1.8 }] },
 
   // ================= 보스 =================
   // 기존 3종은 G.Boss의 전용 AI, 나머지는 skills 목록으로 움직이는 범용 AI

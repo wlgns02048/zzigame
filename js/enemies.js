@@ -22,7 +22,8 @@ G.Enemy = {
     // 재배치 한계 거리: 생성 고리(화면 대각선 절반 + 40)보다 항상 멀어야 한다. 넓은 화면에서 고정 1500이면 생성 즉시 재배치가 반복된다.
     const leash = Math.max(1500, Math.hypot(G.W, G.H) / 2 + 300);
     G.Grid.clear();
-    for (const e of G.enemies) if (!e.dead) G.Grid.add(e);
+    G.Mob.casting = 0;
+    for (const e of G.enemies) if (!e.dead) { G.Grid.add(e); if (e.mcast) G.Mob.casting++; }
     for (const e of G.enemies) {
       if (e.dead) continue;
       e.t += dt; e.flash -= dt; e.atkT -= dt;
@@ -45,6 +46,7 @@ G.Enemy = {
       const spd = e.speed * (1 - e.slowAmt);
       const dx = tx - e.x, dy = ty - e.y, dist = Math.sqrt(bd) || 1;
       if (e.boss) G.Boss.update(e, dt, dx / dist, dy / dist, dist, spd);
+      else if (G.Mob.update(e, dt, dist)) { /* 기술 시전 중: 제자리 */ }
       else if (e.def.ranged) {
         const rg = e.def.ranged;
         let mv = dist > rg.range ? 1 : dist < rg.range * 0.7 ? -0.6 : 0;
@@ -110,12 +112,95 @@ G.Tele = {
     for (const k of G.tele) {
       k.t += dt;
       if (k.follow) { k.x = k.follow.x; k.y = k.follow.y; }
+      if (k.owner && k.owner.dead) { k.done = true; continue; } // 시전하던 적이 죽으면 취소
       if (k.t >= k.max) { k.done = true; if (k.onBoom) k.onBoom(k); }
     }
     G.tele = G.tele.filter(k => !k.done);
   },
 };
 const playerIn = (x, y, r) => U.d2(x, y, G.player.x, G.player.y) < r * r;
+// 플레이어 피해를 주는 장판 (봇이 피해 간다)
+const hurtZone = (x, y, r, life, color, dmg) => G.Zones.add({ kind: 'tinted', hurt: true, color, x, y, r, life, tick: 0.5, tickT: 0, onTick: z => { if (playerIn(z.x, z.y, z.r)) G.hurtPlayer(dmg); } });
+
+// ================= 중간급 적 · 정예의 바닥 기술 =================
+// 경고가 뜬 뒤 터지므로 피하면 맞지 않는다. 시전 중에는 제자리에 서 있고, 죽으면 취소된다.
+// 피해는 그 적의 근접 피해(e.dmg: 스테이지 · 정예 · 엔드리스 배율 포함) × mul.
+const ELITE_SKILLS = [{ type: 'slam', name: '강타', cd: 9, r: 95, mul: 1.8 }];
+G.Mob = {
+  MAX_CASTING: 3, // 동시에 시전하는 적 수 상한 (화면이 경고로 뒤덮이지 않도록)
+  casting: 0,
+  range(s) { return s.type === 'slam' ? s.r + 50 : s.type === 'cone' ? s.r * 0.85 : s.type === 'leap' ? 380 : 420; },
+  // true를 돌려주면 이번 프레임은 이동하지 않는다
+  update(e, dt, dist) {
+    const list = e.def.skills || (e.elite ? ELITE_SKILLS : null);
+    if (!list) return false;
+    const ai = e.ai;
+    if (e.mcast) { if ((e.mcast.t += dt) >= e.mcast.max) e.mcast = null; return true; }
+    ai.mcd ||= list.map(s => s.cd * U.rand(0.4, 1));
+    for (let i = 0; i < list.length; i++) ai.mcd[i] -= dt * (e.elite ? 1.3 : 1);
+    if (this.casting >= this.MAX_CASTING) return false;
+    for (let i = 0; i < list.length; i++) {
+      const s = list[i];
+      if (ai.mcd[i] > 0 || dist > this.range(s)) continue;
+      ai.mcd[i] = s.cd * U.rand(0.9, 1.2);
+      this.use(e, s);
+      this.casting++;
+      return true;
+    }
+    return false;
+  },
+  use(e, s) {
+    const p = G.player, dmg = e.dmg * s.mul, col = s.color || (e.elite ? '255,170,50' : '255,80,40'), T = s.cast || 1.1;
+    e.mcast = { t: 0, max: T };
+    G.fx.text(e.x, e.y - e.r * 2.4, s.name, '#ffb040', 13);
+    switch (s.type) {
+      case 'slam':
+        G.Tele.add({ x: e.x, y: e.y, r: s.r, max: T, follow: e, owner: e, color: col, onBoom: () => {
+          if (playerIn(e.x, e.y, s.r + p.r)) G.hurtPlayer(dmg, e);
+          if (s.zone) hurtZone(e.x, e.y, s.r * 0.7, s.zone.life, col, e.dmg * s.zone.mul);
+          G.fx.ring(e.x, e.y, 15, s.r, 0.35, col, 6, 0.25); G.fx.shake(4); G.Audio.play('explode', 0.35);
+        } });
+        break;
+      case 'blast': {
+        const x = p.x, y = p.y;
+        G.Tele.add({ x, y, r: s.r, max: T + 0.2, owner: e, color: col, onBoom: k => {
+          if (playerIn(k.x, k.y, s.r + p.r)) { G.hurtPlayer(dmg, e); if (s.root) p.rootT = s.root; }
+          G.fx.ring(k.x, k.y, 10, s.r, 0.35, col, 6, 0.25); G.Audio.play('shadow', 0.4);
+        } });
+        e.mcast.max = T + 0.2;
+        break;
+      }
+      case 'zones': {
+        const x = s.self ? e.x : p.x, y = s.self ? e.y : p.y;
+        G.Tele.add({ x, y, r: s.r, max: T + 0.3, owner: e, color: col, onBoom: k => hurtZone(k.x, k.y, s.r, s.life, col, dmg) });
+        e.mcast.max = 0.6; // 장판은 던지고 바로 움직인다
+        break;
+      }
+      case 'cone': {
+        const a = Math.atan2(p.y - e.y, p.x - e.x);
+        e.face = Math.cos(a) > 0 ? 1 : -1;
+        G.Tele.add({ x: e.x, y: e.y, r: s.r, a, arc: s.arc, shape: 'cone', max: T, follow: e, owner: e, color: col, onBoom: k => {
+          const dx = p.x - k.x, dy = p.y - k.y;
+          if (dx * dx + dy * dy < (s.r + p.r) ** 2 && Math.abs(U.angDiff(Math.atan2(dy, dx), a)) < s.arc / 2) G.hurtPlayer(dmg, e);
+          for (let i = 0; i < 18; i++) { const b = a + U.rand(-s.arc / 2, s.arc / 2), v = U.rand(200, 380); G.fx.part({ x: k.x, y: k.y - 14, vx: Math.cos(b) * v, vy: Math.sin(b) * v, life: 0.45, size: 14, size1: 4, rgb: col }); }
+          G.Audio.play('explode', 0.3);
+        } });
+        break;
+      }
+      case 'leap': {
+        const x = p.x, y = p.y;
+        G.Tele.add({ x, y, r: s.r, max: T + 0.1, owner: e, color: col, onBoom: k => {
+          G.fx.burst(e.x, e.y, 10, { rgb: col, sp: 120, size: 10 });
+          e.x = k.x; e.y = k.y;
+          if (playerIn(k.x, k.y, s.r + p.r)) G.hurtPlayer(dmg, e);
+          G.fx.ring(k.x, k.y, 10, s.r, 0.3, col, 6, 0.25); G.fx.shake(5); G.Audio.play('explode', 0.35);
+        } });
+        e.mcast.max = T + 0.1;
+        break;
+      }
+    }
+  },
+};
 
 // ================= 보스 AI =================
 G.Boss = {
