@@ -11,6 +11,9 @@
 //   node tools/sim.cjs --query "&stage=naxxramas&cls=warlock&diff=heroic&gear=92&talents=1"
 //                                            스테이지 · 직업 · 난이도, 가상 장비(영웅 풀세트 아이템 레벨) · 직업 특성 31점
 //   node tools/sim.cjs --query "&auto=1"     핵심 주문을 모두 자동 시전으로 (재사용 대기시간 페널티 적용)
+//   node tools/sim.cjs --query "&god=1&runner=line"
+//                                            바닥 기술 적중률 측정: 봇이 경고를 무시하고 직진(line) · 원 카이팅(circle) · 평소처럼 이동(1)
+//                                            (적중률 표는 runner 없이도 항상 나온다 — 평소 봇은 경고를 피해 다닌다)
 //   node tools/sim.cjs --json                결과를 JSON으로
 //
 // 필요: Playwright (npm i -g playwright 후 npx playwright install chromium)
@@ -64,6 +67,7 @@ const runOne = async (browser, url, seed) => {
       boss: G.Waves.boss ? `${G.Waves.boss.id}:${Math.max(0, Math.round(G.Waves.boss.hp / G.Waves.boss.maxHp * 100))}%` : '-',
       top: Object.entries(G.meter.d).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => k + ' ' + Math.round(v / Math.max(1, G.meter.total) * 100) + '%').join(','),
       errs: log.split('\n').filter(l => l.startsWith('ERR')),
+      haz: G.hazStats || {},
     };
   });
   r.seed = seed; r.errs = r.errs.concat(errors);
@@ -98,6 +102,16 @@ const runOne = async (browser, url, seed) => {
   }
   const ts = results.map(r => r.t).sort((a, b) => a - b), avg = a => a.reduce((x, y) => x + y, 0) / a.length;
   console.log(`\n클리어율 ${results.filter(r => r.victory).length}/${RUNS} · 생존 평균 ${fmt(Math.round(avg(ts)))} · 중앙값 ${fmt(ts[Math.floor(ts.length / 2)])} · 평균 DPS ${Math.round(avg(results.map(r => r.dps)))} · 평균 레벨 ${avg(results.map(r => r.level)).toFixed(1)}`);
+  // 바닥 기술 적중률: 경고가 터지는 순간 플레이어가 범위 안에 있던 비율 (모든 판 합계)
+  const haz = {};
+  for (const r of results) for (const [k, [n, h]] of Object.entries(r.haz)) { const a = haz[k] ||= [0, 0]; a[0] += n; a[1] += h; }
+  const hz = Object.entries(haz).sort((a, b) => b[1][0] - a[1][0]);
+  if (hz.length) {
+    console.log('\n바닥 기술 적중률 (경고 수 · 적중 · 비율)');
+    for (const [k, [n, h]] of hz) console.log(`  ${k.padEnd(14)} ${pad(n, 5)} ${pad(h, 5)}  ${pad((h / n * 100).toFixed(0), 3)}%`);
+    const N = hz.reduce((s, x) => s + x[1][0], 0), H = hz.reduce((s, x) => s + x[1][1], 0);
+    console.log(`  ${'합계'.padEnd(14)} ${pad(N, 5)} ${pad(H, 5)}  ${pad((H / N * 100).toFixed(0), 3)}%`);
+  }
   const errCount = results.filter(r => r.errs.length).length;
   if (errCount) { console.log(`⚠ 오류가 난 판: ${errCount}`); process.exitCode = 1; }
 })();

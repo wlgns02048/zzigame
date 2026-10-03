@@ -4,6 +4,7 @@ G.Net = {
   token: null,
   user: null,         // { username, admin } — 로그인 중일 때만
   online: false,      // 서버에 연결되었는지
+  busy: 0,            // 진행 중인 요청 수 (새 버전 새로고침이 보상 정산 등을 끊지 않도록 — js/update.js)
 
   // 공개 주소(GitHub Pages)에서 열리면 화면은 Pages가, 서버 기능은 나스 베타 서버가 맡는다
   base: location.hostname === 'icecrown-trial.duckdns.org' ? 'https://Godlovesyou.synology.me:10443' : '',
@@ -13,8 +14,10 @@ G.Net = {
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     if (this.token) headers.Authorization = 'Bearer ' + this.token;
     let res;
+    this.busy++;
     try { res = await fetch(this.base + url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }); }
     catch (e) { throw Object.assign(new Error('서버에 연결할 수 없습니다.'), { down: true }); }
+    finally { this.busy--; }
     // 리버스 프록시가 대신 답하는 502~504 = 서버 재시작 중
     if (res.status >= 502 && res.status <= 504) throw Object.assign(new Error(`서버 오류 (${res.status})`), { down: true });
     const data = await res.json().catch(() => ({}));
@@ -87,13 +90,17 @@ G.Net = {
   },
   // 누적값 보고 → { gain, loot, endlessLv, profile }
   // 보고는 누적값이라(서버가 이미 지급한 만큼은 빼고 준다) 같은 보고를 다시 보내도 중복 지급되지 않는다.
+  // 재시도 대기 중에도 busy로 센다 (그 사이 새로고침되면 보상이 저장되지 않으므로)
   async reportRun(run, { victory, final }, onWait) {
-    await run.ready;
-    if (!run.id) throw new Error(run.error || '서버에 기록되지 않은 판입니다.');
-    const r = await this.apiRetry('POST', '/api/runs/report', {
-      runId: run.id, t: G.t, kills: G.stats.kills, gold: G.stats.gold, level: G.player.level, bossKills: G.Waves.bossKills, victory, final,
-    }, onWait);
-    G.Meta.useProfile(r.profile);
-    return r;
+    this.busy++;
+    try {
+      await run.ready;
+      if (!run.id) throw new Error(run.error || '서버에 기록되지 않은 판입니다.');
+      const r = await this.apiRetry('POST', '/api/runs/report', {
+        runId: run.id, t: G.t, kills: G.stats.kills, gold: G.stats.gold, level: G.player.level, bossKills: G.Waves.bossKills, victory, final,
+      }, onWait);
+      G.Meta.useProfile(r.profile);
+      return r;
+    } finally { this.busy--; }
   },
 };

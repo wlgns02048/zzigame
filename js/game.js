@@ -18,6 +18,7 @@ G.init = async () => {
   G.Input();
   G.cam.x = 0; G.cam.y = 0;
   G.UI.showMenu();
+  G.Update.start();
   if (G.params.get('test')) { G.Bot.on = true; G.startRun(); }
   if (G.params.get('sim')) G.simulate(+G.params.get('sim'));
   let last = performance.now();
@@ -69,11 +70,13 @@ G.Input = () => {
 
 // 판 시작. 기본값은 로비 선택 → URL 파라미터(?cls=&stage=&diff=, 시뮬레이션용) → 얼음왕관
 G.startRun = (cls, stage, diff) => {
+  if (G.Update.apply()) return; // 새 버전이 나왔으면 옛 코드로 출정하지 않고 새로고침
   cls ||= G.selectedClass || G.params.get('cls') || 'mage';
   stage ||= G.selectedStage || G.params.get('stage') || 'icecrown';
   diff ||= G.selectedDiff || G.params.get('diff') || 'normal';
   Object.assign(G, { t: 0, enemies: [], projs: [], eprojs: [], zones: [], tele: [], pickups: [], parts: [], texts: [], rings: [], pets: [], images: [], delayed: [], chests: [] });
   G.stats = { kills: 0, gold: 0, banked: 0 };
+  G.Aim.reset();
   G.state = 'play'; G.paused = false;
   G.player = G.P.create(cls);
   // 로그인 중이면 서버에 런 등록 (봇/시뮬레이션 제외)
@@ -121,6 +124,7 @@ G.update = dt => {
   G.Proj.update(dt);
   G.EProj.update(dt);
   G.Zones.update(dt);
+  G.Aim.track(dt);
   G.Tele.update(dt);
   // 지연 실행
   if (G.delayed.length) {
@@ -236,6 +240,9 @@ G.Bot = {
   on: false, actT: 0,
   dir() {
     // 16방향 중 적 밀도가 가장 낮은 방향으로 이동 (관성 포함)
+    // ?runner=line 한 방향으로 직진 · ?runner=circle 반경 350px 원을 그리며 카이팅 (바닥 기술 적중률 측정용)
+    if (this.runner === 'line') return [1, 0];
+    if (this.runner === 'circle') { const a = G.t * 0.5; return [Math.cos(a), Math.sin(a)]; }
     const p = G.player, N = 16;
     let best = 0, bs = Infinity;
     for (let i = 0; i < N; i++) {
@@ -247,8 +254,11 @@ G.Bot = {
         const dot = (dx * cx + dy * cy) / (d || 1);
         if (dot > 0.3) sc += (e.boss ? 8 : 1) * (dot) * (400 - d) / 400 * (d < 80 ? 3 : 1);
       }
-      for (const z of G.zones) if ((z.hurt || z.kind === 'defile' || z.kind === 'poison') && U.d2(p.x + cx * 80, p.y + cy * 80, z.x, z.y) < (z.r + 30) ** 2) sc += 30;
-      for (const k of G.tele) if (U.d2(p.x + cx * 80, p.y + cy * 80, k.x, k.y) < (k.r + 30) ** 2) sc += 30;
+      // ?runner=1: 바닥 경고 · 장판을 보지 않고 달리기만 하는 봇 (바닥 기술 적중률 측정용)
+      if (!this.runner) {
+        for (const z of G.zones) if ((z.hurt || z.kind === 'defile' || z.kind === 'poison') && U.d2(p.x + cx * 80, p.y + cy * 80, z.x, z.y) < (z.r + 30) ** 2) sc += 30;
+        for (const k of G.tele) if (U.d2(p.x + cx * 80, p.y + cy * 80, k.x, k.y) < (k.r + 30) ** 2) sc += 30;
+      }
       for (const k of G.pickups) {
         const dx = k.x - p.x, dy = k.y - p.y, d = Math.hypot(dx, dy);
         if (d > 450 || d < 1) continue;
@@ -281,7 +291,7 @@ G.Bot = {
 
 // 빠른 시뮬레이션 (?sim=초): 봇으로 지정 시간까지 즉시 진행 후 결과 출력
 G.simulate = secs => {
-  G.Bot.on = true; G.Bot.sync = true; G.startRun(); G.simulating = true;
+  G.Bot.on = true; G.Bot.sync = true; G.Bot.runner = G.params.get('runner'); G.startRun(); G.simulating = true;
   const log = [];
   const dt = 1 / 30;
   const el = document.getElementById('errlog');

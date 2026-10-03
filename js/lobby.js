@@ -21,6 +21,7 @@ G.Lobby = {
   curCls() { const cs = this.chars(); if (!cs.includes(this.cls)) this.cls = cs[0]; return this.cls; },
 
   show(tab) {
+    G.Update.apply(); // 로비로 돌아오거나 탭을 옮길 때 새 버전이 있으면 적용 (새로고침)
     if (tab) this.tab = tab;
     G.UI.el.hud.classList.add('hidden');
     G.UI.open('lobby', `<div class="lobby">

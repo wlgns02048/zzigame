@@ -113,12 +113,83 @@ G.Tele = {
       k.t += dt;
       if (k.follow) { k.x = k.follow.x; k.y = k.follow.y; }
       if (k.owner && k.owner.dead) { k.done = true; continue; } // 시전하던 적이 죽으면 취소
-      if (k.t >= k.max) { k.done = true; if (k.onBoom) k.onBoom(k); }
+      if (k.t >= k.max) { k.done = true; if (k.tag) G.Aim.record(k); if (k.onBoom) k.onBoom(k); }
     }
     G.tele = G.tele.filter(k => !k.done);
   },
 };
 const playerIn = (x, y, r) => U.d2(x, y, G.player.x, G.player.y) < r * r;
+
+// ================= 바닥 기술 겨냥 =================
+// 시전 순간의 플레이어 위치를 노리면, 계속 움직이는 플레이어는 경고(1~1.5초) 동안 200px 넘게 벗어나서 저절로 빗나간다.
+// 그래서 최근 이동을 평균 내 두었다가 경고가 끝날 때 있을 자리를 앞질러 노리고(lead),
+// 일렬(wall) · 포위(ring) · 추적(trail)처럼 한 방향으로 달리기만 해서는 피할 수 없는 배치를 섞는다.
+G.Aim = {
+  vx: 0, vy: 0, w: 0, a: null,
+  reset() { this.vx = this.vy = this.w = 0; this.a = null; G.hazStats = {}; },
+  // 매 프레임: 0.25초 평균 속도 (방향키를 잠깐 바꾼 것에 휘둘리지 않도록) + 0.5초 평균 회전 속도 (원을 그리며 도는 카이팅 예측)
+  track(dt) {
+    const p = G.player, sp = p.moving ? p.stats.speed : 0;
+    let k = Math.min(1, dt / 0.25);
+    this.vx += (p.mvx * sp - this.vx) * k; this.vy += (p.mvy * sp - this.vy) * k;
+    if (Math.hypot(this.vx, this.vy) < 60) { this.a = null; this.w *= 1 - k; return; }
+    const a = Math.atan2(this.vy, this.vx);
+    if (this.a !== null && dt > 0) { k = Math.min(1, dt / 0.5); this.w += (U.clamp(U.angDiff(this.a, a) / dt, -2, 2) - this.w) * k; }
+    this.a = a;
+  },
+  // 앞지르는 정도 (1 = 지금 속도 그대로 가면 정확히 맞는 자리). 일반 0.7 · 정예 0.85 · 보스 1 (흔들림 ±0.2, 보스 ±0.1)
+  // 엔드리스는 단계마다 조금씩 정확해진다. 직진하는 플레이어 기준 일반 몹 장판 적중 약 45% (tools/sim.cjs --query "&runner=line")
+  lead(e, mul = 1) {
+    const base = e && e.boss ? 1 : e && e.elite ? 0.85 : 0.7, lv = G.Waves.endless ? Math.min(0.15, G.Waves.level * 0.015) : 0;
+    return Math.min(1.1, (base + lv) * mul + U.rand(-0.2, 0.2) * (e && e.boss ? 0.5 : 1));
+  },
+  // T초 뒤 예상 위치 (f: 앞지르는 정도)
+  at(T, f) {
+    const p = G.player, t = T * f, w = this.w;
+    if (Math.abs(w) < 0.08 || this.a === null) return { x: p.x + this.vx * t, y: p.y + this.vy * t };
+    // 같은 빠르기로 같은 만큼 계속 돈다고 보고 호를 따라간다
+    const v = Math.hypot(this.vx, this.vy), a = this.a;
+    return { x: p.x + v / w * (Math.sin(a + w * t) - Math.sin(a)), y: p.y - v / w * (Math.cos(a + w * t) - Math.cos(a)) };
+  },
+  // 진행 방향. 거의 멈춰 있으면 시전자 → 플레이어 방향
+  dir(e) {
+    const v = Math.hypot(this.vx, this.vy);
+    if (v > 40) return [this.vx / v, this.vy / v];
+    const p = G.player, dx = e ? p.x - e.x : 0, dy = e ? p.y - e.y : 0, d = Math.hypot(dx, dy);
+    if (d > 1) return [dx / d, dy / d];
+    const a = Math.random() * Math.PI * 2; return [Math.cos(a), Math.sin(a)];
+  },
+  // 장판 위치 목록. aim: lead(예측 지점 + 주변) · wall(진행 방향을 가로막는 일렬) · ring(틈 하나 남긴 포위)
+  // wall · ring 간격 1.45r: 바닥은 세로로 0.75배 눌려 그려지므로, 세로로 늘어서도 그려진 타원끼리 맞닿게 (보이는 틈 = 실제 틈)
+  place(aim, e, s, T) {
+    const n = s.n || 1, r = s.r, pts = [];
+    if (aim === 'wall') {
+      const c = this.at(T, this.lead(e)), [dx, dy] = this.dir(e), gap = r * 1.45;
+      for (let i = 0; i < n; i++) { const o = (i - (n - 1) / 2) * gap; pts.push({ x: c.x - dy * o, y: c.y + dx * o }); }
+    } else if (aim === 'ring') {
+      // 멈추면 안쪽에 갇히고, 그대로 달리면 고리에 걸린다 → 틈을 찾아 나가야 한다
+      const c = this.at(T, 0.3), m = n + 1, R = Math.max(r * 2, m * r * 1.45 / (Math.PI * 2)), skip = U.randi(0, m - 1), a0 = Math.random() * Math.PI * 2;
+      for (let i = 0; i < m; i++) if (i !== skip) { const a = a0 + i / m * Math.PI * 2; pts.push({ x: c.x + Math.cos(a) * R, y: c.y + Math.sin(a) * R }); }
+    } else {
+      const c = this.at(T, this.lead(e)); pts.push(c);
+      for (let i = 1; i < n; i++) { const a = Math.random() * Math.PI * 2, d = r * U.rand(1.4, 2.6); pts.push({ x: c.x + Math.cos(a) * d, y: c.y + Math.sin(a) * d }); }
+    }
+    return pts;
+  },
+  // 장판 경고를 깔고, 터지면 피해 장판을 남긴다. o: { tag, r, T, color, life, dmg, owner }
+  drop(pts, o) {
+    for (const q of pts) G.Tele.add({ tag: o.tag, x: q.x, y: q.y, r: o.r, max: o.T, owner: o.owner, color: o.color, onBoom: k => hurtZone(k.x, k.y, o.r, o.life, o.color, o.dmg) });
+  },
+  // 추적: 간격을 두고 플레이어의 "그 순간" 위치에 하나씩 떨어진다 → 멈추면 맞고, 지나온 길은 막힌다
+  trail(e, o, n, gap = 0.35) {
+    for (let i = 0; i < n; i++) G.later(i * gap, () => { if (!e.dead && G.state === 'play') this.drop([{ x: G.player.x, y: G.player.y }], o); });
+  },
+  // 경고가 터지는 순간 플레이어가 안에 있었는지 기록 (?sim 결과 · 밸런스 확인용)
+  record(k) {
+    const s = (G.hazStats ||= {})[k.tag] ||= [0, 0];
+    s[0]++; if (playerIn(k.x, k.y, k.r + G.player.r)) s[1]++;
+  },
+};
 // 플레이어 피해를 주는 장판 (봇이 피해 간다)
 const hurtZone = (x, y, r, life, color, dmg) => G.Zones.add({ kind: 'tinted', hurt: true, color, x, y, r, life, tick: 0.5, tickT: 0, onTick: z => { if (playerIn(z.x, z.y, z.r)) G.hurtPlayer(dmg); } });
 
@@ -161,9 +232,9 @@ G.Mob = {
           G.fx.ring(e.x, e.y, 15, s.r, 0.35, col, 6, 0.25); G.fx.shake(4); G.Audio.play('explode', 0.35);
         } });
         break;
-      case 'blast': {
-        const x = p.x, y = p.y;
-        G.Tele.add({ x, y, r: s.r, max: T + 0.2, owner: e, color: col, onBoom: k => {
+      case 'blast': { // 속박이 붙어 있어 덜 앞지른다
+        const { x, y } = G.Aim.at(T + 0.2, G.Aim.lead(e, 0.7));
+        G.Tele.add({ tag: s.name, x, y, r: s.r, max: T + 0.2, owner: e, color: col, onBoom: k => {
           if (playerIn(k.x, k.y, s.r + p.r)) { G.hurtPlayer(dmg, e); if (s.root) p.rootT = s.root; }
           G.fx.ring(k.x, k.y, 10, s.r, 0.35, col, 6, 0.25); G.Audio.play('shadow', 0.4);
         } });
@@ -171,8 +242,9 @@ G.Mob = {
         break;
       }
       case 'zones': {
-        const x = s.self ? e.x : p.x, y = s.self ? e.y : p.y;
-        G.Tele.add({ x, y, r: s.r, max: T + 0.3, owner: e, color: col, onBoom: k => hurtZone(k.x, k.y, s.r, s.life, col, dmg) });
+        const o = { tag: s.name, r: s.r, T: T + 0.4, owner: e, color: col, life: s.life, dmg }, aim = s.aim || (s.self ? 'self' : 'lead');
+        if (aim === 'trail') G.Aim.trail(e, { ...o, T: 0.9 }, s.n || 3);
+        else G.Aim.drop(aim === 'self' ? [{ x: e.x, y: e.y }] : G.Aim.place(aim, e, s, o.T), o);
         e.mcast.max = 0.6; // 장판은 던지고 바로 움직인다
         break;
       }
@@ -188,8 +260,8 @@ G.Mob = {
         break;
       }
       case 'leap': {
-        const x = p.x, y = p.y;
-        G.Tele.add({ x, y, r: s.r, max: T + 0.1, owner: e, color: col, onBoom: k => {
+        const { x, y } = G.Aim.at(T + 0.1, G.Aim.lead(e, 0.85));
+        G.Tele.add({ tag: s.name, x, y, r: s.r, max: T + 0.1, owner: e, color: col, onBoom: k => {
           G.fx.burst(e.x, e.y, 10, { rgb: col, sp: 120, size: 10 });
           e.x = k.x; e.y = k.y;
           if (playerIn(k.x, k.y, s.r + p.r)) G.hurtPlayer(dmg, e);
@@ -236,9 +308,8 @@ G.Boss = {
       }
       if (ai.cloud <= 0) {
         ai.cloud = 13;
-        for (let i = 0; i < 3; i++) {
-          const x = p.x + U.rand(-140, 140), y = p.y + U.rand(-140, 140);
-          G.Tele.add({ x, y, r: 75, max: 1.4, color: '120,255,60', onBoom: k => G.Zones.add({ kind: 'poison', x: k.x, y: k.y, r: 75, life: 8, tick: 0.5, tickT: 0, onTick: z => { if (playerIn(z.x, z.y, z.r)) G.hurtPlayer(9); } }) });
+        for (const { x, y } of G.Aim.place('lead', e, { n: 3, r: 75 }, 1.4)) {
+          G.Tele.add({ tag: '독구름', x, y, r: 75, max: 1.4, color: '120,255,60', onBoom: k => G.Zones.add({ kind: 'poison', x: k.x, y: k.y, r: 75, life: 8, tick: 0.5, tickT: 0, onTick: z => { if (playerIn(z.x, z.y, z.r)) G.hurtPlayer(7); } }) });
         }
       }
     } else if (e.id === 'kelthuzad') {
@@ -258,8 +329,8 @@ G.Boss = {
         });
       } else if (ai.blast <= 0 && !casting) {
         ai.blast = 10 * f;
-        const x = p.x, y = p.y;
-        G.Tele.add({ x, y, r: 90, max: 1.5, color: '90,180,255', onBoom: k => {
+        const { x, y } = G.Aim.at(1.5, G.Aim.lead(e, 0.6));
+        G.Tele.add({ tag: '서리 폭발', x, y, r: 90, max: 1.5, color: '90,180,255', onBoom: k => {
           if (playerIn(k.x, k.y, 90 + p.r)) { G.hurtPlayer(30); p.rootT = 1.6; G.fx.text(p.x, p.y - 50, '서리 폭발!', '#7fd4ff', 20, true); }
           G.fx.ring(k.x, k.y, 10, 90, 0.4, '150,210,255', 8, 0.3); G.fx.shards(k.x, k.y, 20, 260); G.Audio.play('freeze');
         } });
@@ -267,9 +338,8 @@ G.Boss = {
       }
       if (ai.void <= 0) {
         ai.void = 7 * f;
-        for (let i = 0; i < 3; i++) {
-          const x = p.x + U.rand(-160, 160), y = p.y + U.rand(-160, 160);
-          G.Tele.add({ x, y, r: 70, max: 1.3, color: '170,60,255', onBoom: k => { if (playerIn(k.x, k.y, 70 + p.r)) G.hurtPlayer(26); G.fx.burst(k.x, k.y, 20, { rgb: '150,50,240', sp: 200, size: 14 }); G.Audio.play('shadow'); } });
+        for (const { x, y } of G.Aim.place('lead', e, { n: 3, r: 70 }, 1.3)) {
+          G.Tele.add({ tag: '공허 폭발', x, y, r: 70, max: 1.3, color: '170,60,255', onBoom: k => { if (playerIn(k.x, k.y, 70 + p.r)) G.hurtPlayer(22); G.fx.burst(k.x, k.y, 20, { rgb: '150,50,240', sp: 200, size: 14 }); G.Audio.play('shadow'); } });
         }
       }
       if (ai.summon <= 0) { ai.summon = 16 * f; this.summon(e, 'ghoul', 8); G.UI.warn('켈투자드가 구울을 소환합니다!', '#7fff7f', 1.8); }
@@ -286,8 +356,8 @@ G.Boss = {
       ai.defile -= dt; ai.reaper -= dt; ai.summon -= dt; ai.spirits -= dt;
       if (ai.defile <= 0 && !casting) {
         ai.defile = 12;
-        const x = p.x, y = p.y;
-        G.Tele.add({ x, y, r: 60, max: 1.6, color: '60,10,80' });
+        const { x, y } = G.Aim.at(1.6, G.Aim.lead(e));
+        G.Tele.add({ tag: '모독', x, y, r: 60, max: 1.6, color: '60,10,80' });
         this.cast(e, '모독', 1.6, () => {
           G.Zones.add({ kind: 'defile', x, y, r: 60, life: 16, tick: 0.5, tickT: 0, update: (z, dt) => { z.r += dt * 7; }, onTick: z => { if (playerIn(z.x, z.y, z.r)) { G.hurtPlayer(11); z.r += 6; } } });
           G.Audio.play('shadow');
@@ -384,15 +454,16 @@ G.Boss = {
           G.Audio.play('shadow');
         });
         break;
-      case 'zones':
-        for (let i = 0; i < s.n; i++) {
-          const x = p.x + U.rand(-150, 150), y = p.y + U.rand(-150, 150);
-          G.Tele.add({ x, y, r: s.r, max: 1.4, color: s.color, onBoom: k => G.Zones.add({ kind: 'tinted', color: s.color, x: k.x, y: k.y, r: s.r, life: s.life, tick: 0.5, tickT: 0, onTick: z => { if (playerIn(z.x, z.y, z.r)) G.hurtPlayer(s.dmg * dm); } }) });
-        }
+      case 'zones': { // aim: lead(기본) · wall · ring · trail (G.Aim 참고)
+        const aim = s.aim || 'lead', o = { tag: s.name, r: s.r, T: aim === 'ring' ? 1.6 : 1.5, color: s.color, life: s.life, dmg: s.dmg * dm };
+        if (aim === 'trail') G.Aim.trail(e, { ...o, T: 0.9 }, s.n);
+        else G.Aim.drop(G.Aim.place(aim, e, s, o.T), o);
+        if (aim === 'ring' || aim === 'wall') G.UI.warn(`${e.def.name}: ${s.name}!`, '#ffb040', 1.4);
         break;
+      }
       case 'blast': {
-        const x = p.x, y = p.y;
-        G.Tele.add({ x, y, r: s.r, max: 1.5, color: s.color || glow, onBoom: k => {
+        const { x, y } = G.Aim.at(1.5, G.Aim.lead(e, 0.6));
+        G.Tele.add({ tag: s.name, x, y, r: s.r, max: 1.5, color: s.color || glow, onBoom: k => {
           if (playerIn(k.x, k.y, s.r + p.r)) { G.hurtPlayer(s.dmg * dm); if (s.root) { p.rootT = s.root; G.fx.text(p.x, p.y - 50, s.name + '!', '#d090ff', 20, true); } }
           G.fx.ring(k.x, k.y, 10, s.r, 0.4, s.color || glow, 8, 0.3); G.Audio.play('shadow');
         } });
