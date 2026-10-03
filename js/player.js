@@ -98,7 +98,13 @@ G.P = {
     const k = G.keys; let dx = 0, dy = 0;
     if (k.KeyW || k.ArrowUp) dy--; if (k.KeyS || k.ArrowDown) dy++;
     if (k.KeyA || k.ArrowLeft) dx--; if (k.KeyD || k.ArrowRight) dx++;
-    const l = Math.hypot(dx, dy); return l ? [dx / l, dy / l] : [0, 0];
+    const l = Math.hypot(dx, dy); if (l) { G.moveTo = null; return [dx / l, dy / l]; }
+    // 마우스 이동 (오른쪽 버튼): 누르고 있는 동안은 커서를 따라가고, 떼면 그 지점에서 멈춘다
+    if (G.mouse.moveHeld) G.moveTo = { x: G.mouse.x, y: G.mouse.y };
+    const t = G.moveTo; if (!t) return [0, 0];
+    const p = G.player, mx = t.x - p.x, my = t.y - p.y, d = Math.hypot(mx, my);
+    if (d < 8) { if (!G.mouse.moveHeld) G.moveTo = null; return [0, 0]; }
+    return [mx / d, my / d];
   },
 
   update(dt) {

@@ -75,9 +75,25 @@ G.Input = () => {
     if (k && !e.repeat && G.state === 'play' && !G.paused) { const id = G.UI.skillForKey(k); if (id) G.Skills.activate(id); }
   });
   addEventListener('keyup', e => { G.keys[e.code] = false; });
-  addEventListener('blur', () => { G.keys = {}; if (G.state === 'play' && !G.paused && !G.Bot.on) G.pause(); });
+  addEventListener('blur', () => { G.keys = {}; G.mouse.moveHeld = false; if (G.state === 'play' && !G.paused && !G.Bot.on) G.pause(); });
   addEventListener('mousemove', e => { [G.mouse.sx, G.mouse.sy] = G.R.toView(e.clientX, e.clientY); });
   addEventListener('mousedown', () => G.Audio.init());
+  // 마우스 이동: 화면을 오른쪽 클릭하면 그 지점까지 걷고, 누르고 있으면 커서를 계속 따라간다 (이동 키를 누르면 취소)
+  const cv = document.getElementById('cv');
+  const mouseWorld = () => ({ x: G.cam.x + (G.mouse.sx - G.W / 2), y: G.cam.y + (G.mouse.sy - G.H / 2) });
+  cv.addEventListener('contextmenu', e => e.preventDefault());
+  cv.addEventListener('mousedown', e => {
+    if (e.button !== 2 || G.state !== 'play' || G.paused) return;
+    [G.mouse.sx, G.mouse.sy] = G.R.toView(e.clientX, e.clientY);
+    G.mouse.moveHeld = true; G.moveTo = mouseWorld();
+  });
+  addEventListener('mouseup', e => {
+    if (e.button !== 2 || !G.mouse.moveHeld) return;
+    G.mouse.moveHeld = false;
+    if (G.state !== 'play' || G.paused) return;
+    G.moveTo = mouseWorld(); // 손을 뗀 곳까지 마저 걷는다
+    G.fx.ring(G.moveTo.x, G.moveTo.y, 22, 4, 0.35, '120,255,140', 3);
+  });
 };
 
 // 판 시작. 기본값은 로비 선택 → URL 파라미터(?cls=&stage=&diff=, 시뮬레이션용) → 얼음왕관
@@ -90,6 +106,7 @@ G.startRun = (cls, stage, diff) => {
   G.stats = { kills: 0, gold: 0, banked: 0, lust: 0 }; G.lustT = 0;
   G.Aim.reset();
   G.state = 'play'; G.paused = false;
+  G.moveTo = null; G.mouse.moveHeld = false;
   G.player = G.P.create(cls);
   // 로그인 중이면 서버에 런 등록 (봇/시뮬레이션 제외)
   G.run = G.Meta.mode() === 'account' && !G.Bot.on ? G.Net.startRun(cls, stage, diff) : null;
