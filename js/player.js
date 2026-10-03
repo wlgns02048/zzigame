@@ -77,6 +77,14 @@ G.P = {
     while (p.xp >= p.xpNeed) {
       p.xp -= p.xpNeed; p.level++; p.xpNeed = G.P.xpNeed(p.level); p.pendingLv++;
       G.Audio.play('levelup'); G.Audio.duck(0.4, 0.6);
+      // 레벨업 순간: 잠깐 느려지며 주변 적을 밀어내는 파동 → 조금 뒤에 선택 창 (봇은 바로)
+      G.fx.slowMo(0.25, 0.5); G.fx.wave(p.x, p.y, 230, '255,215,90', 0.5);
+      for (const e of G.Grid.query(p.x, p.y, 200)) {
+        if (e.boss) continue;
+        const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy) || 1, k = (200 - Math.min(200, d)) / 200 * 70;
+        e.x += dx / d * k; e.y += dy / d * k;
+      }
+      if (!G.Bot.on) p.lvAt = G.t + 0.15;
       G.fx.burst(p.x, p.y, 30, { rgb: '255,215,90', sp: 160, size: 10, life: 0.9 });
       for (let i = 0; i < 26; i++) G.fx.part({ x: p.x + U.rand(-18, 18), y: p.y + U.rand(-10, 20), vy: U.rand(-260, -120), life: U.rand(0.6, 1.1), size: U.rand(6, 12), rgb: '255,220,110' });
       G.fx.ring(p.x, p.y, 10, 90, 0.6, '255,215,90', 5);

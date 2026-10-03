@@ -73,6 +73,29 @@ G.meter = {
   add(src, v) { this.d[src] = (this.d[src] || 0) + v; this.total += v; },
 };
 
+// ================= 연속 처치 =================
+// 3초 안에 다음 적을 쓰러뜨리면 이어진다. 단계마다 알림 · 소리 · 작은 골드 보너스
+G.Streak = {
+  WINDOW: 3,
+  STEPS: [[50, 2], [100, 5], [200, 8], [300, 10], [500, 15], [1000, 25]], // [처치 수, 보너스 골드]
+  n: 0, lastT: -99, best: 0, next: 0,
+  reset() { this.n = 0; this.lastT = -99; this.best = 0; this.next = 0; },
+  // 1000 이후로는 500마다
+  step(i) { return i < this.STEPS.length ? this.STEPS[i] : [1000 + 500 * (i - this.STEPS.length + 1), 15]; },
+  kill() {
+    if (G.t - this.lastT > this.WINDOW) { this.n = 0; this.next = 0; }
+    this.n++; this.lastT = G.t; this.best = Math.max(this.best, this.n);
+    const [at, gold] = this.step(this.next);
+    if (this.n < at) return;
+    this.next++;
+    const p = G.player, g = gold * G.Waves.goldMul;
+    G.stats.gold += g;
+    G.fx.text(p.x, p.y - 60, `${at} 연속 처치! +${Math.round(g)} 골드`, '#ffd100', 20, true);
+    G.Audio.play('combo'); G.UI.streakPop = true;
+  },
+  alive() { return G.t - this.lastT <= this.WINDOW; },
+};
+
 // ================= 상태 =================
 // 보스는 빙결되지 않는 대신 잠깐 '얼어붙은 것으로 간주'(shatterT)된다
 G.frozenLike = e => e.frozenT > 0 || e.wc > 0 || e.shatterT > G.t;
@@ -153,7 +176,7 @@ G.aoe = (x, y, r, base, src, o = {}, each) => {
 
 G.killEnemy = (e, frozen, school) => {
   if (e.dead) return;
-  e.dead = true; G.stats.kills++;
+  e.dead = true; G.stats.kills++; G.Streak.kill();
   const big = e.boss || e.elite, ds = e.r / 14;
   if (frozen || e.frozenT > 0) {
     G.fx.shards(e.x, e.y, e.boss ? 40 : e.elite ? 22 : 10, e.boss ? 400 : 220);

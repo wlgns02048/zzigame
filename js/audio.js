@@ -5,7 +5,7 @@ G.Audio = {
   ctx: null, master: null, sfx: null, out: null, muted: false, last: {}, noiseBuf: null, vol: 0.45,
   pm: 1, xpN: 0, xpT: 0,
   // 음높이를 흔들지 않는 소리 (음계 · 신호음)
-  TUNED: new Set(['levelup', 'victory', 'chest', 'buff', 'warn', 'boss', 'death', 'click', 'xp', 'heart', 'combo', 'reveal', 'legend', 'shrine', 'goblin']),
+  TUNED: new Set(['levelup', 'victory', 'chest', 'buff', 'warn', 'boss', 'death', 'click', 'xp', 'heart', 'combo', 'reveal', 'revealRare', 'legend', 'shrine', 'goblin']),
   init() {
     if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
     try {
@@ -75,6 +75,13 @@ G.Audio = {
       case 'eliteKill':
         this.tone(t, 0.5, 'sine', 140, 40, 0.4 * v); this.noise(t, 0.4, 'lowpass', 3000, 150, 0.45 * v);
         [784, 1175, 1568].forEach((f, i) => this.tone(t + 0.08 + i * 0.05, 0.4, 'triangle', f, f, 0.06 * v));
+        break;
+      // 레벨업 카드 · 상자: 뒤집히는 소리. 희귀 이상은 화음, 전설 · 진화는 종소리와 반짝임
+      case 'reveal': this.noise(t, 0.12, 'bandpass', 1800, 4000, 0.15 * v, 3); this.tone(t, 0.15, 'triangle', 880, 880, 0.04 * v); break;
+      case 'revealRare': this.noise(t, 0.15, 'bandpass', 2000, 5000, 0.18 * v, 3); [988, 1319].forEach((f, i) => this.tone(t + i * 0.04, 0.3, 'triangle', f, f, 0.05 * v)); break;
+      case 'legend':
+        [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(t + i * 0.06, 0.9, 'triangle', f, f, 0.08 * v, 0.01));
+        this.tone(t, 1.6, 'sine', 131, 131, 0.15 * v, 0.02); this.noise(t + 0.2, 1.2, 'highpass', 6000, 10000, 0.12 * v);
         break;
       case 'heart': this.tone(t, 0.12, 'sine', 70, 45, 0.5 * v); this.tone(t + 0.16, 0.14, 'sine', 62, 40, 0.38 * v); break;
       case 'lance': this.noise(t, 0.12, 'highpass', 5000, 2000, 0.3 * v); this.tone(t, 0.12, 'sine', 2400, 3400, 0.08 * v); break;

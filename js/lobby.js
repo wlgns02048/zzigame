@@ -341,8 +341,13 @@ G.Lobby = {
       else { const e = I.ENCHANTS[r.id]; icon = e.slots.includes('staff') ? 'enchant_weapon' : 'enchant'; name = e.name; q = e.quality; tip = this.enchTip(r.id); }
       return `<div class="pull q${q}" style="--qc:${qcol(q)};animation-delay:${i * 0.07}s" data-tip="${esc(tip)}"><img src="${G.icon(icon)}"><span>${esc(name)}</span>${r.item && r.item.autoDE ? '<small>가방 가득: 자동 분해</small>' : ''}</div>`;
     }).join('');
-    if (results.some(r => (r.item && r.item.quality >= 4) || (r.type === 'gem' && I.GEMS[r.id].color === 'meta'))) { G.Audio.play('victory'); G.fx && G.UI.flashReady && null; }
-    else G.Audio.play('chest');
+    // 결과가 하나씩 나타날 때 소리, 영웅 이상은 화음 · 전설(또는 메타 보석)은 종소리와 빛 번짐
+    const top = r => (r.item && r.item.quality >= 4) || (r.type === 'gem' && I.GEMS[r.id].color === 'meta');
+    const qOf = r => (r.item ? r.item.quality : r.type === 'gem' ? I.GEMS[r.id].quality : I.ENCHANTS[r.id].quality);
+    results.forEach((r, i) => setTimeout(() => G.Audio.play(top(r) ? 'legend' : qOf(r) >= 3 ? 'revealRare' : 'reveal', 0.8), i * 70 + 150));
+    box.classList.remove('burst'); void box.offsetWidth;
+    if (results.some(top)) box.classList.add('burst');
+    G.Audio.play('chest');
   },
 
   // ===================== 퀘스트 =====================

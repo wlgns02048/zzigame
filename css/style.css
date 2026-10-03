@@ -468,3 +468,52 @@ select { cursor: pointer; }
 .setRow input[type=range] { width: 100%; accent-color: #c9a24a; }
 .setRow input[type=checkbox] { justify-self: end; width: 18px; height: 18px; accent-color: #c9a24a; }
 .setRow b { color: var(--wow-yellow); font-size: 13px; text-align: right; }
+
+/* ---------- 보상 연출 ---------- */
+/* 레벨업 카드: 한 장씩 뒤집히며 등장. 희귀 이상은 테두리가 반짝이고, 전설 · 진화는 빛기둥 */
+.cards { perspective: 1200px; }
+.card, .card:nth-child(n) { animation: cardFlip .42s cubic-bezier(.2,.9,.3,1.2) var(--d, 0s) backwards; }
+@keyframes cardFlip { 0% { transform: rotateY(90deg) translateY(20px); filter: brightness(3); opacity: 0; } 60% { filter: brightness(1.8); opacity: 1; } 100% { transform: none; filter: none; } }
+.card.r3 { animation: cardFlip .42s cubic-bezier(.2,.9,.3,1.2) var(--d, 0s) backwards, epicGlow 1.6s ease-in-out calc(var(--d, 0s) + .42s) infinite alternate; }
+@keyframes epicGlow { to { box-shadow: 0 0 0 1px #000, 0 0 34px 4px var(--qc), 0 8px 24px #000; } }
+.card.r4, .card.r5 { animation: cardFlip .42s cubic-bezier(.2,.9,.3,1.2) var(--d, 0s) backwards, epicGlow 1s ease-in-out calc(var(--d, 0s) + .42s) infinite alternate; }
+.card.r4::before, .card.r5::before { content: ''; position: absolute; left: 50%; bottom: 92%; width: 120px; height: 520px; transform: translateX(-50%); z-index: -1; pointer-events: none;
+  background: radial-gradient(ellipse 50% 100% at 50% 100%, color-mix(in srgb, var(--qc) 70%, transparent), transparent 70%); filter: blur(6px); animation: pillar 1.2s ease-out var(--d, 0s) backwards; }
+@keyframes pillar { from { opacity: 0; transform: translateX(-50%) scaleY(0); transform-origin: bottom; } }
+
+/* 전리품 상자: 아이콘 릴 → 멈추면 빛기둥 */
+.chestOpen { text-align: center; position: relative; cursor: pointer; }
+.reel { position: relative; width: 96px; height: 96px; margin: 26px auto 18px; overflow: hidden; border: 3px solid var(--qc); border-radius: 8px; background: #05070d; box-shadow: 0 0 0 1px #000, 0 0 24px -2px var(--qc); z-index: 1; }
+.reelStrip { display: flex; flex-direction: column; animation: reelSpin 1.05s cubic-bezier(.15,.6,.25,1) forwards; }
+.reelStrip img { width: 96px; height: 96px; flex: none; }
+@keyframes reelSpin { from { transform: translateY(0); } to { transform: translateY(-1536px); } }
+.chestOpen .pillar { position: absolute; left: 50%; top: -60px; width: 160px; height: 420px; transform: translateX(-50%) scaleY(0); transform-origin: 50% 70%; pointer-events: none; opacity: 0;
+  background: radial-gradient(ellipse 45% 50% at 50% 60%, color-mix(in srgb, var(--qc) 80%, transparent), transparent 70%); filter: blur(4px); }
+.chestOpen.stop .pillar { animation: pillarUp .65s ease-out forwards; }
+.chestOpen.stop .reel { animation: reelHit .35s ease-out; }
+@keyframes pillarUp { to { opacity: 1; transform: translateX(-50%) scaleY(1); } }
+@keyframes reelHit { 40% { transform: scale(1.18); box-shadow: 0 0 0 1px #000, 0 0 60px 10px var(--qc); } }
+
+/* 가챠: 전설이 나오면 결과 영역에 빛이 번진다 */
+.gachaResult { position: relative; }
+.gachaResult.burst::before { content: ''; position: absolute; inset: -40px; pointer-events: none; background: radial-gradient(ellipse at center, rgba(255,140,30,.45), transparent 65%); animation: gBurst 1.6s ease-out forwards; }
+@keyframes gBurst { from { opacity: 0; transform: scale(.6); } 25% { opacity: 1; } to { opacity: 0; transform: scale(1.3); } }
+.pull.q4 { animation: cardIn .35s ease-out backwards, epicGlow 1s ease-in-out infinite alternate; }
+
+/* 보스 등장: 위아래 검은 띠 + 이름 */
+#bossIntro { position: absolute; inset: 0; pointer-events: none; }
+#bossIntro .biBar { position: absolute; left: 0; right: 0; height: 11%; background: #000; transform: scaleY(0); transition: transform .45s ease; }
+#bossIntro .biBar.top { top: 0; transform-origin: top; } #bossIntro .biBar.bot { bottom: 0; transform-origin: bottom; }
+#bossIntro .biName { position: absolute; left: 0; right: 0; top: 30%; text-align: center; opacity: 0; transform: scale(1.4); transition: opacity .4s, transform .5s cubic-bezier(.2,.9,.3,1.2); }
+#bossIntro .biName b { display: block; font: 900 54px var(--font-title); color: #ff5a3a; text-shadow: 0 0 20px rgba(255,60,20,.7), 3px 3px 0 #000; letter-spacing: 4px; }
+#bossIntro .biName small { display: block; font: 700 18px var(--font-title); color: #e8c98a; text-shadow: 2px 2px 0 #000; }
+#bossIntro.show .biBar { transform: scaleY(1); }
+#bossIntro.show .biName { opacity: 1; transform: none; }
+
+/* 연속 처치 */
+#streak { margin-top: 4px; opacity: 0; transition: opacity .3s; }
+#streak.show { opacity: 1; }
+#streak b { display: block; font: 900 18px var(--font-title); color: #ffcf40; text-shadow: 2px 2px 0 #000, 0 0 10px rgba(255,150,0,.6); }
+#streak i { display: block; height: 3px; margin: 2px auto 0; width: 100%; max-width: 120px; background: linear-gradient(90deg, #ff8a00, #ffd100); border-radius: 2px; }
+#streak.pop b { animation: streakPop .5s ease-out; }
+@keyframes streakPop { 0% { transform: scale(1.9); color: #fff; } 100% { transform: scale(1); } }

@@ -8,7 +8,7 @@ G.UI = {
 
   init() {
     const ids = ['hud', 'pfLevel', 'pfHp', 'pfAbs', 'pfHpText', 'pfIcicle', 'pfIcicleText', 'buffs', 'timer', 'kills', 'goldTxt', 'bossFrame', 'bfIcon', 'bfName', 'bfPct', 'bfHp', 'bfCast',
-      'raidWarn', 'castbar', 'autoBar', 'passiveBar', 'actionBar', 'xpBar', 'meter', 'meterRows', 'modal', 'tooltip', 'flash'];
+      'raidWarn', 'castbar', 'autoBar', 'passiveBar', 'actionBar', 'xpBar', 'meter', 'meterRows', 'modal', 'tooltip', 'flash', 'streak'];
     for (const id of ids) this.el[id] = $(id);
     // 오류 메시지 (와우 UIErrorsFrame)
     const err = document.createElement('div');
@@ -128,6 +128,15 @@ G.UI = {
     el.timer.textContent = U.fmtTime(G.t);
     el.kills.textContent = G.stats.kills.toLocaleString();
     el.goldTxt.textContent = Math.floor(G.stats.gold);
+    // 연속 처치 (10 이상일 때): 숫자 + 이어지기까지 남은 시간 막대
+    const S = G.Streak, on = S.alive() && S.n >= 10, sk = el.streak;
+    sk.classList.toggle('show', on);
+    if (on) {
+      const txt = `${S.n} 연속 처치`;
+      if (sk.firstChild.textContent !== txt) sk.firstChild.textContent = txt;
+      sk.lastChild.style.width = ((1 - (G.t - S.lastT) / S.WINDOW) * 100).toFixed(1) + '%';
+      if (this.streakPop) { this.streakPop = false; sk.classList.remove('pop'); void sk.offsetWidth; sk.classList.add('pop'); }
+    }
     el.xpBar.firstElementChild.style.width = (p.xp / p.xpNeed * 100).toFixed(1) + '%';
     el.xpBar.lastElementChild.textContent = `레벨 ${p.level} · 경험치 ${Math.floor(p.xp)} / ${p.xpNeed}`;
 
@@ -377,7 +386,7 @@ G.UI = {
     this.lvOpts = opts;
     const card = (o, i) => {
       const r = G.RARITY[o.rarity];
-      return `<div class="card" style="--qc:${r.color}" data-i="${i}">
+      return `<div class="card r${o.rarity}" style="--qc:${r.color};--d:${(0.08 + i * 0.13).toFixed(2)}s" data-i="${i}">
         <div class="chead"><img src="${G.icon(o.icon)}"><div><div class="cname">${o.name}</div><div class="ctype">${o.label}</div><div class="clv">${o.lv || ''}</div></div></div>
         ${o.nodeDesc ? `<div class="cnode">${o.nodeDesc}</div>` : ''}
         ${o.cast ? `<div class="tt-row" style="font-size:12px;margin-bottom:4px"><span>${o.cast}</span></div>` : ''}
@@ -394,6 +403,40 @@ G.UI = {
     this.el.modal.querySelectorAll('[data-seal]').forEach(a => (a.onclick = e => { e.preventDefault(); p.sealPick = p.sealPick === +a.dataset.seal ? null : +a.dataset.seal; a.classList.toggle('on'); }));
     $('lvReroll').onclick = () => G.rerollUpgrade();
     $('lvSkip').onclick = () => G.pickUpgrade(-1);
+    // 카드가 한 장씩 뒤집힐 때 소리 (희귀할수록 화려하게)
+    if (!G.Bot.on) opts.forEach((o, i) => setTimeout(() => {
+      if (this.modalKind === 'levelup' && this.lvOpts === opts) G.Audio.play(o.rarity >= 4 ? 'legend' : o.rarity >= 2 ? 'revealRare' : 'reveal');
+    }, 80 + i * 130 + 120));
+  },
+
+  // 전리품 상자: 아이콘 릴이 돌다가 가장 좋은 보상에서 멈추고, 등급 색 빛기둥이 솟은 뒤 카드가 열린다 (클릭하면 건너뜀)
+  showChest(opts, v, done) {
+    if (this.noReel) { this.noReel = false; done(); return; }
+    const best = opts.reduce((a, o) => (o.rarity > a.rarity ? o : a), opts[0]);
+    const col = best.rarity >= 4 ? G.RARITY[best.rarity].color : best.rarity >= 2 ? G.RARITY[best.rarity].color : '#bfe4ff';
+    const pool = Object.values(G.SKILLS).filter(d => d.cls === G.player.cls && d.icon).map(d => d.icon);
+    const strip = Array.from({ length: 16 }, () => U.choice(pool)).concat(best.icon);
+    this.open('chestopen', `<div class="chestOpen" style="--qc:${col}">
+      <div class="lvTitle">${v >= 2 ? '보스 전리품' : '전리품 상자'}</div>
+      <div class="reel"><div class="reelStrip">${strip.map(ic => `<img src="${G.icon(ic)}">`).join('')}</div></div>
+      <div class="pillar"></div><div class="lvSub">클릭하면 바로 엽니다</div></div>`);
+    let pending = true;
+    const finish = () => { if (!pending || this.modalKind !== 'chestopen') return; pending = false; done(); };
+    this.el.modal.onclick = () => { this.el.modal.onclick = null; finish(); };
+    // 릴 소리: 점점 느려지는 딸깍 → 멈추면 상자 소리 (전설 이상이면 웅장하게)
+    let t = 0;
+    for (let i = 0; i < 12; i++) { t += 40 + i * i * 4; setTimeout(() => this.modalKind === 'chestopen' && G.Audio.play('tick', 0.5), t); }
+    setTimeout(() => { if (this.modalKind !== 'chestopen') return; this.el.modal.querySelector('.chestOpen').classList.add('stop'); G.Audio.play(best.rarity >= 4 ? 'legend' : 'chest'); }, 1050);
+    setTimeout(() => { this.el.modal.onclick = null; finish(); }, 1700);
+  },
+
+  // 보스 등장: 위아래 검은 띠 + 이름 카드
+  bossIntro(def) {
+    let b = $('bossIntro');
+    if (!b) { b = document.createElement('div'); b.id = 'bossIntro'; this.el.hud.prepend(b); } // 맨 앞: 띠가 HUD 프레임 아래에 깔리도록
+    b.innerHTML = `<div class="biBar top"></div><div class="biBar bot"></div><div class="biName"><small>${esc(def.title || '보스')}</small><b>${esc(def.name)}</b></div>`;
+    b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
+    clearTimeout(this.biT); this.biT = setTimeout(() => b.classList.remove('show'), 2800);
   },
 
   buildSummary() {

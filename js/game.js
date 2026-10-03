@@ -119,7 +119,7 @@ G.startRun = (cls, stage, diff) => {
   // 로그인 중이면 서버에 런 등록 (봇/시뮬레이션 제외)
   G.run = G.Meta.mode() === 'account' && !G.Bot.on ? G.Net.startRun(cls, stage, diff) : null;
   G.runInfo = { cls, stage, diff };
-  G.meter.reset(); G.Waves.reset(stage, diff);
+  G.meter.reset(); G.Waves.reset(stage, diff); G.Streak.reset();
   G.P.recalc();
   G.P.learn(G.CLASSES[cls].starter);
   // 달라란 도서관: 준비된 주문서
@@ -203,15 +203,16 @@ G.updatePickups = dt => {
 // ---------- 레벨업 / 상자 ----------
 G.checkModals = () => {
   const p = G.player;
-  if (G.state !== 'play' || G.UI.modalKind || p.dead) return;
+  if (G.state !== 'play' || G.UI.modalKind || p.dead || p.lvAt > G.t) return;
   if (p.pendingLv > 0) {
     G.paused = true; G.lvMode = 'level';
     const n = 3 + (G.Meta.lib('wideVision') ? 1 : 0); // 달라란 도서관: 넓어진 시야
     G.UI.showLevelUp(G.Upg.gen(n), '레벨 업!', `${p.level - p.pendingLv + 1}레벨 달성 · 배울 주문을 선택하세요 (1 ~ ${n})`);
   } else if (G.chests.length) {
     G.paused = true; G.lvMode = 'chest';
-    const v = G.chests[0];
-    G.UI.showLevelUp(G.Upg.gen((v >= 2 ? 4 : 3) + (G.Meta.lib('treasure') >= 2 ? 1 : 0), v), v >= 2 ? '보스 전리품' : '전리품 상자', '보상을 하나 선택하세요');
+    const v = G.chests[0], opts = G.Upg.gen((v >= 2 ? 4 : 3) + (G.Meta.lib('treasure') >= 2 ? 1 : 0), v);
+    const show = () => G.UI.showLevelUp(opts, v >= 2 ? '보스 전리품' : '전리품 상자', '보상을 하나 선택하세요');
+    if (G.Bot.on) show(); else G.UI.showChest(opts, v, show); // 상자는 릴이 돌다 멈춘 뒤 카드가 열린다
   }
   if (G.Bot.sync && G.UI.modalKind === 'levelup') G.pickUpgrade(G.Bot.pick());
   else if (G.Bot.on && G.UI.modalKind === 'levelup') setTimeout(() => G.UI.modalKind === 'levelup' && G.pickUpgrade(G.Bot.pick()), 30);
@@ -230,12 +231,12 @@ G.pickUpgrade = i => {
 // 달라란 도서관: 추방 — 이 선택지를 이번 판에서 영구 제외하고 다시 굴림 (굴리기 횟수 소모 없음)
 G.banishUpgrade = i => {
   const p = G.player, o = G.UI.lvOpts[i]; if (!o || p.banishes <= 0) return;
-  p.banishes--; p.banished.add(G.Upg.key(o)); p.sealPick = null;
+  p.banishes--; p.banished.add(G.Upg.key(o)); p.sealPick = null; G.UI.noReel = true;
   G.UI.close(); G.checkModals();
 };
 G.rerollUpgrade = () => {
   const p = G.player; if (p.rerolls <= 0) return;
-  p.rerolls--; G.UI.close();
+  p.rerolls--; G.UI.close(); G.UI.noReel = true;
   G.checkModals();
 };
 
