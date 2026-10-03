@@ -158,6 +158,7 @@ G.Lobby = {
       <div class="charHead">${this.chars().map(c => `<a href="#" data-cls="${c}" class="${c === cls ? 'on' : ''}" style="--cc:${G.CLASSES[c].color}"><img src="${G.icon(G.CLASSES[c].icon)}">${G.CLASSES[c].name}</a>`).join('')}
         <span class="dim">평균 아이템 레벨 <b>${G.Meta.avgIlvl(cls)}</b></span>
         ${specs.length > 1 ? `<span class="specPick">전문화 ${specs.map(sp => `<button class="btn small ${G.Meta.spec(cls) === sp ? 'sel' : ''}" data-spec="${sp}">${I.SPECS[sp].name} (${I.STATS[I.SPECS[sp].primary].name})</button>`).join('')}</span>` : ''}</div>
+      ${G.Skins.of(cls).length > 1 ? `<div class="skinPick"><span>외형</span>${G.Skins.of(cls).map(s => `<button class="skinOpt ${G.Skins.get(cls).id === s.id ? 'on' : ''}" data-skin="${s.id}"><img src="${G.Skins.thumb(s)}"><b>${s.name}</b></button>`).join('')}</div>` : ''}
       <div class="charBody">
         <div class="paper"><div class="eqCol">${I.EQUIP.slice(0, half).map(slot).join('')}</div><div class="eqCol">${I.EQUIP.slice(half).map(slot).join('')}</div></div>
         <div class="statBox"><h4>능력치</h4>
@@ -186,6 +187,7 @@ G.Lobby = {
       </div></div>`;
     $('bagSort').value = this.bagSort;
     $('bagSort').onchange = e => { this.bagSort = e.target.value; this.render(); };
+    m.querySelectorAll('[data-skin]').forEach(b => (b.onclick = () => { G.Skins.set(cls, b.dataset.skin); this.render(); }));
     m.querySelectorAll('.charHead [data-cls]').forEach(a => (a.onclick = e => { e.preventDefault(); this.cls = a.dataset.cls; this.selItem = null; this.render(); }));
     // 툴팁은 ui.js의 mouseover 위임이 itemTipFor로 띄운다
     m.querySelectorAll('[data-item]').forEach(el => (el.onclick = () => { this.selItem = +el.dataset.item; this.render(); }));

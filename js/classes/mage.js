@@ -113,16 +113,21 @@ G.CLASSES.mage = {
 
   // ---------- 그리기 ----------
   drawBody(c, x, y, face, alpha, image, t) {
-    const p = G.player, spr = !image && p.hurtT > 0 ? G.Spr.playerFlash : G.Spr.player;
-    const bob = (image || p.moving) ? Math.abs(Math.sin((t ?? G.t) * 10)) * -2.5 : Math.sin(G.t * 2) * 0.8;
+    const p = G.player, sk = G.Spr.playerSkin, moving = image || p.moving;
+    // 걷기 프레임이 있으면 걷는 동안 그 그림을 쓴다 (몸이 솟는 움직임이 프레임에 들어 있어 위아래 흔들기는 뺀다). 거울 상은 제자리라 그대로
+    const walk = !image && p.moving && G.Spr.playerWalk;
+    let spr = !image && p.hurtT > 0 ? G.Spr.playerFlash : G.Spr.player;
+    if (walk) { const f = walk[Math.floor(p.walkD / sk.walk.cycle * walk.length) % walk.length]; spr = p.hurtT > 0 ? f.flash : f.n; }
+    const bob = walk ? 0 : moving ? Math.abs(Math.sin((t ?? G.t) * 10)) * -2.5 : Math.sin(G.t * 2) * 0.8;
     c.save(); c.globalAlpha = alpha;
     c.translate(x, y + 14 + bob); if (face < 0) c.scale(-1, 1);
-    c.drawImage(spr, -32, -74);
+    if (sk) c.drawImage(spr, -sk.ax, -sk.ay, sk.w, sk.h); // 외형 그림은 2배로 그려져 있어 화면 크기로 줄여 찍는다
+    else c.drawImage(spr, -32, -74);
     c.restore();
     // 지팡이 수정 빛
     c.globalCompositeOperation = 'lighter';
     c.globalAlpha = (image ? 0.5 : 0.8) + Math.sin(G.t * 6) * 0.15;
-    const sx = x + face * 16, sy = y + 14 + bob - 66;
+    const [stx, sty] = sk ? sk.staff : [16, -66], sx = x + face * stx, sy = y + 14 + bob + sty;
     c.drawImage(G.Spr.glow(image ? '190,120,255' : '120,210,255', 64), sx - 20, sy - 20, 40, 40);
     if (image) { c.globalAlpha = 0.35; c.drawImage(G.Spr.glow('170,100,255', 64), x - 30, y - 40, 60, 70); }
     c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
@@ -150,16 +155,21 @@ G.CLASSES.mage = {
       c.drawImage(G.Spr.glow('80,230,150', 128), p.x - 60, p.y - 70, 120, 120);
       c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
     }
+    this.drawIcicles(c, p, true);
   },
-  drawOver(c, p) {
-    // 고드름
+  // 고드름: 궤도 뒤쪽 절반(sin < 0, 화면 위쪽)은 캐릭터 뒤(drawUnder), 앞쪽 절반은 캐릭터 앞(drawOver)에 그린다
+  drawIcicles(c, p, back) {
     for (let i = 0; i < p.icicles.length; i++) {
       const [x, y, a] = G.Skills.icPos(i);
+      if ((Math.sin(a) < 0) !== back) continue;
       c.save(); c.translate(x, y); c.rotate(-Math.PI / 2 + Math.cos(a) * 0.3);
       c.drawImage(G.Spr.icicle, -20, -7); c.restore();
       c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.5; c.drawImage(G.Spr.glow('130,200,255', 32), x - 12, y - 12, 24, 24);
       c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
     }
+  },
+  drawOver(c, p) {
+    this.drawIcicles(c, p, false);
     // 얼음 보호막
     if (p.absorb > 0) {
       const r = 34 + Math.sin(G.t * 3) * 1.5;

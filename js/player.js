@@ -138,7 +138,15 @@ G.P = {
     p.mvx = dx; p.mvy = dy;
     p.moving = sp > 0 && (dx || dy);
     p.x += dx * sp * dt; p.y += dy * sp * dt;
-    p.face = G.mouse.x >= p.x ? 1 : -1;
+    if (p.moving) p.walkD = (p.walkD || 0) + sp * dt; // 걸은 거리 (걷기 애니메이션 프레임)
+    // 바라보는 방향: 옆으로 움직이면 가는 쪽, 서 있으면 조준점(마우스) 쪽.
+    // 조준점은 화면 좌표로 비교한다 — 카메라가 플레이어를 늦게 따라가서 세상 좌표로 비교하면 마우스가 캐릭터 근처일 때
+    // 움직이는 방향에 따라 좌우가 멋대로 뒤집혔다. 캐릭터 바로 위아래(±10)는 이전 방향 유지
+    if (p.moving && Math.abs(dx) > 0.3) p.face = dx > 0 ? 1 : -1;
+    else if (!p.moving) {
+      const rel = G.mouse.sx - (G.W / 2 + p.x - G.cam.x);
+      if (Math.abs(rel) > 10) p.face = rel > 0 ? 1 : -1;
+    }
     // 회복
     if (st.regen > 0) p.hp = Math.min(p.maxHp, p.hp + st.regen * dt);
   },

@@ -329,6 +329,11 @@ select { cursor: pointer; }
 .bagItem u { position: absolute; left: 1px; top: -2px; text-decoration: none; font-size: 10px; }
 .bagItem.noUse img { filter: sepia(1) saturate(4) hue-rotate(-40deg) brightness(0.6); }
 .specPick { display: flex; gap: 4px; align-items: center; margin-left: auto; color: #aaa; }
+.skinPick { display: flex; gap: 8px; align-items: center; margin: -2px 0 10px; color: #aaa; font-size: 13px; }
+.skinOpt { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 8px; background: rgba(0,0,0,.35); border: 1px solid #333; border-radius: 4px; color: #ccc; cursor: pointer; font: inherit; }
+.skinOpt img { width: 40px; height: 48px; object-fit: contain; }
+.skinOpt b { font-weight: normal; font-size: 12px; }
+.skinOpt.on { border-color: #ffd100; color: var(--wow-yellow); }
 .itemPanel { margin-top: 10px; padding: 10px; background: rgba(0,0,0,.35); border: 1px solid #3a2e14; border-radius: 6px; min-height: 80px; font-size: 13px; }
 .ipHead { font-weight: 700; display: flex; align-items: center; gap: 6px; font-size: 15px; } .ipHead img { width: 28px; height: 28px; }
 .ipBtns { margin: 6px 0; } .ipRow { display: flex; gap: 8px; align-items: center; margin: 4px 0; flex-wrap: wrap; } .ipRow select { font-size: 12px; padding: 3px; max-width: 260px; }

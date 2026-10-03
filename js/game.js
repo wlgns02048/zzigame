@@ -11,6 +11,7 @@ G.chests = [];
 G.init = async () => {
   await G.loadAssets();
   G.Spr.build();
+  G.Skins.preload();
   await G.Net.init();
   // 밸런스 시뮬레이터 전용 가상 장비 · 특성 (?gear=아이템레벨&talents=1)
   if (G.params.get('gear') || G.params.get('talents')) G.Meta.useSimLoadout(+G.params.get('gear') || 0, !!G.params.get('talents'));
@@ -119,6 +120,7 @@ G.startRun = (cls, stage, diff) => {
   cls ||= G.selectedClass || G.params.get('cls') || 'mage';
   stage ||= G.selectedStage || G.params.get('stage') || 'icecrown';
   diff ||= G.selectedDiff || G.params.get('diff') || 'normal';
+  G.Skins.apply(cls);
   Object.assign(G, { t: 0, enemies: [], projs: [], eprojs: [], zones: [], tele: [], pickups: [], parts: [], texts: [], rings: [], pets: [], images: [], delayed: [], chests: [], corpses: [], decals: [],
     stopT: 0, stopCd: 0, stopLast: 0, slowT: 0, slowK: 1 });
   Object.assign(G.cam, { trauma: 0, kx: 0, ky: 0 });

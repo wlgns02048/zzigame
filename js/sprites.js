@@ -53,11 +53,59 @@ G.Spr = {
     });
     return { n: base, chill: tint('#5aa8ff', 0.35), frozen, flash: tint('#ffffff', 0.55) };
   },
+  // 플레이어(냉기 마법사) 그림 바꾸기: s = G.Skins 항목, im = 불러온 PNG. null이면 코드로 그린 기본 그림
+  // s.walk가 있으면 그림 한 장을 조각내 걷기 프레임을 만든다 (playerWalk[i] = { n, flash })
+  usePlayerSkin(s, im) {
+    this.playerWalk = null;
+    if (!s || !im) { this.player = this.basePlayer; this.playerFlash = this.basePlayerFlash; this.playerSkin = null; return; }
+    const base = this.make(im.naturalWidth, im.naturalHeight, x => x.drawImage(im, 0, 0));
+    this.player = base; this.playerFlash = this.variants(base).flash; this.playerSkin = s;
+    if (s.walk) this.playerWalk = this.walkFrames(im, s.walk).map(n => ({ n, flash: this.variants(n).flash }));
+  },
+  // 종이 인형식 걷기: 다리 두 짝이 번갈아 들리며 앞뒤로 흔들리고, 몸통은 한 다리가 들릴 때 살짝 솟는다.
+  // rig (원본 그림 픽셀): legY = 다리가 몸통(치마)에서 나오는 줄, footY = 신발이 시작하는 줄,
+  //   legs = [[x0, x1] 왼다리, [x0, x1] 오른다리] — 신발 폭에 맞춘다 (다리 사이 안감은 제자리에 남는다),
+  //   n = 프레임 수, stride · lift · bob = 발끝 앞뒤 폭 · 드는 높이 · 몸 솟음
+  // 겹(아래부터): 바탕(legY - OVER 아래 원본, 신발 자리만 비움) → 다리 → 윗몸(legY 위, 솟음).
+  // 바탕을 OVER줄 위까지 깔아 두어 윗몸이 솟아도 이음매에 틈이 보이지 않고, 다리는 엉덩이를 축으로
+  // 아래로 갈수록 더 움직여(기울이기) 넓적다리 쪽에 빈 틈이 생기지 않는다
+  walkFrames(im, rig) {
+    const W = im.naturalWidth, H = im.naturalHeight, OVER = 8;
+    const { legY, footY, legs, n = 8, stride = 2, lift = 4, bob = 2 } = rig;
+    const legP = legs.map(([x0, x1]) => this.make(W, H, x => { x.beginPath(); x.rect(x0, legY - OVER, x1 - x0, H); x.clip(); x.drawImage(im, 0, 0); }));
+    const top = this.make(W, H, x => { x.drawImage(im, 0, 0); x.clearRect(0, legY, W, H - legY); });
+    const under = this.make(W, H, x => {
+      x.drawImage(im, 0, 0); x.clearRect(0, 0, W, legY - OVER);
+      for (const [x0, x1] of legs) x.clearRect(x0, footY, x1 - x0, H - footY);
+    });
+    // 다리 조각을 줄마다 dx × (엉덩이에서 내려온 비율)만큼 밀어 그린다
+    const leg = (x, p, dx, dy) => {
+      for (let y = legY - OVER; y < H; y++) {
+        const k = Math.max(0, Math.min(1, (y - legY) / (footY - legY)));
+        x.drawImage(p, 0, y, W, 1, Math.round(dx * k), y + dy, W, 1);
+      }
+    };
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const a = i / n * Math.PI * 2, s = Math.sin(a), c = Math.cos(a), r = Math.round;
+      // 왼다리는 c > 0일 때, 오른다리는 c < 0일 때 들린다. 들린 다리를 앞(나중)에 그린다
+      const L = [legP[0], stride * s, -r(lift * Math.max(0, c))];
+      const R = [legP[1], -stride * s, -r(lift * Math.max(0, -c))];
+      const by = -r(bob * Math.abs(c));
+      out.push(this.make(W, H, x => {
+        x.drawImage(under, 0, 0);
+        for (const g of (c > 0 ? [R, L] : [L, R])) leg(x, ...g);
+        x.drawImage(top, 0, by);
+      }));
+    }
+    return out;
+  },
 
   build() {
     const S = this;
-    this.player = this.make(64, 76, drawMage);
-    this.playerFlash = this.variants(this.player).flash;
+    this.basePlayer = this.make(64, 76, drawMage);
+    this.basePlayerFlash = this.variants(this.basePlayer).flash;
+    this.usePlayerSkin(null);
     this.enemy = {};
     const defs = {
       ghoul: [60, 60, drawGhoul], skeleton: [60, 66, drawSkeleton], zombie: [64, 66, drawZombie], gargoyle: [80, 62, drawGargoyle],
