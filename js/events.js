@@ -166,22 +166,50 @@ G.Events = {
       c.textAlign = 'left'; c.globalAlpha = 1;
     }
   },
-  // 화면 밖 이벤트 방향 표시 (화면 가장자리 화살표)
+  // 이벤트 방향 표시 (화면 공간 — 유닛 · 어둠 조명 위에 그린다)
+  //  · 화면 밖: 가장자리 화살표 (보물 코볼트는 더 크게 + 남은 초)
+  //  · 화면 안의 보물 코볼트: 몬스터 무리에 묻히지 않게 머리 위 튀는 화살표 + 발밑에 퍼지는 고리
   drawArrows(c) {
-    const cam = G.cam, W = G.W, H = G.H;
+    const cam = G.cam, W = G.W, H = G.H, now = performance.now();
     for (const o of this.list) {
-      const tgt = o.kind === 'goblin' ? o.e : (o.kind === 'shrine' || o.kind === 'cursed') ? o : null;
+      const goblin = o.kind === 'goblin', tgt = goblin ? o.e : (o.kind === 'shrine' || o.kind === 'cursed') ? o : null;
       if (!tgt) continue;
       const sx = tgt.x - cam.x + W / 2, sy = tgt.y - cam.y + H / 2;
-      if (sx > 30 && sx < W - 30 && sy > 30 && sy < H - 30) continue;
-      const a = Math.atan2(sy - H / 2, sx - W / 2), m = 46;
+      if (sx > 30 && sx < W - 30 && sy > 30 && sy < H - 30) {
+        if (goblin) this.drawGoblinMark(c, o.e, sx, sy, now);
+        continue;
+      }
+      const a = Math.atan2(sy - H / 2, sx - W / 2), m = goblin ? 54 : 46;
       const s = Math.min((W / 2 - m) / Math.abs(Math.cos(a) || 1e-6), (H / 2 - m) / Math.abs(Math.sin(a) || 1e-6));
-      const x = W / 2 + Math.cos(a) * s, y = H / 2 + Math.sin(a) * s, col = o.kind === 'goblin' ? '255,215,80' : o.color;
+      const x = W / 2 + Math.cos(a) * s, y = H / 2 + Math.sin(a) * s, col = goblin ? '255,215,80' : o.color;
       c.save(); c.translate(x, y); c.rotate(a);
-      c.globalAlpha = 0.7 + Math.sin(performance.now() / 150) * 0.3;
+      if (goblin) c.scale(1.5, 1.5);
+      c.globalAlpha = 0.7 + Math.sin(now / 150) * 0.3;
       c.fillStyle = `rgb(${col})`; c.strokeStyle = '#000'; c.lineWidth = 2;
       c.beginPath(); c.moveTo(16, 0); c.lineTo(-8, -11); c.lineTo(-3, 0); c.lineTo(-8, 11); c.closePath(); c.fill(); c.stroke();
       c.restore(); c.globalAlpha = 1;
+      if (goblin) { // 화살표 안쪽에 남은 시간
+        const tx = x - Math.cos(a) * 30, ty = y - Math.sin(a) * 30;
+        c.font = 'bold 13px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+        const label = `${Math.max(0, Math.ceil(o.life - o.t))}초`;
+        c.lineWidth = 3; c.strokeStyle = '#000'; c.strokeText(label, tx, ty);
+        c.fillStyle = '#ffe060'; c.fillText(label, tx, ty);
+        c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+      }
     }
+  },
+  drawGoblinMark(c, e, sx, sy, now) {
+    // 발밑에서 퍼지는 고리 (두 겹, 엇갈려서)
+    for (let i = 0; i < 2; i++) {
+      const f = ((now / 900) + i * 0.5) % 1, r = e.r * 1.2 + f * 46;
+      c.save(); c.translate(sx, sy + e.r * 0.8); c.scale(1, 0.42);
+      c.globalAlpha = (1 - f) * 0.9; c.strokeStyle = '#ffd040'; c.lineWidth = 3;
+      c.beginPath(); c.arc(0, 0, r, 0, 7); c.stroke(); c.restore();
+    }
+    // 이름표 위에서 아래를 가리키며 튀는 화살표
+    const head = sy - e.r * 2.6 * e.scale / 1.2, bob = Math.abs(Math.sin(now / 160)) * 10, y = head - 34 - bob;
+    c.globalAlpha = 1; c.fillStyle = '#ffd040'; c.strokeStyle = '#000'; c.lineWidth = 2.5;
+    c.beginPath(); c.moveTo(sx, y); c.lineTo(sx - 13, y - 15); c.lineTo(sx - 5, y - 15); c.lineTo(sx - 5, y - 27);
+    c.lineTo(sx + 5, y - 27); c.lineTo(sx + 5, y - 15); c.lineTo(sx + 13, y - 15); c.closePath(); c.fill(); c.stroke();
   },
 };
