@@ -50,8 +50,11 @@ G.Enemy = {
         const fx = e.x - p.x, fy = e.y - p.y, fd = Math.hypot(fx, fy) || 1;
         let fs = e.speed * 0.8;
         // 보물 코볼트: 쫓아가면 반드시 따라잡을 수 있게 — 멀면 느릿느릿, 가까우면 내 이동 속도의 70%로 달아나고 3초쯤 달리면 잠깐 숨을 고른다
+        // 맞으면 잠깐 내 속도보다 빠르게 내달린다 (G.Events.goblinHit)
         if (e.goblin) {
-          if (e.restT > 0) { e.restT -= dt; fs = 0; }
+          if (e.dashCd > 0) e.dashCd -= dt;
+          if (e.dashT > 0) { e.dashT -= dt; fs = p.stats.speed * 1.25; if (Math.random() < dt * 30) G.fx.part({ x: e.x + U.rand(-8, 8), y: e.y + U.rand(-4, 4), vy: -20, life: 0.4, size: U.rand(5, 8), rgb: '200,180,140' }); }
+          else if (e.restT > 0) { e.restT -= dt; fs = 0; }
           else if (fd > 420) fs = 45;
           else { fs = Math.min(fs, p.stats.speed * 0.7); if ((e.runT = (e.runT || 0) + dt) > 3) { e.runT = U.rand(-0.6, 0.4); e.restT = 0.9; } }
         }

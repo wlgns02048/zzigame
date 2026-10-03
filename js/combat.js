@@ -140,7 +140,9 @@ G.hit = (e, base, src, o = {}) => {
   if (e.boss && G.t < 0) d = 0;
   d = Math.max(1, Math.round(d * U.rand(0.93, 1.07) * (e.dmgTaken || 1)));
   if (o.consumeWC && e.wc > 0 && e.frozenT <= 0) e.wc--;
+  G.RunLog.hit(e, src, d);
   e.hp -= d; e.flash = 0.07;
+  if (e.goblin) G.Events.goblinHit(e);
   G.meter.add(src, d);
   // 맞은 적이 플레이어 반대쪽으로 살짝 밀려 보인다 (그림만, 실제 위치는 그대로)
   if (!e.boss && !o.small) {
@@ -246,6 +248,7 @@ G.hurtPlayer = (dmg, src) => {
   }
   if (dmg <= 0) return;
   p.hp -= dmg; p.hurtT = 0.15;
+  G.RunLog.hurt(src, dmg);
   if (G.Bot.sync) { (G.dmgLog ||= []).push([G.t.toFixed(1), src && src.id ? src.id : 'proj', dmg]); if (G.dmgLog.length > 30) G.dmgLog.shift(); }
   G.fx.text(p.x, p.y - 34, '-' + dmg, '#ff4040', 17);
   // 맞은 방향으로 화면이 밀린다. 큰 피해(최대 생명력 12% 이상)는 잠깐 멈칫

@@ -150,6 +150,17 @@ module.exports = dataDir => {
   // 전문화: 캐릭터 = 직업, 전문화는 캐릭터에 저장 (빈 값 = 그 직업의 기본 전문화)
   ensure('characters', { spec: "TEXT NOT NULL DEFAULT ''" });
   ensure('runs', { spec: "TEXT NOT NULL DEFAULT ''" });
+  // 판 기록 (밸런스 분석용, js/runlog.js) — 보고마다 최신 스냅숏으로 덮어쓴다. 요약 열은 목록 · 집계용
+  db.exec(`CREATE TABLE IF NOT EXISTS run_logs (
+    run_id TEXT PRIMARY KEY REFERENCES runs(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    version TEXT NOT NULL,
+    dmg REAL NOT NULL DEFAULT 0,
+    eff REAL NOT NULL DEFAULT 0,
+    data TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS run_logs_time ON run_logs (updated_at);`);
 
   // 여러 쓰기를 하나로 묶는다 (중간에 실패하면 전부 취소)
   db.tx = fn => {

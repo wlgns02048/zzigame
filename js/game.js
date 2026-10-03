@@ -132,6 +132,7 @@ G.startRun = (cls, stage, diff) => {
   // 직업 특성: 시작 보호막
   const tr = G.Meta.tree(G.Meta.specTree(cls)).ranks;
   if (tr.iceBarrier || tr.darkPact || tr.survivalInstincts) G.player.absorb = Math.round(G.player.maxHp * 0.3);
+  G.RunLog.start();
   if (G.params.get('all')) for (const id in G.SKILLS) { const d = G.SKILLS[id]; if (d.cls === cls && (d.kind === 'auto' || d.kind === 'active') && !G.player.skills[id]) G.P.learn(id); }
   if (G.params.get('t')) G.t = +G.params.get('t');
   G.cam.x = 0; G.cam.y = 0;
@@ -226,17 +227,19 @@ G.pickUpgrade = i => {
   // 봉인 표시한 다른 선택지는 다음 선택까지 보관
   if (p.sealPick != null && p.sealPick !== i && G.UI.lvOpts[p.sealPick]) { const o = G.UI.lvOpts[p.sealPick]; p.sealed = { type: o.type, id: o.id, nodeId: o.nodeId }; }
   p.sealPick = null;
+  G.RunLog.pick(G.UI.lvOpts, i, G.lvMode === 'chest');
   if (i < 0) G.stats.gold += 10;
   else G.Upg.apply(G.UI.lvOpts[i]);
   if (G.lvMode === 'chest') G.chests.shift(); else p.pendingLv--;
   G.UI.close(); G.paused = false;
   G.checkModals();
 };
-// 달라란 도서관: 추방 — 이 선택지를 이번 판에서 영구 제외하고 다시 굴림 (굴리기 횟수 소모 없음)
+// 달라란 도서관: 추방 — 이 선택지를 이번 판에서 영구 제외하고 그 한 장만 다시 굴림 (굴리기 횟수 소모 없음)
 G.banishUpgrade = i => {
   const p = G.player, o = G.UI.lvOpts[i]; if (!o || p.banishes <= 0) return;
-  p.banishes--; p.banished.add(G.Upg.key(o)); p.sealPick = null; G.UI.noReel = true;
-  G.UI.close(); G.checkModals();
+  p.banishes--; p.banished.add(G.Upg.key(o));
+  if (p.sealPick === i) p.sealPick = null;
+  G.UI.replaceCard(i, G.Upg.replace(G.UI.lvOpts, i, G.lvMode === 'chest' ? G.chests[0] : 0));
 };
 G.rerollUpgrade = () => {
   const p = G.player; if (p.rerolls <= 0) return;
@@ -256,6 +259,7 @@ G.playerDeath = () => {
     return;
   }
   p.dead = true; p.hp = 0;
+  G.RunLog.death();
   G.fx.shards(p.x, p.y, 30, 200);
   G.Audio.play('death');
   G.later(1.6, () => G.endRun(false));

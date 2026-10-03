@@ -5,6 +5,8 @@
 | 브랜치 / 태그 | 내용 | 서비스 |
 |---|---|---|
 | `server` | 현재 서비스 버전 (베타) — 계정 · 스테이지 · 흑마법사 · 사냥꾼 · 장비 · 가챠 · 랭킹 · 퀘스트 · 금고 | NAS Docker → `https://Godlovesyou.synology.me:10443` |
+| `v2.16.0` 태그 | 고통 흑마법사 상향(허수아비 측정 냉법 대비 34% → 92%): 영혼 수확자 — 어둠의 화살 · 지속 피해 · 악의적인 환희가 정예/보스에게 ×1.8(`SOUL_REAP`) · 부패 12→24 · 생명력 착취 9→18 · 고통 4→8 · 어둠의 화살 지속 피해당 +10%→+20% · 악의적인 환희 24→36 · 정예/보스 고통 조각 확률 ×1.5(`AGONY_BOSS_SHARD`) · 어둠의 화살이 지속 피해 2개 이상 걸린 적 적중 시 시전당 15% 조각(`SB_SHARD`) · 고통 툴팁 확률 표기 수정 · 판 기록 · 밸런스 분석: 판마다 주문별 피해(전체/유효) · 보스별 처치 시간과 주문별 피해 · 30초 구간 DPS · 레벨업/상자 선택(제시된 선택지 포함) · 시작/끝 능력치 · 특성 · 사망 원인을 모아(`js/runlog.js`) 판 보고에 실어 보냄 → `run_logs` 표(`server/balance.js`) · 관리자 로비 '밸런스' 탭(`js/balance.js`): 직업 · 전문화별 보스/유효/원시 DPS · 시간대별 곡선 · 스테이지별 · 보스별 · 주문 비중 · 선택률 · 판 목록과 판 하나의 기록 · JSON 내보내기 · `tools/sim.cjs`에 보스 DPS · `tools/dummy.cjs` 허수아비 측정(무적으로 레벨을 쌓은 뒤 움직이지 않는 보스를 때려 단일 대상 DPS, `--static`으로 옛 코드 사본과 비교) | — |
+| `v2.15.1` 태그 | 보물 코볼트 생명력 14 → 26배 · 맞으면 0.7초 동안 내 이동 속도 125%로 내달림(`G.Events.goblinHit`, 재사용 대기 2.3초) · 추방은 그 카드만 다시 뽑음(`G.Upg.replace` · `G.UI.replaceCard`) · 라크조르 · 데피아즈 오우거 오우거 머리(`head: 'ogre'`) · 라크조르 아이콘 교체 | — |
 | `v2.15.0` 태그 | 새 직업 사격 사냥꾼(`js/classes/hunter.js`: 집중 자원 · 서서 겨누는 조준 사격(이동 중 40%) · 정밀 사격 · 속임수 사격 · 감시하는 독수리 관측자의 징표 · 특화 저격 훈련(거리 비례) · 진화 검은 화살 / 파수꾼 · 사격 특성 트리) · 장비 개편: 직업/전문화 분리(`ITEMS.CLASS_GEAR` · `ITEMS.SPECS`, `characters.spec` · `runs.spec` 열, `POST /api/characters/spec`) · 천/가죽/사슬/판금(`it.armor`, 없으면 천) · 주 능력치 지능/민첩/힘을 같은 양으로 붙이고 전문화 것만 적용(`derive(t, primary)`, 보석 · 마법부여는 `main`) · 목 · 반지 주 능력치 없음 · 무기 16종(양손/한손/주장비/보조장비, 쌍수는 직업별) · 서버 착용 검증 `canEquipFor` · 방어구 전문화(8부위 같은 종류 → 주 능력치 +5%) · 드랍/뽑기는 착용 칸 → 종류 2단계 무작위 · 던전 이름 장비 · 전설 4종 추가 | — |
 | `v2.14.0` 태그 | 랭킹 한눈에 보기: `GET /api/rankings/overview`(스테이지마다 상위 3 · 참여 인원 · 내 순위) · 스테이지 카드 그리드 → 누르면 50위 표(50위 밖 내 순위 덧붙임, 응답에 `count` · `me`) · 필터를 버튼 묶음으로 · 보물 코볼트: 40초, 화면 가장자리 바로 밖(560~680)에 등장, 420 밖에선 45로 서성이고 안에선 플레이어 속도 70% + 3초마다 0.9초 숨 고르기 · 이동 불가를 `G.P.root(초, 이름, fx)`로 통일(기술 데이터 `fx`: web · frost · stun · shadow), 디버프에 실제 기술 이름 · 아이콘, 캐릭터 위 종류별 표시 + 남은 시간 고리 | — |
 | `v2.13.3` 태그 | 버프 칸: 생길 때의 남은 시간으로 순서 고정(긴 것이 오른쪽, 끝없는 버프 맨 오른쪽) · 칸을 버프마다 유지하고 생기고 사라진 칸만 넣고 뺌 · 나타남 애니메이션 · 3초 미만 깜빡임 | — |
@@ -56,6 +58,7 @@ Pages는 서버를 돌릴 수 없으므로 공개 주소에서 열린 화면은 
 - `server/server.js` — HTTP · 정적 파일 · 인증 · 건의사항. Node 22 내장 모듈만 사용 (npm 패키지 없음, DB는 `node:sqlite`)
 - `server/db.js` — 스키마 (기존 DB에는 없는 열을 자동 추가)
 - `server/game.js` — 게임 경제 API. 데이터: `data/game.db`
+- `server/balance.js` — 판 기록 저장(`run_logs`, 판 보고의 `log`를 다듬어 저장) · 관리자 밸런스 분석 API
 - 재화 · 아이템 · 특성은 **서버만 바꾼다**. 브라우저는 결과(`profile`)를 받아 보여줄 뿐
 - 정의 데이터는 서버와 브라우저가 같은 파일을 쓴다: `js/data/talents.js` · `items.js` · `stages.js`
 - 직업별 로직은 `js/classes/<직업>.js` 훅으로 분리 (`G.cls(p).훅`)
@@ -74,6 +77,8 @@ Pages는 서버를 돌릴 수 없으므로 공개 주소에서 열린 화면은 
 | `POST /api/runs/start` → `POST /api/runs/report` | 판 시작(개방 여부 검사) → 누적값 보고. 실제 경과 시간 · 처치/골드 상한 · 보스 수로 검증하고 이전 지급분과의 차액만 지급. 거부된 판은 서버 로그에 `run rejected ... reasons=` |
 | `GET /api/rankings` | `stage · difficulty · kind(clear/endless) · scope(week/all) · cls` |
 | `GET /api/rankings/overview` | `difficulty · kind · scope · cls` → 스테이지마다 `{ stage, count, top(3), me }` |
+| `GET /api/admin/balance` | 관리자. 필터 `days · stage · difficulty · cls · spec · version · ilvlMin · ilvlMax · user · minT(기본 60초)` → 직업/전문화별 집계 · 스테이지별 · 보스별 |
+| `GET /api/admin/runlogs` · `GET /api/admin/runlog?id=` | 관리자. 판 목록(같은 필터, `full=1`이면 기록 원본까지 최대 2000판) · 판 하나의 기록 |
 | `POST /api/quests/claim` · `POST /api/vault/claim` | 퀘스트 보상 · 금고 선택 |
 | `GET/POST/PATCH/DELETE /api/suggestions…` | 건의사항 게시판 |
 
@@ -99,7 +104,7 @@ python tools/fetch_icons.py           # 아이콘 받기 (wow.zamimg.com, 이미
 | 이름 | 기본값 | 설명 |
 |---|---|---|
 | `PORT` | 8080 (NAS 13100) | 서버 포트 |
-| `ADMIN_USERS` | (없음) | 게시판 관리자 아이디, 쉼표 구분. 관리자는 글 상태 변경/삭제 가능 |
+| `ADMIN_USERS` | (없음) | 관리자 아이디, 쉼표 구분. 게시판 글 상태 변경/삭제 · 채팅 삭제 · 로비 '밸런스' 탭(판 기록 분석) |
 
 NAS의 프로젝트 폴더에 `.env`를 만들어 `ADMIN_USERS=원하는아이디` 를 넣는다 (커밋되지 않음).
 

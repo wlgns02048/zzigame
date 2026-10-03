@@ -98,6 +98,7 @@ G.Net = {
       if (!run.id) throw new Error(run.error || '서버에 기록되지 않은 판입니다.');
       const r = await this.apiRetry('POST', '/api/runs/report', {
         runId: run.id, t: G.t, kills: G.stats.kills, gold: G.stats.gold, level: G.player.level, bossKills: G.Waves.bossKills, lust: G.stats.lust, victory, final,
+        log: G.RunLog.snapshot(),
       }, onWait);
       G.Meta.useProfile(r.profile);
       return r;

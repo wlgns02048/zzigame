@@ -556,4 +556,26 @@ select { cursor: pointer; }
 #streak b { display: block; font: 900 18px var(--font-title); color: #ffcf40; text-shadow: 2px 2px 0 #000, 0 0 10px rgba(255,150,0,.6); }
 #streak i { display: block; height: 3px; margin: 2px auto 0; width: 100%; max-width: 120px; background: linear-gradient(90deg, #ff8a00, #ffd100); border-radius: 2px; }
 #streak.pop b { animation: streakPop .5s ease-out; }
+
+/* 밸런스 분석 (관리자) */
+.balWrap { display: flex; flex-direction: column; gap: 8px; }
+.balWrap h3 { margin: 14px 0 2px; color: var(--wow-yellow); font-size: 15px; }
+.balWrap h4 { margin: 8px 0 2px; color: #cfd6e4; font-size: 13px; }
+.balWrap select, .balWrap input { background: #111; color: #ddd; border: 1px solid #333; border-radius: 3px; padding: 4px 6px; font-size: 13px; }
+.balWrap h3 img { width: 22px; height: 22px; vertical-align: middle; margin: 0 4px; }
+.balTable { margin: 4px 0; min-width: 0; }
+.balTable td, .balTable th { vertical-align: top; text-align: left; }
+.balRel { color: #8a93a6; font-size: 11px; }
+.balRuns tr[data-run] { cursor: pointer; }
+.balRuns tr[data-run]:hover { background: rgba(255,209,0,.08); }
+.balCurve { width: 100%; max-width: 760px; background: rgba(0,0,0,.3); border: 1px solid #222; }
+.balCurve text { fill: #8a93a6; font-size: 10px; }
+.balGroup { border: 1px solid #2c2416; border-radius: 6px; padding: 6px 10px; background: rgba(0,0,0,.25); }
+.balGroup summary { cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.balGroup summary img { width: 20px; height: 20px; }
+.balCols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 4px 16px; }
+.balBar { height: 8px; min-width: 1px; border-radius: 2px; width: 0; }
+.balTable td:nth-child(2):has(.balBar) { width: 120px; }
+.balSpark { display: flex; align-items: flex-end; gap: 1px; height: 60px; background: rgba(0,0,0,.3); padding: 2px; }
+.balSpark i { flex: 1; background: #3fa7ff; min-height: 1px; }
 @keyframes streakPop { 0% { transform: scale(1.9); color: #fff; } 100% { transform: scale(1); } }

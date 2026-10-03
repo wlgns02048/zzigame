@@ -25,7 +25,7 @@ G.Dots = {
       if (d.tickT <= 0) {
         d.tickT += d.interval;
         if (d.ramp && d.stack < d.maxStack) d.stack++;
-        const mul = st.dotMul * (e.haunted > G.t ? 1.25 : 1) * (1 + (e.embrace || 0) * 0.04);
+        const mul = st.dotMul * (e.haunted > G.t ? 1.25 : 1) * (1 + (e.embrace || 0) * 0.04) * (p.cls === 'warlock' ? soulReap(e) : 1);
         const dealt = G.hit(e, d.dmg * d.stack * mul, d.src, { school: 'shadow', small: true });
         if (st.dotLeech && dealt) G.P.healSilent(dealt * st.dotLeech);
         if (d.heal && dealt) G.P.healSilent(dealt * d.heal / st.dmg);
@@ -80,6 +80,13 @@ G.Dots = {
 const SEED_RGB = '200,90,255'; // 부패(150,60,220)와 구분되게 밝은 보라
 // 불안정한 고통 중첩: 최대 중첩 · 중첩당 피해 증가 (합연산, 3중첩이면 1.8배)
 const UA_MAX = 3, UA_STEP = 0.4;
+// 영혼의 조각 수급 (2.16.0): 정예 · 보스에 걸린 고통은 조각 확률 1.5배,
+// 지속 피해가 2개 이상 걸린 적을 어둠의 화살로 맞히면 시전 한 번에 15% 확률로 조각 1개
+const AGONY_BOSS_SHARD = 1.5, SB_SHARD = 0.15;
+// 영혼 수확자: 고통 흑마법사의 지속 피해 · 어둠의 화살 · 악의적인 환희는 정예 · 보스에게 더 아프다.
+// 냉기 마법사의 보스 '얼어붙음'(8초마다 얼음창 3배)에 맞서는 단일 대상 보정 — 일반 몹 정리는 그대로 두고 보스전만 올린다
+const SOUL_REAP = 1.8;
+const soulReap = e => (e.boss || e.elite ? SOUL_REAP : 1);
 
 // ---------- 주문 데이터 ----------
 // 고통 특성 주문만 쓴다 (파괴 · 악마 특성 주문인 불의 비 · 지옥불정령 · 어둠의 격노 · 임프 · 공허방랑자 · 혼돈의 화살은 제외)
@@ -87,9 +94,11 @@ Object.assign(G.SKILLS, {
   // ===== 자동 시전 =====
   shadowbolt: {
     cls: 'warlock', name: '어둠의 화살', icon: 'shadowbolt', kind: 'auto', school: 'shadow', color: '#a050ff',
-    base: { dmg: 30, cast: 0.9, count: 1, speed: 520, embrace: 1, extend: 0, perDot: 0.1, slow: 0.3, proj: true, basic: true },
+    base: { dmg: 30, cast: 0.9, count: 1, speed: 520, embrace: 1, extend: 0, perDot: 0.2, slow: 0.3, proj: true, basic: true },
     tip: s => `가장 가까운 적에게 어둠의 화살을 날려 ${D(s.dmg)}의 암흑 피해를 입히고 탈진의 저주로 ${P(s.slow)} 감속시킵니다.<br>대상에게 걸린 <b class="v">지속 피해 하나당 피해 +${Math.round(s.perDot * 100)}%</b>.` +
-      '<br>어둠의 포옹: 적중한 대상이 받는 지속 피해가 늘어납니다 (최대 +20%).' + (s.extend ? `<br>적중 시 대상의 지속 피해 지속시간 +${N(s.extend, 0)}초` : '') +
+      '<br>어둠의 포옹: 적중한 대상이 받는 지속 피해가 늘어납니다 (최대 +20%).' +
+      `<br>지속 피해가 2개 이상 걸린 적에게 적중하면 ${P(SB_SHARD)} 확률로 영혼의 조각 생성.` +
+      `<br>영혼 수확자: 어둠의 화살 · 지속 피해 · 악의적인 환희가 정예 · 보스에게 <b class="v">${Math.round((SOUL_REAP - 1) * 100)}%</b> 더 아픕니다.` + (s.extend ? `<br>적중 시 대상의 지속 피해 지속시간 +${N(s.extend, 0)}초` : '') +
       (s.count > 1 ? `<br>투사체 ${N(s.count, 0)}개 (추가 투사체는 ${P(G.EXTRA_BOLT)} 피해)` : ''),
     castInfo: s => `시전 시간 ${s.cast.toFixed(2)}초`,
     nodes: [
@@ -102,7 +111,7 @@ Object.assign(G.SKILLS, {
   },
   corruption: {
     cls: 'warlock', name: '부패', icon: 'corruption', kind: 'auto', school: 'shadow', color: '#9a40e0',
-    base: { dmg: 12, cd: 1.4, targets: 4, dur: 12, interval: 1.5, spread: 0 },
+    base: { dmg: 24, cd: 1.4, targets: 4, dur: 12, interval: 1.5, spread: 0 },
     tip: s => `부패에 걸리지 않은 적 ${N(s.targets, 0)}명에게 부패를 겁니다. ${N(s.dur, 0)}초 동안 ${N(s.interval, 1)}초마다 ${D(s.dmg)}의 암흑 피해.` + (s.spread ? `<br>부패에 걸린 적이 죽으면 주변 ${N(s.spread, 0)}명에게 옮겨갑니다.` : ''),
     castInfo: s => `재사용 ${s.cd.toFixed(1)}초`,
     nodes: [
@@ -115,19 +124,19 @@ Object.assign(G.SKILLS, {
   },
   agony: {
     cls: 'warlock', name: '고통', icon: 'agony', kind: 'auto', school: 'shadow', color: '#c02080',
-    base: { dmg: 4, cd: 2.5, targets: 3, dur: 18, interval: 2, maxStack: 10, shardCh: 0.06 },
-    tip: s => `적 ${N(s.targets, 0)}명에게 고통을 겁니다. 2초마다 피해가 중첩되며(최대 ${N(s.maxStack, 0)}중첩) 중첩당 ${D(s.dmg)}의 피해. 틱마다 ${P(s.shardCh)} 확률로 영혼의 조각 생성.`,
+    base: { dmg: 8, cd: 2.5, targets: 3, dur: 18, interval: 2, maxStack: 10, shardCh: 0.06 },
+    tip: s => `적 ${N(s.targets, 0)}명에게 고통을 겁니다. 2초마다 피해가 중첩되며(최대 ${N(s.maxStack, 0)}중첩) 중첩당 ${D(s.dmg)}의 피해. 틱마다 ${P(s.shardCh * 4)} 확률로 영혼의 조각 생성 (정예 · 보스는 ${P(s.shardCh * 4 * AGONY_BOSS_SHARD)}).`,
     castInfo: s => `재사용 ${s.cd.toFixed(1)}초`,
     nodes: [
       node('targets', '저주의 손길', 4, '대상 <b class="v">+2</b>', s => (s.targets += 2), { icon: 'curseofweakness' }),
       dmgNode(0.3, 5, '향상된 고통'),
       node('stack', '고뇌', 3, '최대 중첩 <b class="v">+4</b>', s => (s.maxStack += 4), { icon: 'amplifycurse' }),
-      node('shard', '영혼 착취', 3, '영혼의 조각 생성 확률 <b class="v">+3%</b>', s => (s.shardCh += 0.03), { icon: 'soulshard' }),
+      node('shard', '영혼 착취', 3, '틱마다 영혼의 조각 생성 확률 <b class="v">+12%</b>', s => (s.shardCh += 0.03), { icon: 'soulshard' }),
     ],
   },
   siphonlife: {
     cls: 'warlock', name: '생명력 착취', icon: 'siphonlife', kind: 'auto', school: 'shadow', color: '#50d070',
-    base: { dmg: 9, cd: 2, targets: 3, dur: 15, interval: 1.5, heal: 0.25 },
+    base: { dmg: 18, cd: 2, targets: 3, dur: 15, interval: 1.5, heal: 0.25 },
     tip: s => `생명력 착취에 걸리지 않은 적 ${N(s.targets, 0)}명에게 생명력 착취를 겁니다. ${N(s.dur, 0)}초 동안 ${N(s.interval, 1)}초마다 ${D(s.dmg)}의 암흑 피해를 입히고 피해의 ${P(s.heal)}만큼 생명력을 회복합니다.`,
     castInfo: s => `재사용 ${s.cd.toFixed(1)}초`,
     nodes: [
@@ -191,7 +200,7 @@ Object.assign(G.SKILLS, {
   },
   maleficrapture: {
     cls: 'warlock', name: '악의적인 환희', icon: 'maleficrapture', kind: 'active', key: 'R', school: 'shadow', color: '#e060ff', req: p => !!(p.skills.agony || p.skills.corruption || p.skills.siphonlife),
-    base: { dmg: 24, cd: 4, radius: 400 },
+    base: { dmg: 36, cd: 4, radius: 400 },
     tip: s => `영혼의 조각을 모두 소모해, 주변 모든 적에게 걸린 지속 피해 하나당 ${D(s.dmg)} × 조각 수의 피해를 입힙니다. 조각이 3개 이상이어야 사용할 수 있습니다.`,
     castInfo: s => `즉시 시전 · 영혼의 조각 3개 이상 · 재사용 ${s.cd.toFixed(0)}초`,
     nodes: [dmgNode(0.3, 5)],
@@ -297,7 +306,10 @@ const corruptionOpts = s => ({ dmg: s.dmg, dur: s.dur, interval: s.interval, src
   onTick: (e) => { const p = W(); if (p.stats.nightfall && Math.random() < p.stats.nightfall) { p.nightfall = 1; p.nfT = 12; } } });
 const agonyOpts = (s, p) => ({ dmg: s.dmg * (p.legend.eternalagony ? 1.4 : 1), dur: s.dur, interval: s.interval, src: 'agony', ramp: true, maxStack: s.maxStack + (p.legend.eternalagony ? 5 : 0), color: '220,40,90', icon: 'agony',
   // 조각 생성은 대상 수와 상관없이 2초에 한 번까지 (적이 많을 때 무한히 차지 않도록)
-  onTick: (e, d) => { if (p.evo.soulrot && d.stack < d.maxStack) d.stack++; if (G.t >= (p.shardICD || 0) && Math.random() < s.shardCh * 4) { p.shardICD = G.t + 2; addShard(1); } } });
+  onTick: (e, d) => {
+    if (p.evo.soulrot && d.stack < d.maxStack) d.stack++;
+    if (G.t >= (p.shardICD || 0) && Math.random() < s.shardCh * 4 * (e.boss || e.elite ? AGONY_BOSS_SHARD : 1)) { p.shardICD = G.t + 2; addShard(1); }
+  } });
 const uaOpts = s => ({ dmg: s.dmg, dur: s.dur, interval: s.interval, src: 'unstableaffliction', color: '230,110,255', icon: 'unstableaffliction' });
 // 불안정한 고통 걸기. add: 중첩을 올릴지 (사악한 오염은 올리지 않고 지금 중첩을 유지)
 const applyUA = (e, s, add) => {
@@ -330,13 +342,15 @@ Object.assign(G.SKILL_IMPL, {
       if (!tg.length) return;
       sk.castT = 0;
       const nf = p.nightfall ? 1.5 : 1; p.nightfall = 0;
-      const ds = !!s.ds, src = ds ? 'drainsoul' : 'shadowbolt';
+      const ds = !!s.ds, src = ds ? 'drainsoul' : 'shadowbolt', cast = { shard: false };
       for (let i = 0; i < s.count; i++) {
         const t = tg[i % tg.length], base = s.dmg * nf * (i ? G.EXTRA_BOLT : 1);
         G.Proj.spawn({
           x: p.x + p.face * 14, y: p.y - 24, a: Math.atan2(t.y - p.y, t.x - p.x) + (i >= tg.length ? (i - tg.length + 1) * 0.15 : 0), speed: s.speed, r: 9, kind: 'shadowbolt', homing: t, turn: 1.5, noRetarget: true, src, life: 1.8, scale: ds ? 1.35 : 1,
           onHit: e => {
-            let m = 1 + G.Dots.count(e) * s.perDot;
+            const dots = G.Dots.count(e);
+            let m = (1 + dots * s.perDot) * soulReap(e);
+            if (!cast.shard && dots >= 2) { cast.shard = true; if (Math.random() < SB_SHARD) addShard(1); }
             if (ds && e.hp < e.maxHp * 0.2) m *= 2;
             const dealt = G.hit(e, base * m, src, { school: 'shadow' });
             G.P.healSilent(dealt * 0.03); // 영혼 흡수
@@ -457,7 +471,7 @@ Object.assign(G.SKILL_IMPL, {
       let hits = 0;
       for (const e of G.Grid.query(p.x, p.y, s.radius)) {
         const c = G.Dots.count(e); if (!c) continue;
-        G.hit(e, s.dmg * c * n, 'maleficrapture', { school: 'shadow' });
+        G.hit(e, s.dmg * c * n * soulReap(e), 'maleficrapture', { school: 'shadow' });
         G.fx.burst(e.x, e.y - 10, 6, { rgb: '230,100,255', sp: 140, size: 10 }); hits++;
       }
       G.fx.ring(p.x, p.y, 10, s.radius, 0.5, '230,100,255', 4, 0.1);

@@ -56,7 +56,7 @@ ICONS = {
     'improvedblizzard': ['spell_frost_icestorm'],
     # ---- 클래식 보스 / 적 ----
     'vancleef': ['achievement_boss_edwinvancleef', 'inv_misc_bandana_03'],
-    'rhahkzor': ['inv_misc_head_ogre_01', 'achievement_character_human_male'],
+    'rhahkzor': ['inv_misc_ogrepinata', 'achievement_boss_gruul'],
     'mrsmite': ['inv_misc_head_tauren_01', 'ability_warrior_cleave'],
     'silverlaine': ['achievement_boss_baronsilverlaine', 'inv_misc_head_human_01'],
     'springvale': ['achievement_boss_commandersspringvale', 'spell_holy_sealofvengeance'],

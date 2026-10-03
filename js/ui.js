@@ -399,26 +399,46 @@ G.UI = {
     $('sBack').onclick = () => (G.state === 'play' ? this.showPause() : this.showMenu());
   },
 
+  lvCard(o, i, d) {
+    const r = G.RARITY[o.rarity];
+    return `<div class="card r${o.rarity}" style="--qc:${r.color};--d:${d.toFixed(2)}s" data-i="${i}">
+      <div class="chead"><img src="${G.icon(o.icon)}"><div><div class="cname">${o.name}</div><div class="ctype">${o.label}</div><div class="clv">${o.lv || ''}</div></div></div>
+      ${o.nodeDesc ? `<div class="cnode">${o.nodeDesc}</div>` : ''}
+      ${o.cast ? `<div class="tt-row" style="font-size:12px;margin-bottom:4px"><span>${o.cast}</span></div>` : ''}
+      <div class="cdesc">${o.desc || ''}</div>
+      <div class="cfoot"><span style="color:${r.color}">${r.name}${o.wasSealed ? ' · 봉인됨' : ''}</span><span>${o.key ? `단축키 ${G.KEY_LABEL[o.key] || o.key} · ` : ''}<span class="ckey">${i + 1}</span></span></div>
+      <div class="cacts">${this.lvActs(o, i)}</div></div>`;
+  },
+  // 달라란 도서관: 추방(이 판에서 영구 제외) · 봉인(다음 선택까지 보관)
+  lvActs(o, i) {
+    const p = G.player;
+    if (o.type === 'gold' || o.type === 'heal') return '';
+    return `${p.banishes > 0 ? `<a href="#" data-banish="${i}">추방 (${p.banishes})</a>` : ''}${G.Meta.lib('seal') ? `<a href="#" data-seal="${i}" class="${p.sealPick === i ? 'on' : ''}">봉인</a>` : ''}`;
+  },
+  bindCards() {
+    const p = G.player;
+    this.el.modal.querySelectorAll('.card').forEach(c => (c.onclick = e => { if (!e.target.closest('.cacts')) G.pickUpgrade(+c.dataset.i); }));
+    this.el.modal.querySelectorAll('[data-banish]').forEach(a => (a.onclick = e => { e.preventDefault(); G.banishUpgrade(+a.dataset.banish); }));
+    this.el.modal.querySelectorAll('[data-seal]').forEach(a => (a.onclick = e => { e.preventDefault(); p.sealPick = p.sealPick === +a.dataset.seal ? null : +a.dataset.seal; this.el.modal.querySelectorAll('[data-seal]').forEach(b => b.classList.toggle('on', +b.dataset.seal === p.sealPick)); }));
+  },
+  // 추방: 그 카드 자리만 새 카드로 바꾸고 나머지는 그대로 둔다
+  replaceCard(i, o) {
+    if (this.modalKind !== 'levelup') return;
+    this.lvOpts = this.lvOpts.slice(); this.lvOpts[i] = o;
+    const el = this.el.modal.querySelector(`.card[data-i="${i}"]`); if (!el) return;
+    el.outerHTML = this.lvCard(o, i, 0);
+    this.el.modal.querySelectorAll('.card').forEach(c => { const k = +c.dataset.i; c.querySelector('.cacts').innerHTML = this.lvActs(this.lvOpts[k], k); });
+    this.bindCards();
+    G.Audio.play(o.rarity >= 4 ? 'legend' : o.rarity >= 2 ? 'revealRare' : 'reveal');
+  },
+
   showLevelUp(opts, title, sub) {
     const p = G.player;
     this.lvOpts = opts;
-    const card = (o, i) => {
-      const r = G.RARITY[o.rarity];
-      return `<div class="card r${o.rarity}" style="--qc:${r.color};--d:${(0.08 + i * 0.13).toFixed(2)}s" data-i="${i}">
-        <div class="chead"><img src="${G.icon(o.icon)}"><div><div class="cname">${o.name}</div><div class="ctype">${o.label}</div><div class="clv">${o.lv || ''}</div></div></div>
-        ${o.nodeDesc ? `<div class="cnode">${o.nodeDesc}</div>` : ''}
-        ${o.cast ? `<div class="tt-row" style="font-size:12px;margin-bottom:4px"><span>${o.cast}</span></div>` : ''}
-        <div class="cdesc">${o.desc || ''}</div>
-        <div class="cfoot"><span style="color:${r.color}">${r.name}${o.wasSealed ? ' · 봉인됨' : ''}</span><span>${o.key ? `단축키 ${G.KEY_LABEL[o.key] || o.key} · ` : ''}<span class="ckey">${i + 1}</span></span></div>
-        ${o.type !== 'gold' && o.type !== 'heal' ? `<div class="cacts">${p.banishes > 0 ? `<a href="#" data-banish="${i}">추방 (${p.banishes})</a>` : ''}${G.Meta.lib('seal') ? `<a href="#" data-seal="${i}" class="${p.sealPick === i ? 'on' : ''}">봉인</a>` : ''}</div>` : ''}</div>`;
-    };
     this.open('levelup', `<div><div class="lvTitle">${title}</div><div class="lvSub">${sub}</div>
-      <div class="cards">${opts.map(card).join('')}</div>
+      <div class="cards">${opts.map((o, i) => this.lvCard(o, i, 0.08 + i * 0.13)).join('')}</div>
       <div class="lvBtns"><button class="btn small" id="lvReroll" ${p.rerolls > 0 ? '' : 'disabled'}>다시 굴리기 (${p.rerolls})</button><button class="btn small" id="lvSkip">건너뛰기 (+10 골드)</button></div></div>`);
-    this.el.modal.querySelectorAll('.card').forEach(c => (c.onclick = e => { if (!e.target.closest('.cacts')) G.pickUpgrade(+c.dataset.i); }));
-    // 달라란 도서관: 추방(이 판에서 영구 제외) · 봉인(다음 선택까지 보관)
-    this.el.modal.querySelectorAll('[data-banish]').forEach(a => (a.onclick = e => { e.preventDefault(); G.banishUpgrade(+a.dataset.banish); }));
-    this.el.modal.querySelectorAll('[data-seal]').forEach(a => (a.onclick = e => { e.preventDefault(); p.sealPick = p.sealPick === +a.dataset.seal ? null : +a.dataset.seal; a.classList.toggle('on'); }));
+    this.bindCards();
     $('lvReroll').onclick = () => G.rerollUpgrade();
     $('lvSkip').onclick = () => G.pickUpgrade(-1);
     // 카드가 한 장씩 뒤집힐 때 소리 (희귀할수록 화려하게)

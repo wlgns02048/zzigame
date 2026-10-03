@@ -5,7 +5,7 @@
 const path = require('node:path');
 const crypto = require('node:crypto');
 
-module.exports = ({ db, route, fail, limit, readJson, STATIC_DIR, log }) => {
+module.exports = ({ db, route, fail, limit, readJson, STATIC_DIR, saveLog, log }) => {
   const data = f => require(path.join(STATIC_DIR, 'js', 'data', f));
   const TALENTS = data('talents.js'), ITEMS = data('items.js'), SD = data('stages.js');
   const { STAGES, DIFFICULTY, ENDLESS } = SD;
@@ -395,7 +395,7 @@ module.exports = ({ db, route, fail, limit, readJson, STATIC_DIR, log }) => {
   };
 
   route('POST', '/api/runs/report', async (req, u) => {
-    const b = await readJson(req);
+    const b = await readJson(req, 196608); // 판 기록(log)이 실려 와서 다른 요청보다 크다
     const num = (v, name) => (Number.isFinite(v) && v >= 0 ? v : fail(400, `잘못된 값: ${name}`));
     const t = num(b.t, 't'), kills = Math.floor(num(b.kills, 'kills')), gold = num(b.gold, 'gold');
     const level = Math.floor(num(b.level, 'level')), bossKills = Math.floor(num(b.bossKills ?? 0, 'bossKills'));
@@ -465,6 +465,8 @@ module.exports = ({ db, route, fail, limit, readJson, STATIC_DIR, log }) => {
       db.prepare(`UPDATE runs SET t = ?, kills = ?, gold = ?, level = ?, victory = ?, time_bonus = ?, paid = ?, paid_json = ?, boss_kills = ?,
         clear_t = ?, endless_lv = ?, status = ?, updated_at = ? WHERE id = ?`)
         .run(t, kills, gold, level, clearT != null ? 1 : 0, timeBonus, paid.gold || 0, JSON.stringify(paid), bossKills, clearT, Math.max(run.endless_lv, endlessLv), final ? 'done' : 'active', now, run.id);
+      // 판 기록은 분석용이라 저장에 실패해도 보상 정산은 그대로 진행한다
+      if (b.log) try { saveLog(u.id, run.id, b.log); } catch (e) { log(`run log skipped run=${run.id}: ${e.message}`); }
       return { gain, loot: given, endlessLv, ...ok(u.id) };
     });
     if (out.rejected) fail(422, '런 기록을 확인할 수 없어 보상이 지급되지 않았습니다.');

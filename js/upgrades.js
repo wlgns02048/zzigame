@@ -81,6 +81,13 @@ G.Upg = {
     return picks.map(o => this.describe(o));
   },
 
+  // 달라란 도서관: 추방 — opts[i] 한 장만 새로 뽑는다 (나머지 선택지와 겹치지 않게)
+  replace(opts, i, chest = 0) {
+    const taken = new Set(opts.map(o => this.key(o)));
+    const pool = this.pool(chest).filter(o => !taken.has(this.key(o)));
+    return this.describe(pool.length ? U.wpick(pool, x => x.w) : { type: 'gold', id: 'gold' });
+  },
+
   describe(o) {
     const p = G.player, def = G.SKILLS[o.id];
     const KIND = { auto: '자동 시전 주문', active: '핵심 주문', passive: '능력치', legendary: '전설 효과', evolution: '진화' };

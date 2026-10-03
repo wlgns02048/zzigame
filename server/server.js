@@ -44,11 +44,11 @@ setInterval(() => { const now = Date.now(); for (const [k, b] of buckets) if (no
 
 const clientIp = req => (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress;
 
-const readJson = req => new Promise((resolve, reject) => {
+const readJson = (req, max = 32768) => new Promise((resolve, reject) => {
   let size = 0; const chunks = [];
   req.on('data', c => {
     size += c.length;
-    if (size > 32768) { reject(new HttpError(413, '요청이 너무 큽니다.')); req.destroy(); return; }
+    if (size > max) { reject(new HttpError(413, '요청이 너무 큽니다.')); req.destroy(); return; }
     chunks.push(c);
   });
   req.on('end', () => {
@@ -91,7 +91,8 @@ const validPw = p => typeof p === 'string' && p.length >= 4 && p.length <= 64;
 const routes = [];
 const route = (method, pattern, fn, opts = {}) => routes.push({ method, re: new RegExp('^' + pattern.replace(/:\w+/g, '(\\d+)') + '$'), fn, opts });
 
-const game = require('./game')({ db, route, fail, requireUser, limit, readJson, STATIC_DIR, log: (...a) => console.warn(...a) });
+const { saveLog } = require('./balance')({ db, route, fail });
+const game = require('./game')({ db, route, fail, requireUser, limit, readJson, STATIC_DIR, saveLog, log: (...a) => console.warn(...a) });
 require('./chat')({ db, route, fail, limit, readJson, clientIp, isAdmin: name => ADMINS.has(name.toLowerCase()) });
 
 route('POST', '/api/auth/register', async req => {

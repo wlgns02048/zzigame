@@ -53,6 +53,12 @@ function drawHumanoid(x, o) {
     poly(x, [[hx - 7, hy - 4], [hx - 14, hy - 9], [hx - 6, hy]], skin);
     ell(x, hx - 1, hy - 6, 3, 2, '#e8e0c8'); line(x, hx - 1, hy - 8, hx - 1, hy - 13, '#f5f0e0', 2);
     x.globalCompositeOperation = 'lighter'; ell(x, hx - 1, hy - 15, 3, 4, 'rgba(255,200,80,0.9)'); x.globalCompositeOperation = 'source-over';
+  } else if (head === 'ogre') { // 넓적한 머리 · 튀어나온 아래턱과 송곳니 · 짙은 눈썹
+    ell(x, hx, hy + 1, 11, 10, skin);
+    poly(x, [[hx - 2, hy + 4], [hx + 13, hy + 3], [hx + 12, hy + 12], [hx - 3, hy + 11]], skin, 'rgba(0,0,0,0.3)', 1);
+    poly(x, [[hx + 5, hy + 4.5], [hx + 6.5, hy - 0.5], [hx + 8, hy + 4.5]], '#f0e8d0'); poly(x, [[hx + 9.5, hy + 4], [hx + 11, hy], [hx + 12.2, hy + 4]], '#f0e8d0');
+    ell(x, hx - 10, hy + 1, 3, 4, skin);
+    line(x, hx, hy - 4, hx + 10, hy - 3, 'rgba(40,20,0,0.55)', 2.5);
   } else if (head === 'skull') {
     ell(x, hx, hy, 8, 8.5, rg(x, hx - 2, hy - 3, 10, [[0, '#fbf6e6'], [1, '#bdb59d']]));
     ell(x, hx + 2, hy - 1, 2.2, 2.4, '#1b1210'); ell(x, hx + 6, hy - 0.5, 1.8, 2.2, '#1b1210');
@@ -181,8 +187,8 @@ function drawGhost(x, o) {
     defias_thug: H({ ...defias, weapon: 'dagger' }),
     defias_mage: H({ ...defias, robe: true, cloth: '#4a2a3a', cloth2: '#1a0a14', trim: '#b02020', weapon: 'staff', orb: '#ff8040' }),
     defias_goon: H({ ...defias, cloth: '#4a4a52', armor: '#6a6a72', weapon: 'mace' }, 64, 76, 1.3),
-    defias_ogre: H({ skin: '#9a8a5a', cloth: '#5a4a2a', cloth2: '#2a2010', head: 'bald', weapon: 'mace', eye: '#ff4020' }, 64, 76, 1.5),
-    rhahkzor: H({ skin: '#a89060', cloth: '#5a3a1a', cloth2: '#2a1a0a', head: 'bald', weapon: 'mace', eye: '#ff3010' }, 64, 76, 1.7),
+    defias_ogre: H({ skin: '#9a8a5a', cloth: '#5a4a2a', cloth2: '#2a2010', head: 'ogre', weapon: 'mace', eye: '#ff4020' }, 64, 76, 1.5),
+    rhahkzor: H({ skin: '#8a9a9a', cloth: '#5a3a1a', cloth2: '#2a1a0a', head: 'ogre', weapon: 'mace', eye: '#ff3010' }, 64, 76, 1.7),
     mrsmite: H({ skin: '#6a4a30', cloth: '#3a3a42', armor: '#6a6a72', head: 'bull', weapon: 'axe', eye: '#ff3010' }, 64, 76, 1.7),
     vancleef: H({ ...defias, cloth: '#2a1a1a', cloth2: '#0a0606', cape: '#7a1010', weapon: 'sword', eye: '#ff6040', mask: '#c01818' }, 64, 76, 1.6),
     // ---- 그림자송곳니 ----

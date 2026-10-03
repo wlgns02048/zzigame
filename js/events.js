@@ -1,7 +1,7 @@
 'use strict';
 // ================= 필드 이벤트 =================
 // 판 도중 가끔 나타나는 선택형 목표. 모든 주기는 웨이브와 같은 900초 척도(Waves.k)로 압축되고, 보스가 살아 있으면 새로 생기지 않는다.
-//  · 보물 코볼트: 플레이어에게서 도망치는 적 (멀면 느릿느릿, 가까우면 내 속도의 70% + 가끔 숨 고르기 — js/enemies.js). 놓치면 40초 뒤 사라지고, 잡으면 골드를 쏟는다
+//  · 보물 코볼트: 플레이어에게서 도망치는 적 (멀면 느릿느릿, 가까우면 내 속도의 70% + 가끔 숨 고르기, 맞으면 잠깐 내달림 — js/enemies.js). 놓치면 40초 뒤 사라지고, 잡으면 골드를 쏟는다
 //  · 성소: 밟으면 30초 강화 (광란 · 신속 · 보호 · 지혜)
 //  · 저주받은 상자: 열면 정예 셋이 나타나고, 모두 쓰러뜨리면 보스 전리품 상자
 G.SHRINES = {
@@ -68,10 +68,18 @@ G.Events = {
     const e = G.Enemy.spawn('kobold', x, y);
     e.def = Object.assign({}, e.def, { name: '보물 코볼트' });
     e.goblin = true; e.flee = true; e.xp = 0;
-    e.maxHp = e.hp = Math.round(G.ENEMIES.kobold.hp * G.Waves.hpMul() * 14);
+    e.maxHp = e.hp = Math.round(G.ENEMIES.kobold.hp * G.Waves.hpMul() * 26);
     e.speed = 190; e.r *= 1.2; e.scale *= 1.25;
     this.list.push({ kind: 'goblin', e, t: 0, life: 40 });
     G.UI.warn('보물 코볼트가 나타났습니다! 달아나기 전에 잡으세요', '#ffd100', 3); G.Audio.play('goblin', 1, x);
+  },
+
+  // 보물 코볼트가 맞으면: 0.7초 동안 내 이동 속도의 125%로 내달린다 (숨 고르기도 끊음). 1.6초 재사용 대기 — 계속 때려도 평균은 나보다 느리다
+  goblinHit(e) {
+    if (e.dashCd > 0) return;
+    e.dashT = 0.7; e.dashCd = 2.3; e.restT = 0;
+    G.fx.burst(e.x, e.y - 8, 10, { rgb: '255,235,150', sp: 140, size: 8, life: 0.4 });
+    G.fx.text(e.x, e.y - 50, '후다닥!', '#ffe070', 13);
   },
 
   spawnObject(kind, type, life) {

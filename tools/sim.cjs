@@ -61,7 +61,11 @@ const runOne = async (browser, url, seed) => {
   await page.waitForFunction(() => /END t=/.test(document.getElementById('errlog').textContent), null, { timeout: 0, polling: 500 });
   const r = await page.evaluate(() => {
     const p = G.player, log = document.getElementById('errlog').textContent;
+    // 보스 DPS: 판 기록(js/runlog.js)에서 처치한 보스들의 첫 피해 ~ 처치 동안 준 피해 / 시간
+    const L = G.RunLog.snapshot(); let bd = 0, bt = 0;
+    for (const b of L.boss) if (b.kill != null && b.first != null) { for (const k in b.dmg) bd += b.dmg[k]; bt += Math.max(1, b.kill - b.first); }
     return {
+      bossDps: bt ? Math.round(bd / bt) : null,
       t: Math.round(G.t), dead: p.dead, victory: !p.dead && G.state === 'over', level: p.level, kills: G.stats.kills,
       dps: Math.round(G.meter.total / Math.max(1, G.t)), gold: Math.round(G.stats.gold),
       boss: G.Waves.boss ? `${G.Waves.boss.id}:${Math.max(0, Math.round(G.Waves.boss.hp / G.Waves.boss.maxHp * 100))}%` : '-',
@@ -95,13 +99,14 @@ const runOne = async (browser, url, seed) => {
   const pad = (v, n) => String(v).padStart(n);
   const fmt = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   console.log(`\n\n시뮬레이션 ${RUNS}판 · 최대 ${fmt(SECS)} · 쿼리 "${QUERY}" · ${((Date.now() - t0) / 1000).toFixed(0)}초 소요\n`);
-  console.log(' seed   결과    시간  레벨   처치    DPS  보스          주력 주문');
+  console.log(' seed   결과    시간  레벨   처치    DPS 보스DPS  보스          주력 주문');
   for (const r of results) {
     const res = r.victory ? '승리' : r.dead ? '사망' : '생존';
-    console.log(`${pad(r.seed, 5)}   ${res}   ${fmt(r.t)}  ${pad(r.level, 4)}  ${pad(r.kills, 5)}  ${pad(r.dps, 5)}  ${r.boss.padEnd(13)} ${r.top}${r.errs.length ? '  ⚠ ' + r.errs[0] : ''}`);
+    console.log(`${pad(r.seed, 5)}   ${res}   ${fmt(r.t)}  ${pad(r.level, 4)}  ${pad(r.kills, 5)}  ${pad(r.dps, 5)}  ${pad(r.bossDps ?? '-', 6)}  ${r.boss.padEnd(13)} ${r.top}${r.errs.length ? '  ⚠ ' + r.errs[0] : ''}`);
   }
   const ts = results.map(r => r.t).sort((a, b) => a - b), avg = a => a.reduce((x, y) => x + y, 0) / a.length;
-  console.log(`\n클리어율 ${results.filter(r => r.victory).length}/${RUNS} · 생존 평균 ${fmt(Math.round(avg(ts)))} · 중앙값 ${fmt(ts[Math.floor(ts.length / 2)])} · 평균 DPS ${Math.round(avg(results.map(r => r.dps)))} · 평균 레벨 ${avg(results.map(r => r.level)).toFixed(1)}`);
+  const bds = results.map(r => r.bossDps).filter(v => v != null);
+  console.log(`\n클리어율 ${results.filter(r => r.victory).length}/${RUNS} · 생존 평균 ${fmt(Math.round(avg(ts)))} · 중앙값 ${fmt(ts[Math.floor(ts.length / 2)])} · 평균 DPS ${Math.round(avg(results.map(r => r.dps)))} · 평균 보스 DPS ${bds.length ? Math.round(avg(bds)) : '-'} · 평균 레벨 ${avg(results.map(r => r.level)).toFixed(1)}`);
   // 바닥 기술 적중률: 경고가 터지는 순간 플레이어가 범위 안에 있던 비율 (모든 판 합계)
   const haz = {};
   for (const r of results) for (const [k, [n, h]] of Object.entries(r.haz)) { const a = haz[k] ||= [0, 0]; a[0] += n; a[1] += h; }

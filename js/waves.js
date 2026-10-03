@@ -58,6 +58,7 @@ G.Waves = {
   spawnBoss(id, warn) {
     const [x, y] = this.ringPos(-60);
     const e = G.Enemy.spawn(id, x, y);
+    G.RunLog.bossSpawn(e);
     G.Audio.play('boss'); G.Audio.duck(0.3, 1.2); G.fx.shake(8); G.UI.bossIntro(e.def);
     if (warn) G.UI.warn(warn, '#ff6a1a', 3);
     return e;
@@ -153,6 +154,7 @@ G.Waves = {
 
   onBossDeath(e) {
     this.bossKills++;
+    G.RunLog.bossDead(e);
     G.UI.warn(`${e.def.name} 처치!`, '#ffd100', 3);
     G.fx.shake(14); G.Audio.play('victory');
     if (e.final && !this.endless) G.later(2.5, () => G.endRun(true));

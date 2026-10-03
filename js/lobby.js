@@ -13,7 +13,9 @@ G.Lobby = {
   TABS: [
     ['stage', '출정', 'portal'], ['char', '캐릭터', 'bag'], ['talent', '특성', 'talents'], ['shop', '상점', 'gacha_equip'],
     ['quest', '퀘스트', 'quest'], ['vault', '위대한 금고', 'vault'], ['ranking', '랭킹', 'ranking'], ['codex', '주문 도감', 'scroll'], ['board', '게시판', 'board'], ['patch', '패치노트', 'library'],
+    ['balance', '밸런스', 'ranking'], // 관리자만 (js/balance.js)
   ],
+  tabs() { return this.TABS.filter(([id]) => id !== 'balance' || (G.Net.user && G.Net.user.admin)); },
   // 패치노트: 마지막으로 읽은 버전을 브라우저에 기억해 두고, 새 패치가 있으면 탭에 NEW 표시
   PATCH_SEEN: 'frostmage_patch_seen',
   patchUnseen() { let s = null; try { s = localStorage.getItem(this.PATCH_SEEN); } catch { /* 저장소 사용 불가 */ } return !!G.PATCH_NOTES.length && s !== G.PATCH_NOTES[0].v; },
@@ -26,6 +28,7 @@ G.Lobby = {
   show(tab) {
     G.Update.apply(); // 로비로 돌아오거나 탭을 옮길 때 새 버전이 있으면 적용 (새로고침)
     if (tab) this.tab = tab;
+    if (!this.tabs().some(([id]) => id === this.tab)) this.tab = 'stage';
     G.UI.el.hud.classList.add('hidden');
     G.UI.open('lobby', `<div class="lobby">
       <div class="lbTop">
@@ -34,7 +37,7 @@ G.Lobby = {
         <div class="lbAcct">${this.account()}</div>
       </div>
       <div class="lbBody">
-        <nav class="lbNav">${this.TABS.map(([id, name, icon]) => `<a href="#" data-tab="${id}" class="${this.tab === id ? 'on' : ''}"><img src="${G.icon(icon)}"><span>${name}</span>${id === 'patch' && this.tab !== 'patch' && this.patchUnseen() ? '<em class="newTag">NEW</em>' : ''}</a>`).join('')}
+        <nav class="lbNav">${this.tabs().map(([id, name, icon]) => `<a href="#" data-tab="${id}" class="${this.tab === id ? 'on' : ''}"><img src="${G.icon(icon)}"><span>${name}</span>${id === 'patch' && this.tab !== 'patch' && this.patchUnseen() ? '<em class="newTag">NEW</em>' : ''}</a>`).join('')}
           <a href="#" data-help="1"><img src="${G.icon('reroll')}"><span>조작법</span></a>
           <a href="#" data-settings="1"><img src="${G.icon('scroll')}"><span>설정</span></a></nav>
         <main class="lbMain" id="lbMain"></main>
@@ -56,6 +59,7 @@ G.Lobby = {
       return;
     }
     if (this.tab === 'board') { G.UI.showBoard(); return; }
+    if (this.tab === 'balance') { G.Balance.render(m); return; }
     this[{ stage: 'renderStage', char: 'renderChar', talent: 'renderTalent', shop: 'renderShop', quest: 'renderQuest', vault: 'renderVault', ranking: 'renderRanking', codex: 'renderCodex', patch: 'renderPatch' }[this.tab]](m);
   },
   refreshTop() { const c = G.UI.el.modal.querySelector('.lbCur'); if (c) c.innerHTML = this.currencyBar(); },
