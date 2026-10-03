@@ -176,16 +176,30 @@ G.UI = {
     if (p.rootT > 0) buffs.push(['freeze', p.rootT, '', '서리 폭발', '이동 불가', true]);
     if (G.lustT > 0) buffs.push(['bloodlust', G.lustT, '', '피의 욕망', `게임 전체 속도 +${Math.round((G.LUST.speed - 1) * 100)}%`]);
     const sb = G.Events.buff; if (sb) { const S = G.SHRINES[sb.type]; buffs.push([S.icon, sb.t, '', S.name, S.desc]); }
-    const sig = buffs.map(b => b[0]).join();
-    if (sig !== this.buffSig) {
-      this.buffSig = sig;
-      el.buffs.innerHTML = buffs.map(b => `<div class="buff ${b[5] ? 'debuff' : ''}" data-tip="<div class='tt-title'>${b[3]}</div><div class='tt-desc'>${b[4]}</div>"><img src="${G.icon(b[0])}"><div class="bs"></div><div class="bt"></div></div>`).join('');
+    // 오른쪽부터 지속시간이 긴 순서 (끝없는 버프가 맨 오른쪽). 순서 기준은 버프가 생길 때의 남은 시간으로 고정해,
+    // 시간이 흐르거나 갱신돼도 자리가 바뀌지 않는다 → 자주 켜졌다 꺼지는 짧은 버프(해질녘 등)만 왼쪽 끝에서 한 칸 움직인다.
+    // 칸은 버프마다 따로 두고 생기거나 사라진 칸만 넣고 뺀다 (통째로 다시 그리면 이미지가 깜빡임)
+    if (this.buffSig !== 'keyed') { this.buffSig = 'keyed'; this.buffEls = new Map(); el.buffs.innerHTML = ''; }
+    const seen = new Set();
+    for (const b of buffs) {
+      const id = b[0]; seen.add(id);
+      let r = this.buffEls.get(id);
+      if (!r) {
+        const d = document.createElement('div');
+        d.className = 'buff in' + (b[5] ? ' debuff' : '');
+        d.dataset.tip = `<div class='tt-title'>${b[3]}</div><div class='tt-desc'>${b[4]}</div>`;
+        d.innerHTML = `<img src="${G.icon(id)}"><div class="bs"></div><div class="bt"></div>`;
+        r = { d, bs: d.querySelector('.bs'), bt: d.querySelector('.bt'), key: b[1] < 0 ? Infinity : b[1] };
+        this.buffEls.set(id, r);
+        const after = [...this.buffEls.values()].filter(o => o !== r && o.key >= r.key).length; // 나보다 긴 버프 개수 = 오른쪽에서 몇째
+        el.buffs.insertBefore(d, el.buffs.children[after] || null);
+      }
+      const bt = b[1] < 0 ? '' : b[1] >= 60 ? Math.ceil(b[1] / 60) + '분' : Math.ceil(b[1]) + '초', bs = String(b[2]);
+      if (r.bt.textContent !== bt) r.bt.textContent = bt;
+      if (r.bs.textContent !== bs) r.bs.textContent = bs;
+      r.d.classList.toggle('ending', b[1] >= 0 && b[1] < 3);
     }
-    [...el.buffs.children].forEach((d, i) => {
-      const b = buffs[i]; if (!b) return;
-      d.querySelector('.bt').textContent = b[1] < 0 ? '' : b[1] >= 60 ? Math.ceil(b[1] / 60) + '분' : Math.ceil(b[1]) + '초';
-      d.querySelector('.bs').textContent = b[2];
-    });
+    for (const [id, r] of this.buffEls) if (!seen.has(id)) { r.d.remove(); this.buffEls.delete(id); }
 
     // 보스/정예 프레임
     let tgt = G.Waves.boss && !G.Waves.boss.dead ? G.Waves.boss : null;
