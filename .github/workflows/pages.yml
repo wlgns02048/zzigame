@@ -39,6 +39,8 @@ jobs:
           mkdir -p site/classic
           cp -r beta/index.html beta/css beta/js beta/assets site/
           cp -r classic/index.html classic/css classic/js classic/assets site/classic/
+          # Pages는 js/css를 10분 캐시한다. 배포 직후 새 index.html과 캐시된 옛 js가 섞이지 않도록 주소에 커밋을 붙인다
+          sed -i -E "s#(src|href)=\"((js|css)/[^\"?]+)\"#\1=\"\2?v=${GITHUB_SHA::8}\"#g" site/index.html
           echo "icecrown-trial.duckdns.org" > site/CNAME
           touch site/.nojekyll
       - uses: actions/upload-pages-artifact@v3
