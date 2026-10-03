@@ -9,7 +9,7 @@ G.Waves = {
     this.k = 900 / this.stage.duration;
     this.roster = this.stage.roster.map(([id, t0, w]) => ({ id, t0, w }));
     this.spawnAcc = 0; this.eliteT = 75 / this.k; this.bossIdx = 0; this.swarmIdx = 0; this.boss = null; this.warned = {};
-    this.endless = false; this.clearT = null; this.level = 0; this.bossKills = 0; this.volcT = 6;
+    this.endless = false; this.clearT = null; this.level = 0; this.bossKills = 0; this.volcT = 6; this.bossTT = null;
     // 클리어 점수 재료: 마지막 보스 등장 순간의 처치 수, 보스 순서별 걸린 초 → 마지막 보스를 잡는 순간 score로 확정
     this.scoreKills = null; this.bossSecs = this.stage.bosses.map(() => null); this.score = this.scoreIn = null;
     this.affixes = G.run && G.run.affixes ? G.run.affixes : SD.weeklyAffixes(G.ITEMS.periodKeys().weekly);
@@ -21,16 +21,23 @@ G.Waves = {
   affix(a) { return this.endless && this.activeAffixes().includes(a); },
   activeAffixes() { return this.affixes.filter((a, i) => this.level >= G.STAGE_DATA.ENDLESS.slots[i].at); },
   endlessMul(per) { return 1 + per * this.level; },
+  // 일반 · 정예 생명력의 시간 성장
+  growth(tt) { return 1 + Math.pow(tt / 300, 1.5) * 1.6; },
 
   hpMul() {
-    const t = this.tt(), E = G.STAGE_DATA.ENDLESS;
-    let m = (1 + Math.pow(t / 300, 1.5) * 1.6) * this.stage.power.hp * this.diff.hp;
+    const E = G.STAGE_DATA.ENDLESS;
+    let m = this.growth(this.tt()) * this.stage.power.hp * this.diff.hp;
     if (this.endless) m *= this.endlessMul(E.hpPer) * (this.affix('fortified') ? 1.2 : 1);
     return m;
   },
+  // 보스 생명력은 원래 등장 시점에 맞춘 값이라 시간 성장이 없다. 엔드리스에서 다시 나오는 보스(bossTT = 원래 등장 tt)는
+  // 그때부터 지금까지 일반 몹이 자란 만큼 더 키운다 — 안 그러면 단계가 오를수록 정예보다 약해진다
   bossHpMul() {
     let m = this.stage.power.hp * this.diff.hp;
-    if (this.endless) m *= this.endlessMul(G.STAGE_DATA.ENDLESS.hpPer) * (this.affix('tyrannical') ? 1.3 : 1);
+    if (this.endless) {
+      m *= this.endlessMul(G.STAGE_DATA.ENDLESS.hpPer) * (this.affix('tyrannical') ? 1.3 : 1);
+      if (this.bossTT != null) m *= this.growth(this.tt()) / this.growth(this.bossTT);
+    }
     return m;
   },
   dmgMul() {
@@ -110,7 +117,9 @@ G.Waves = {
         G.Audio.play('warn');
         if (lv % E.bossEvery === 0) {
           const b = U.choice(st.bosses);
+          this.bossTT = b.at * 900;
           this.boss = this.spawnBoss(b.id, `${G.ENEMIES[b.id].name}이(가) 다시 나타났습니다!`);
+          this.bossTT = null;
         }
       }
       if (this.affix('volcanic') && (this.volcT -= dt) <= 0) {
