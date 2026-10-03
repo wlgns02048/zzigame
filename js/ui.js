@@ -162,7 +162,8 @@ G.UI = {
       this.setCd(d, sk);
       const impl = G.SKILL_IMPL[id];
       const ss = C.slotState(id, p, impl, sk);
-      d.classList.toggle('unusable', !!(impl.usable && !impl.usable(sk)) || ss.unusable);
+      // 반드시 true/false로 넘긴다 (undefined면 toggle이 매 프레임 켜고 꺼서 깜빡인다)
+      d.classList.toggle('unusable', !!((impl.usable && !impl.usable(sk)) || ss.unusable));
       d.classList.toggle('glow', !!ss.glow);
       d.classList.toggle('active', !!(p.channel && p.channel.id === id) || ss.active);
       d.classList.toggle('autocast', !!sk.autoCast);

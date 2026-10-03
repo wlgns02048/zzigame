@@ -88,6 +88,8 @@ G.Input = () => {
   const cv = document.getElementById('cv');
   const mouseWorld = () => ({ x: G.cam.x + (G.mouse.sx - G.W / 2), y: G.cam.y + (G.mouse.sy - G.H / 2) });
   cv.addEventListener('contextmenu', e => e.preventDefault());
+  // 오른쪽 버튼으로 걷다가 레벨업 · 상자 창이 커서 아래에 뜨면 버튼을 뗄 때 브라우저 메뉴가 열리므로, 판 중에는 어디서든 막는다 (입력창 제외)
+  addEventListener('contextmenu', e => { if (G.state === 'play' && !(e.target.closest && e.target.closest('input, textarea'))) e.preventDefault(); });
   cv.addEventListener('mousedown', e => {
     if (e.button !== 2 || G.state !== 'play' || G.paused) return;
     [G.mouse.sx, G.mouse.sy] = G.R.toView(e.clientX, e.clientY);

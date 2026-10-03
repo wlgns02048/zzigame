@@ -346,7 +346,8 @@ Object.assign(G.SKILL_IMPL, {
             if (ds && e.dead && Math.random() < 0.05) addShard(1);
             if (ds) p.siphons.push({ e, x: e.x, y: e.y, t: 0, life: 0.45 }); // 영혼 흡수: 대상에서 영혼을 빨아들이는 줄기 (그림만)
             G.fx.burst(e.x, e.y, 8, { rgb: ds ? '210,120,255' : '170,90,255', sp: 130, size: 10 });
-            G.Audio.play('hitShadow', 0.5, e.x);
+            G.fx.ring(e.x, e.y, 4, 30, 0.2, ds ? '220,140,255' : '190,110,255', 3); // 적중 순간 작은 고리
+            G.Audio.play('hitShadow', 0.8, e.x);
           },
         });
       }
@@ -475,7 +476,7 @@ Object.assign(G.SKILL_IMPL, {
         x: p.x, y: p.y - 20, a: a + (i - (tg.length - 1) / 2) * 0.3, speed: 420, r: 10, kind: 'haunt', homing: t, turn: 6, src: 'haunt', life: 2.4,
         onHit: e => {
           G.hit(e, s.dmg, 'haunt', { school: 'shadow' }); e.haunted = G.t + 10;
-          G.fx.burst(e.x, e.y, 14, { rgb: '120,140,255', sp: 160, size: 12 });
+          G.fx.burst(e.x, e.y, 14, { rgb: '120,140,255', sp: 160, size: 12 }); G.fx.ring(e.x, e.y, 5, 50, 0.3, '140,160,255', 4); G.Audio.play('hitHaunt', 0.8, e.x);
           // 정예 · 보스를 처치하면 초기화, 일반 적은 절반만 (졸개를 잡을 때마다 난사되지 않도록)
           if (e.dead) { if (e.elite || e.boss) G.Skills.resetCd(sk); else G.Skills.reduceCd(sk, sk.s.cd * 0.5); }
         },
@@ -518,7 +519,7 @@ Object.assign(G.SKILL_IMPL, {
     cast(sk) {
       const p = W(), s = sk.s, a = aimAngle();
       G.Proj.spawn({ x: p.x, y: p.y - 20, a, speed: 560, r: 12, kind: 'deathcoil', src: 'deathcoil', life: 1.2, pierce: 0,
-        onHit: e => { G.hit(e, s.dmg, 'deathcoil', { school: 'shadow' }); if (!e.boss) e.fearT = s.horror; G.P.heal(p.maxHp * s.heal); G.fx.burst(e.x, e.y, 12, { rgb: '80,220,100', sp: 140, size: 10 }); } });
+        onHit: e => { G.hit(e, s.dmg, 'deathcoil', { school: 'shadow' }); if (!e.boss) e.fearT = s.horror; G.P.heal(p.maxHp * s.heal); G.fx.burst(e.x, e.y, 12, { rgb: '80,220,100', sp: 140, size: 10 }); G.fx.ring(e.x, e.y, 5, 50, 0.3, '100,240,120', 4); G.Audio.play('hitHaunt', 0.8, e.x); } });
       G.Audio.play('shadow', 0.7);
     },
   },

@@ -48,7 +48,7 @@ G.Audio = {
   play(name, vol = 1, x) {
     if (!this.ctx || this.muted) return;
     const now = this.ctx.currentTime;
-    const gap = { hit: 0.05, hitFire: 0.05, hitShadow: 0.05, crit: 0.07, pop: 0.05, xp: 0.045, shatter: 0.07, cast: 0.06, lance: 0.08, icicle: 0.06, hurt: 0.15, tick: 0.12, gold: 0.08, explode: 0.08, heart: 0.3 }[name] || 0.03;
+    const gap = { hit: 0.05, hitFire: 0.05, hitShadow: 0.05, hitHaunt: 0.06, crit: 0.07, pop: 0.05, xp: 0.045, shatter: 0.07, cast: 0.06, lance: 0.08, icicle: 0.06, hurt: 0.15, tick: 0.12, gold: 0.08, explode: 0.08, heart: 0.3 }[name] || 0.03;
     if (this.last[name] && now - this.last[name] < gap) return;
     this.last[name] = now;
     // 같은 소리가 기관총처럼 반복되지 않게 음높이 · 크기를 조금씩 흔든다
@@ -66,7 +66,20 @@ G.Audio = {
       case 'hit': this.noise(t, 0.08, 'highpass', 3500, 2500, 0.25 * v); this.tone(t, 0.07, 'triangle', 1800, 900, 0.06 * v); break;
       // 화염: 낮고 퍽 · 암흑: 웅 하고 가라앉음
       case 'hitFire': this.noise(t, 0.14, 'lowpass', 1800, 300, 0.4 * v); this.tone(t, 0.1, 'triangle', 300, 120, 0.12 * v); break;
-      case 'hitShadow': this.noise(t, 0.16, 'bandpass', 900, 300, 0.35 * v, 2); this.tone(t, 0.16, 'sawtooth', 260, 90, 0.05 * v); break;
+      // 암흑: 날카로운 터짐(고음 잡음) + 몸통 쿵(저음) + 가라앉는 웅 (낮은 소리만 있으면 음악에 묻힌다)
+      case 'hitShadow':
+        this.noise(t, 0.05, 'highpass', 4000, 2500, 0.3 * v);
+        this.tone(t, 0.13, 'sine', 210, 70, 0.22 * v);
+        this.noise(t, 0.22, 'bandpass', 1400, 350, 0.4 * v, 2.5);
+        this.tone(t + 0.01, 0.2, 'triangle', 620, 300, 0.05 * v);
+        break;
+      // 유령 출몰 · 죽음의 고리: 더 크고 울리는 적중
+      case 'hitHaunt':
+        this.noise(t, 0.06, 'highpass', 3500, 2000, 0.3 * v);
+        this.tone(t, 0.3, 'sine', 300, 80, 0.25 * v);
+        this.noise(t, 0.45, 'bandpass', 900, 250, 0.4 * v, 3);
+        [520, 780].forEach((f, i) => this.tone(t + 0.02 + i * 0.03, 0.4, 'triangle', f, f * 0.7, 0.04 * v));
+        break;
       // 치명타: 짧고 높은 금속성 울림
       case 'crit': this.tone(t, 0.12, 'square', 2200, 1600, 0.025 * v); this.tone(t, 0.18, 'sine', 3300, 3100, 0.05 * v); this.noise(t, 0.05, 'highpass', 6000, 8000, 0.18 * v); break;
       // 일반 처치: 작고 둔한 퍽
