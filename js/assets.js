@@ -12,6 +12,8 @@ G.ICON_KEYS = [
   'corruption', 'agony', 'unstableaffliction', 'siphonlife', 'haunt', 'seedofcorruption', 'blackarrow',
   // 사냥꾼 표식 (적 머리 위)
   'eagle', 'huntersmark', 'sentinel',
+  // 주술사 지속 피해 (적 머리 위)
+  'flameshock',
   // 전리품
   'bloodlust',
 ];

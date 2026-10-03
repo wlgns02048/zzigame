@@ -84,11 +84,32 @@
     n('trueshotAura', '정조준 오라', 'trueshot', 5, 1, 1, () => '모든 피해 +6%, 가속 +3%', { stat: st => { st.dmg += 0.06; st.haste += 0.03; } }),
   ];
 
+  // 클래식 정기 특성 트리 이름 그대로
+  const SHAMAN = [
+    n('convection', '대류', 'convection', 0, 0, 5, r => `대지 충격 · 지진 소용돌이 소모 -${r * 2}`, { skill: (id, s, r) => { if (id === 'earthshock' || id === 'earthquake') s.cost -= r * 2; } }),
+    n('concussion', '진탕', 'concussion', 0, 1, 5, r => `번개 화살 · 연쇄 번개 · 대지 충격 피해 +${r * 3}%`, { skill: (id, s, r) => { if (id === 'lightningbolt' || id === 'chainlightning' || id === 'earthshock') s.dmg *= 1 + r * 0.03; } }),
+    n('earthsGrasp', '대지의 손아귀', 'earthgrab', 0, 2, 2, r => `축전 토템 · 속박의 토템 범위 +${r * 15}%`, { skill: (id, s, r) => { if (id === 'capacitortotem' || id === 'earthbindtotem') s.radius *= 1 + r * 0.15; } }),
+    n('elementalWarding', '정령의 보호', 'stoneskin', 1, 0, 3, r => `받는 피해 -${r * 2}%`, { stat: (st, r) => (st.armor += r * 0.02) }),
+    n('callOfFlame', '화염의 부름', 'searingflames', 1, 1, 3, r => `화염 충격 · 용암 폭발 피해 +${r * 6}%`, { skill: (id, s, r) => { if (id === 'flameshock' || id === 'lavaburst') s.dmg *= 1 + r * 0.06; } }),
+    n('elementalFocus', '정령 집중', 'elementalfocus', 1, 2, 5, r => `치명타 확률 +${r}%`, { stat: (st, r) => (st.crit += r * 0.01) }),
+    n('reverberation', '반향', 'echoingshock', 2, 0, 5, r => `용암 폭발 재사용 대기시간 -${r * 3}%`, { skill: (id, s, r) => { if (id === 'lavaburst') s.cd *= 1 - r * 0.03; } }),
+    n('callOfThunder', '천둥의 부름', 'callthunder', 2, 1, 5, r => `번개 화살 · 연쇄 번개 치명타 확률 +${r}%`, { stat: (st, r) => (st.lightCrit = (st.lightCrit || 0) + r * 0.01) }),
+    n('eyeOfStorm', '폭풍의 눈', 'eyeofstorm', 2, 2, 3, r => `최대 소용돌이 +${r * 10}`, { stat: (st, r) => (st.msMax = (st.msMax || 0) + r * 10) }),
+    n('elementalDevastation', '정령의 황폐', 'elementalfury', 3, 0, 3, r => `치명타 피해 +${r * 5}%`, { stat: (st, r) => (st.critMul += r * 0.05) }),
+    n('stormReach', '폭풍의 손길', 'area', 3, 1, 2, r => `범위 +${r * 5}%`, { stat: (st, r) => (st.area += r * 0.05) }),
+    n('lightningMastery', '번개 숙련', 'lightningmastery', 3, 2, 5, r => `번개 화살 시전 시간 -${r * 3}%`, { skill: (id, s, r) => { if (id === 'lightningbolt') s.cast *= 1 - r * 0.03; } }),
+    n('ancestralFort', '선조의 인내', 'astralshift', 4, 0, 2, r => `받는 피해 -${r * 3}%`, { stat: (st, r) => (st.armor += r * 0.03) }),
+    n('elementalFury', '정령의 격노', 'lavaburst', 4, 1, 2, r => `소용돌이 획득 +${r * 8}%`, { stat: (st, r) => (st.msGain = (st.msGain || 0) + r * 0.08) }),
+    n('earthShield', '대지 보호막', 'stoneskin', 4, 2, 1, () => '판 시작 시 최대 생명력 30%의 보호막', { req: 'elementalFocus' }),
+    n('elementalMastery', '정기의 숙련', 'elementalmastery', 5, 1, 1, () => '모든 피해 +6%, 가속 +3%', { stat: st => { st.dmg += 0.06; st.haste += 0.03; } }),
+  ];
+
   const TREES = {
     library: { name: '달라란 도서관', desc: '계정 공용 · 레벨업 선택지를 바꾸는 이 게임만의 특성', nodes: LIBRARY, maxPoints: 29, pointBase: 150, pointGrowth: 1.14 },
     mage: { name: '냉기 특성', desc: '냉기 마법사 직업 특성', nodes: MAGE, maxPoints: 31, pointBase: 80, pointGrowth: 1.12 },
     warlock: { name: '고통 특성', desc: '고통 흑마법사 직업 특성', nodes: WARLOCK, maxPoints: 31, pointBase: 80, pointGrowth: 1.12 },
     hunter: { name: '사격 특성', desc: '사격 사냥꾼 직업 특성', nodes: HUNTER, maxPoints: 31, pointBase: 80, pointGrowth: 1.12 },
+    shaman: { name: '정기 특성', desc: '정기 주술사 직업 특성', nodes: SHAMAN, maxPoints: 31, pointBase: 80, pointGrowth: 1.12 },
   };
   const ROW_POINTS = 5;
   const TALENTS = {

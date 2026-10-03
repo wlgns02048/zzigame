@@ -35,7 +35,7 @@ G.Dots = {
         d.tickT += d.interval;
         if (d.ramp && d.stack < d.maxStack) d.stack++;
         const mul = st.dotMul * (e.haunted > G.t ? 1.25 : 1) * (1 + (e.embrace || 0) * 0.04) * (p.cls === 'warlock' ? soulReap(e) : 1);
-        const dealt = G.hit(e, d.dmg * d.stack * mul, d.src, { school: 'shadow', small: true });
+        const dealt = G.hit(e, d.dmg * d.stack * mul * (d.mul || 1), d.src, { school: d.school || 'shadow', small: true });
         if (st.dotLeech && dealt) G.Dots.leech(dealt * st.dotLeech);
         if (d.heal && dealt) G.Dots.leech(dealt * d.heal / st.dmg);
         if (d.onTick) d.onTick(e, d);

@@ -48,7 +48,7 @@ G.Audio = {
   play(name, vol = 1, x) {
     if (!this.ctx || this.muted) return;
     const now = this.ctx.currentTime;
-    const gap = { bow: 0.05, gun: 0.06, xbow: 0.05, arrowHit: 0.04, hit: 0.05, hitFire: 0.05, hitShadow: 0.05, hitHaunt: 0.06, crit: 0.07, pop: 0.05, xp: 0.045, shatter: 0.07, cast: 0.06, lance: 0.08, icicle: 0.06, hurt: 0.15, tick: 0.12, gold: 0.08, explode: 0.08, heart: 0.3 }[name] || 0.03;
+    const gap = { zap: 0.05, lava: 0.06, thunder: 0.15, quake: 0.2, bow: 0.05, gun: 0.06, xbow: 0.05, arrowHit: 0.04, hit: 0.05, hitFire: 0.05, hitShadow: 0.05, hitHaunt: 0.06, crit: 0.07, pop: 0.05, xp: 0.045, shatter: 0.07, cast: 0.06, lance: 0.08, icicle: 0.06, hurt: 0.15, tick: 0.12, gold: 0.08, explode: 0.08, heart: 0.3 }[name] || 0.03;
     if (this.last[name] && now - this.last[name] < gap) return;
     this.last[name] = now;
     // 같은 소리가 기관총처럼 반복되지 않게 음높이 · 크기를 조금씩 흔든다
@@ -139,6 +139,10 @@ G.Audio = {
       case 'bow': this.tone(t, 0.12, 'triangle', 190, 110, 0.12 * v); this.noise(t, 0.12, 'bandpass', 2400, 900, 0.18 * v, 2); break;
       case 'gun': this.noise(t, 0.16, 'lowpass', 4000, 300, 0.5 * v); this.tone(t, 0.08, 'square', 160, 60, 0.08 * v); break;
       case 'xbow': this.tone(t, 0.04, 'square', 1400, 1100, 0.05 * v); this.tone(t + 0.02, 0.1, 'triangle', 240, 140, 0.1 * v); this.noise(t + 0.02, 0.1, 'bandpass', 2600, 1200, 0.15 * v, 2); break;
+      case 'zap': this.noise(t, 0.12, 'highpass', 6000, 2500, 0.3 * v); this.tone(t, 0.1, 'sawtooth', 1800, 300, 0.05 * v); this.noise(t + 0.03, 0.08, 'bandpass', 3500, 1500, 0.2 * v, 3); break;
+      case 'thunder': this.noise(t, 0.08, 'highpass', 7000, 3000, 0.4 * v); this.noise(t + 0.04, 0.9, 'lowpass', 1200, 60, 0.6 * v); this.tone(t + 0.04, 0.7, 'sine', 90, 35, 0.3 * v); break;
+      case 'lava': this.noise(t, 0.3, 'lowpass', 1400, 200, 0.4 * v); this.tone(t, 0.25, 'sine', 220, 70, 0.18 * v); this.noise(t + 0.05, 0.2, 'bandpass', 900, 400, 0.2 * v, 2); break;
+      case 'quake': this.noise(t, 0.7, 'lowpass', 500, 50, 0.7 * v); this.tone(t, 0.6, 'sine', 60, 30, 0.4 * v); this.tone(t + 0.1, 0.4, 'triangle', 80, 40, 0.15 * v); break;
       case 'arrowHit': this.noise(t, 0.06, 'bandpass', 1800, 700, 0.22 * v, 1.5); this.tone(t, 0.05, 'triangle', 500, 220, 0.06 * v); break;
       case 'aimed': this.tone(t, 0.25, 'triangle', 140, 70, 0.18 * v); this.noise(t, 0.35, 'bandpass', 3000, 600, 0.3 * v, 1.5); this.noise(t + 0.05, 0.2, 'highpass', 5000, 3000, 0.12 * v); break;
       case 'shadow': this.noise(t, 0.25, 'bandpass', 600, 300, 0.25 * v, 3); this.tone(t, 0.2, 'sawtooth', 200, 100, 0.05 * v); break;

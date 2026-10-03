@@ -25,13 +25,13 @@ const { spawn, execSync } = require('node:child_process');
 
 const args = process.argv.slice(2);
 const opt = (name, def) => { const i = args.indexOf('--' + name); return i < 0 ? def : args[i + 1]; };
-const CLSES = opt('cls', 'all') === 'all' ? ['mage', 'warlock', 'hunter'] : opt('cls').split(',');
+const CLSES = opt('cls', 'all') === 'all' ? ['mage', 'warlock', 'hunter', 'shaman'] : opt('cls').split(',');
 const MODE = opt('mode', 'hit'), RUNS = +opt('runs', 8), PRE = +opt('pre', 480), SEED = +opt('seed', 100), MAX = +opt('max', 300);
 const QUERY = opt('query', '&stage=moltencore&gear=64&talents=1'), PAR = +opt('parallel', 4);
 const STATIC = opt('static', path.join(__dirname, '..')), JSON_OUT = args.includes('--json');
 const CFG = { mode: MODE, max: MAX, base: +opt('base', 10), ramp: +opt('ramp', 1), rate: +opt('rate', 4), rateUp: +opt('rate-up', 0.25), still: args.includes('--still'), defs: args.includes('--defs') };
 // --defs: 시험 직전에 아래 생존기 중 없는 것을 1레벨로 배운다 (봇 빌드는 보통 생존기를 거의 고르지 않는다)
-const DEFS = { mage: ['iceblock', 'icebarrier'], warlock: ['unendingresolve', 'healthstone', 'deathcoil'], hunter: ['turtle', 'exhilaration', 'survivalfittest'] };
+const DEFS = { mage: ['iceblock', 'icebarrier'], warlock: ['unendingresolve', 'healthstone', 'deathcoil'], hunter: ['turtle', 'exhilaration', 'survivalfittest'], shaman: ['astralshift', 'healingsurge', 'reincarnation'] };
 
 const loadPlaywright = () => {
   try { return require('playwright'); } catch { /* 전역 설치 확인 */ }

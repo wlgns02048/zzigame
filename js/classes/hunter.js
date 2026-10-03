@@ -16,21 +16,21 @@ Object.assign(G.SKILLS, {
   // ===== 자동 시전 =====
   steadyshot: {
     cls: 'hunter', name: '고정 사격', icon: 'steadyshot', kind: 'auto', school: 'physical', color: '#d8b070',
-    base: { dmg: 26, cast: 0.6, count: 1, pierce: 1, speed: 1100, focus: 8, proj: true, basic: true },
+    base: { dmg: 50, cast: 0.6, count: 1, pierce: 1, speed: 1100, focus: 8, proj: true, basic: true },
     tip: s => `가장 가까운 적에게 화살을 쏴 ${D(s.dmg)}의 물리 피해를 입히고 <b class="v">집중 ${N(s.focus, 0)}</b>을 얻습니다.<br>이동 중에도 시전 속도가 느려지지 않습니다. 조준 사격을 겨누는 동안에는 쏘지 않습니다.` +
       (s.count > 1 ? `<br>화살 ${N(s.count, 0)}개 (추가 화살은 ${P(G.EXTRA_BOLT)} 피해)` : '') + `<br>관통 ${N(s.pierce, 0)}`,
     castInfo: s => `시전 시간 ${s.cast.toFixed(2)}초`,
     nodes: [
       node('count', '다중 사격', 2, '화살 <b class="v">+1</b> (60% 피해)', s => s.count++, { icon: 'multishot' }),
       node('cast', '빠른 손놀림', 3, '시전 시간 <b class="v">-8%</b>', s => (s.cast *= 0.92)),
-      node('dmg', '원거리 무기 숙련', 5, '피해 <b class="v">+20%</b> (기본 피해 기준)', s => (s.dmg += 4.8), { icon: 'rangedspec' }),
+      node('dmg', '원거리 무기 숙련', 5, '피해 <b class="v">+20%</b> (기본 피해 기준)', s => (s.dmg += 10), { icon: 'rangedspec' }),
       node('focus', '집중 사격', 2, '집중 획득 <b class="v">+3</b>', s => (s.focus += 3), { icon: 'focus' }),
       node('pierce', '관통 화살', 2, '관통 <b class="v">+1</b>', s => s.pierce++, { icon: 'aimedshot' }),
     ],
   },
   aimedshot: {
     cls: 'hunter', name: '조준 사격', icon: 'aimedshot', kind: 'auto', school: 'physical', color: '#ffe08a',
-    base: { dmg: 150, cd: 9, cast: 1.4, charges: 2, pierce: 3 },
+    base: { dmg: 360, cd: 8, cast: 1.4, charges: 2, pierce: 3 },
     tip: s => `${N(s.cast, 1)}초 동안 겨눠, 적을 꿰뚫는 화살로 ${D(s.dmg)}의 피해를 입힙니다 (관통 ${N(s.pierce, 0)}). <b class="v">멈춰 서 있어야 제 속도로 겨누고</b>, 움직이는 동안은 40% 속도로만 겨눕니다. 서서 겨누는 동안 고정 사격은 쉽니다.<br>` +
       `관측자의 징표 → 정예 · 보스 → 적이 몰린 곳 순으로 노립니다. 맞히면 <b class="v">정밀 사격</b> 2회: 다음 신비한 사격 · 일제 사격 피해 증가.`,
     castInfo: s => `시전 ${s.cast.toFixed(1)}초 (서서) · 충전 ${s.charges}회 · 재충전 ${s.cd.toFixed(1)}초`,
@@ -39,7 +39,7 @@ Object.assign(G.SKILLS, {
   },
   arcaneshot: {
     cls: 'hunter', name: '신비한 사격', icon: 'arcaneshot', kind: 'auto', school: 'arcane', color: '#c070ff',
-    base: { dmg: 55, cd: 0.8, cost: 20, targets: 1, proj: true },
+    base: { dmg: 115, cd: 0.8, cost: 20, targets: 1, proj: true },
     tip: s => `집중 ${N(s.cost, 0)}을 써서 적에게 마력이 깃든 화살을 쏴 ${D(s.dmg)}의 비전 피해를 입힙니다. 정예 · 보스 · 징표가 찍힌 적을 먼저 노립니다.<br>` +
       `<b class="v">정밀 사격</b>을 쓰면 피해 2배.` + (s.targets > 1 ? `<br>대상 ${N(s.targets, 0)}명` : ''),
     castInfo: s => `즉시 · 집중 ${s.cost.toFixed(0)} · 재사용 ${s.cd.toFixed(1)}초`,
@@ -48,7 +48,7 @@ Object.assign(G.SKILLS, {
   },
   multishot: {
     cls: 'hunter', name: '일제 사격', icon: 'multishot', kind: 'auto', school: 'physical', color: '#e0c080',
-    base: { dmg: 30, cd: 2.2, cost: 25, arrows: 5, angle: 0.7, pierce: 1 },
+    base: { dmg: 52, cd: 2.2, cost: 25, arrows: 5, angle: 0.7, pierce: 1 },
     tip: s => `집중 ${N(s.cost, 0)}을 써서 적이 몰린 곳으로 화살 ${N(s.arrows, 0)}개를 부채꼴로 쏴 각각 ${D(s.dmg)}의 피해를 입힙니다.<br>` +
       `<b class="v">3명 이상</b> 맞히면 <b class="v">속임수 사격</b>: 다음 조준 사격 · 속사가 주변 적에게 튕깁니다. 정밀 사격을 쓰면 피해 +75%.`,
     castInfo: s => `즉시 · 집중 ${s.cost.toFixed(0)} · 재사용 ${s.cd.toFixed(1)}초`,
@@ -58,7 +58,7 @@ Object.assign(G.SKILLS, {
   },
   rapidfire: {
     cls: 'hunter', name: '속사', icon: 'rapidfire', kind: 'auto', school: 'physical', color: '#ff9060',
-    base: { dmg: 20, cd: 14, shots: 8, dur: 1.6, focus: 2 },
+    base: { dmg: 40, cd: 14, shots: 8, dur: 1.6, focus: 2 },
     tip: s => `${N(s.dur, 1)}초 동안 화살 ${N(s.shots, 0)}발을 연달아 쏴 각각 ${D(s.dmg)}의 피해를 입히고 발마다 집중 ${N(s.focus, 0)}을 얻습니다. 쏘는 동안 움직일 수 있습니다.<br>속임수 사격이 있으면 화살마다 주변 적에게 튕깁니다.`,
     castInfo: s => `정신 집중 (이동 가능) · 재사용 ${s.cd.toFixed(0)}초`,
     nodes: [node('shots', '연사', 3, '화살 <b class="v">+2</b>', s => (s.shots += 2), { icon: 'rapidfire' }), dmgNode(0.3, 5), cdNode(0.12, 3),
@@ -66,7 +66,7 @@ Object.assign(G.SKILLS, {
   },
   killshot: {
     cls: 'hunter', name: '마무리 사격', icon: 'killshot', kind: 'auto', school: 'physical', color: '#ff5040',
-    base: { dmg: 160, cd: 8, thr: 0.2, charges: 1 },
+    base: { dmg: 300, cd: 8, thr: 0.2, charges: 1 },
     tip: s => `생명력이 <b class="v">${Math.round(s.thr * 100)}%</b> 이하인 적(가장 튼튼한 적 먼저)을 처형해 ${D(s.dmg)}의 피해를 입힙니다. 대상이 죽으면 충전이 돌아옵니다.` +
       (s.ba ? '<br><b class="v">검은 화살</b>: 생명력과 상관없이 쏘고, 8초 동안 암흑 지속 피해. 그 지속 피해로 적이 죽으면 그림자 화살 3발이 튑니다.' : ''),
     castInfo: s => `즉시 · 충전 ${s.charges}회 · 재사용 ${s.cd.toFixed(0)}초`,
@@ -75,7 +75,7 @@ Object.assign(G.SKILLS, {
   },
   eagle: {
     cls: 'hunter', name: '감시하는 독수리', icon: 'eagle', kind: 'auto', school: 'physical', color: '#e8d8a0',
-    base: { dmg: 40, markCd: 7, bonus: 0.4, talon: 0 },
+    base: { dmg: 75, markCd: 7, bonus: 0.4, talon: 0 },
     tip: s => `머리 위를 맴도는 독수리를 부립니다. ${N(s.markCd, 1)}초마다 보스 → 정예 → 가장 튼튼한 적에게 내리꽂아 ${D(s.dmg)}의 피해를 입히고 <b class="v">관측자의 징표</b>를 찍습니다.<br>` +
       `징표가 찍힌 적은 다음 조준 사격에 <b class="v">${Math.round(s.bonus * 100)}%</b> 더 큰 피해를 받습니다 (조준 사격이 징표가 찍힌 적을 먼저 노림).` + (s.talon ? '<br>날카로운 발톱: 정예 · 보스에게 급강하 피해 2배' : ''),
     castInfo: () => '영구 소환',
@@ -85,7 +85,7 @@ Object.assign(G.SKILLS, {
   },
   barrage: {
     cls: 'hunter', name: '탄막', icon: 'barrage', kind: 'auto', school: 'physical', color: '#e0a060',
-    base: { dmg: 14, cd: 10, arrows: 18, angle: 0.9 },
+    base: { dmg: 25, cd: 10, arrows: 18, angle: 0.9 },
     tip: s => `적이 몰린 쪽으로 0.6초 동안 화살 ${N(s.arrows, 0)}발을 흩뿌려 각각 ${D(s.dmg)}의 피해를 입힙니다 (관통 1).`,
     castInfo: s => `재사용 ${s.cd.toFixed(0)}초`,
     nodes: [dmgNode(0.3, 5), node('arrows', '화살 폭풍', 3, '화살 <b class="v">+6</b>', s => (s.arrows += 6), { icon: 'barrage' }), cdNode(0.12, 3),
@@ -95,7 +95,7 @@ Object.assign(G.SKILLS, {
   // ===== 단축키 주문 =====
   volley: {
     cls: 'hunter', name: '연발 사격', icon: 'volley', kind: 'active', key: 'Q', school: 'physical', color: '#f0c070',
-    base: { dmg: 16, cd: 24, radius: 150, dur: 6 },
+    base: { dmg: 27, cd: 24, radius: 150, dur: 6 },
     tip: s => `마우스 위치(사거리 안)에 ${N(s.dur, 0)}초 동안 화살비를 내려 0.25초마다 범위 안의 적 최대 4명에게 ${D(s.dmg)}의 피해를 입힙니다.<br>화살비가 내리는 동안 <b class="v">속임수 사격</b>이 유지됩니다.`,
     castInfo: s => `즉시 시전 · 재사용 ${s.cd.toFixed(0)}초`,
     nodes: [dmgNode(0.3, 5), node('radius', '넓은 화살비', 3, '범위 <b class="v">+15%</b>', s => (s.radius *= 1.15), { icon: 'area' }),
@@ -112,7 +112,7 @@ Object.assign(G.SKILLS, {
   },
   wailingarrow: {
     cls: 'hunter', name: '울부짖는 화살', icon: 'wailingarrow', kind: 'active', key: 'R', school: 'shadow', color: '#80e090',
-    base: { dmg: 90, boom: 130, cd: 28, radius: 170, stun: 2 },
+    base: { dmg: 120, boom: 170, cd: 28, radius: 170, stun: 2 },
     tip: s => `마우스 방향으로 모든 적을 꿰뚫는 화살을 쏴 ${D(s.dmg)}의 피해를 입히고, 끝에서 밴시의 울부짖음이 터져 반경 ${N(s.radius, 0)} 안에 ${D(s.boom)}의 피해를 입히고 ${N(s.stun, 0)}초 동안 기절시킵니다 (정예는 절반, 보스 제외).`,
     castInfo: s => `즉시 시전 · 재사용 ${s.cd.toFixed(0)}초`,
     nodes: [dmgNode(0.3, 5), node('radius', '날카로운 울음', 2, '폭발 범위 <b class="v">+20%</b>', s => (s.radius *= 1.2), { icon: 'area' }), cdNode(0.15, 2),
@@ -170,7 +170,7 @@ Object.assign(G.SKILLS, {
   },
   burstingshot: {
     cls: 'hunter', name: '파열 사격', icon: 'burstingshot', kind: 'active', key: '4', school: 'physical', color: '#d0e0ff',
-    base: { dmg: 40, cd: 16, range: 300, push: 170 },
+    base: { dmg: 52, cd: 16, range: 300, push: 170 },
     tip: s => `마우스 방향 부채꼴(사거리 ${N(s.range, 0)}) 안의 적에게 ${D(s.dmg)}의 피해를 입히고 ${N(s.push, 0)}만큼 밀쳐내며 3초 동안 50% 감속시킵니다 (보스 제외).`,
     castInfo: s => `즉시 · 재사용 ${s.cd.toFixed(0)}초`,
     nodes: [dmgNode(0.3, 4), node('push', '강한 반동', 2, '밀쳐내기 <b class="v">+30%</b>', s => (s.push *= 1.3), { icon: 'disengage' }), cdNode(0.15, 2)],
@@ -602,7 +602,7 @@ function hSkillsUpdate(p, dt) {
     for (const e of p.sentList) {
       if (e.dead) { e.sentN = 0; continue; }
       if (G.t >= e.sentT) {
-        const dmg = (p.skills.eagle ? p.skills.eagle.s.dmg : 40) * 0.6 * e.sentN;
+        const dmg = (p.skills.eagle ? p.skills.eagle.s.dmg : 75) * 0.6 * e.sentN;
         hHit(e, dmg, 'sentinel', { school: 'arcane', noSentinel: true });
         G.fx.ring(e.x, e.y - 10, 4, 40 + e.sentN * 6, 0.3, '140,190,255', 4); G.fx.burst(e.x, e.y - 10, 6 + e.sentN * 2, { rgb: '150,200,255', sp: 140, size: 9 });
         e.sentN = 0;

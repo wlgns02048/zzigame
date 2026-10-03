@@ -129,12 +129,15 @@
     mage: { armor: 'cloth', weapons: ['staff', 'dagger', 'sword1h', 'wand', 'offhand'], dual: false },
     warlock: { armor: 'cloth', weapons: ['staff', 'dagger', 'sword1h', 'wand', 'offhand'], dual: false },
     hunter: { armor: 'mail', weapons: ['bow', 'gun', 'crossbow', 'polearm', 'staff', 'axe2h', 'sword2h', 'dagger', 'sword1h', 'axe1h', 'fist', 'offhand'], dual: true },
+    // 쌍수는 고양 전문화가 생기면 연다
+    shaman: { armor: 'mail', weapons: ['staff', 'mace1h', 'axe1h', 'dagger', 'fist', 'mace2h', 'axe2h', 'shield', 'offhand'], dual: false },
   };
   // tree: 직업 특성 트리 id (기존 트리 데이터를 그대로 쓰도록 직업 id와 같게 둔다)
   const SPECS = {
     frost: { cls: 'mage', name: '냉기', primary: 'int', tree: 'mage' },
     affliction: { cls: 'warlock', name: '고통', primary: 'int', tree: 'warlock' },
     marksmanship: { cls: 'hunter', name: '사격', primary: 'agi', tree: 'hunter' },
+    elemental: { cls: 'shaman', name: '정기', primary: 'int', tree: 'shaman' },
   };
   const specsOf = cls => Object.keys(SPECS).filter(k => SPECS[k].cls === cls);
   const defaultSpec = cls => specsOf(cls)[0];

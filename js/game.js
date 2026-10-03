@@ -139,7 +139,7 @@ G.startRun = (cls, stage, diff) => {
   }
   // 직업 특성: 시작 보호막
   const tr = G.Meta.tree(G.Meta.specTree(cls)).ranks;
-  if (tr.iceBarrier || tr.darkPact || tr.survivalInstincts) G.player.absorb = Math.round(G.player.maxHp * 0.3);
+  if (tr.iceBarrier || tr.darkPact || tr.survivalInstincts || tr.earthShield) G.player.absorb = Math.round(G.player.maxHp * 0.3);
   G.RunLog.start();
   if (G.params.get('all')) for (const id in G.SKILLS) { const d = G.SKILLS[id]; if (d.cls === cls && (d.kind === 'auto' || d.kind === 'active') && !G.player.skills[id]) G.P.learn(id); }
   if (G.params.get('t')) G.t = +G.params.get('t');
@@ -152,7 +152,7 @@ G.startRun = (cls, stage, diff) => {
   document.querySelector('#playerFrame .portrait img').src = G.icon(C.icon);
   document.querySelector('#playerFrame .pfName').textContent = C.name;
   const bar = document.querySelector('#playerFrame .bar.mana');
-  bar.classList.remove('shards', 'focus'); if (C.bar) bar.classList.add(C.bar);
+  bar.classList.remove('shards', 'focus', 'maelstrom'); if (C.bar) bar.classList.add(C.bar);
   G.UI.el.raidWarn.classList.remove('show'); G.UI.warnT = 0;
 };
 

@@ -150,7 +150,7 @@ G.hit = (e, base, src, o = {}) => {
     e.kbx = kx / kd; e.kby = ky / kd; e.kb = Math.min(12, (e.kb || 0) + (crit ? 7 : 3));
   }
   if (!o.noText) {
-    const col = o.school === 'fire' ? (crit ? '#ffb347' : '#ff8a3c') : o.school === 'arcane' ? (crit ? '#ff9cff' : '#e4a6ff') : o.school === 'shadow' ? (crit ? '#e6b3ff' : '#c58bff') : (crit ? '#ffe14d' : '#ffffff');
+    const col = o.school === 'fire' ? (crit ? '#ffb347' : '#ff8a3c') : o.school === 'arcane' ? (crit ? '#ff9cff' : '#e4a6ff') : o.school === 'shadow' ? (crit ? '#e6b3ff' : '#c58bff') : o.school === 'nature' ? (crit ? '#d0f0ff' : '#9fd8ff') : (crit ? '#ffe14d' : '#ffffff');
     // 짧은 간격으로 같은 적에게 들어간 일반 피해는 숫자 하나로 합쳐 커지게 한다 (지속 피해 · 다단 히트가 화면을 덮지 않도록)
     const tx = e.dtx;
     if (!crit && tx && tx.col === col && tx.t < 0.45) {
