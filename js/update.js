@@ -13,7 +13,7 @@ G.Update = {
     if (G.params.get('sim') || G.params.get('test')) return;
     // 새로고침 주소에 붙였던 ?u= 는 지운다
     if (G.params.has('u')) { const u = new URL(location.href); u.searchParams.delete('u'); history.replaceState(null, '', u); }
-    if (this.ss(this.KEY_DONE) === G.VERSION) { this.ss(this.KEY_DONE, null); G.UI.toast(`v${G.VERSION}으로 업데이트되었습니다.`); }
+    if (this.ss(this.KEY_DONE) === G.VERSION) { this.ss(this.KEY_DONE, null); G.UI.toast(`v${G.VERSION}으로 업데이트되었습니다. 바뀐 점은 로비의 패치노트 탭에서 볼 수 있습니다.`); }
     setInterval(() => this.check(), 60000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) this.check(); });
   },

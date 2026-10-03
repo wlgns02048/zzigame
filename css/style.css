@@ -360,6 +360,20 @@ select { cursor: pointer; }
 .qBar div { height: 100%; background: linear-gradient(#e8b000, #9a6a00); } .qBar span { position: absolute; inset: 0; text-align: center; font-size: 11px; line-height: 14px; text-shadow: 1px 1px 0 #000; }
 .qRew { display: flex; align-items: center; gap: 8px; font-size: 13px; white-space: nowrap; }
 .vRows { display: flex; flex-direction: column; gap: 8px; }
+
+/* 패치노트 */
+.newTag, .curTag { margin-left: 6px; padding: 1px 5px; border-radius: 3px; font-size: 10px; font-weight: 900; font-style: normal; color: #fff; background: #c8281c; vertical-align: middle; }
+.curTag { background: #2c6e3a; }
+.lbNav a .newTag { margin-left: auto; }
+.patchWrap { max-width: 760px; }
+.patch { margin: 8px 0; background: rgba(0,0,0,.35); border: 1px solid #2a2a2a; border-radius: 4px; }
+.patch[open] { border-color: #6b5420; }
+.patch summary { cursor: pointer; padding: 9px 12px; font-size: 15px; }
+.patch summary b { color: var(--wow-yellow); margin-right: 4px; }
+.patch summary small { float: right; color: #8a93a6; font-size: 12px; margin-top: 2px; }
+.patch ul { margin: 0; padding: 0 16px 10px 32px; line-height: 1.6; font-size: 14px; color: #dde; }
+.patch ul ul { padding: 2px 0 4px 18px; font-weight: 400; color: #dde; }
+.patch .pnH { font-weight: 700; color: #ffd27a; list-style: none; margin-left: -14px; }
 .vRow { display: flex; align-items: center; gap: 12px; } .vRow b { width: 80px; }
 .vCell { width: 70px; text-align: center; padding: 6px; border: 1px solid #333; border-radius: 4px; opacity: .45; } .vCell img { width: 36px; height: 36px; filter: grayscale(1); }
 .vCell.open { opacity: 1; border-color: #c9a24a; box-shadow: 0 0 10px rgba(255,200,80,.3); } .vCell.open img { filter: none; } .vCell small { display: block; font-size: 11px; }

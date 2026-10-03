@@ -1,7 +1,7 @@
 'use strict';
 // 전역 네임스페이스
 const G = window.G = {
-  VERSION: '2.8.0', // 화면 표시용. 릴리스 태그 v2.8.0과 같게 유지 (규칙: docs/NAS_DEPLOY.md '버전 관리')
+  VERSION: '2.9.0', // 화면 표시용. 릴리스 태그 v2.9.0과 같게 유지 (규칙: docs/NAS_DEPLOY.md '버전 관리')
   state: 'menu',      // menu | play | over
   paused: false,
   t: 0,               // 런 경과 시간(초)

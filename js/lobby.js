@@ -1,6 +1,6 @@
 'use strict';
 // ================= 로비 (달라란) =================
-// 출정 · 캐릭터(장비/가방) · 특성 · 상점(가챠) · 퀘스트 · 금고 · 랭킹 · 게시판.
+// 출정 · 캐릭터(장비/가방) · 특성 · 상점(가챠) · 퀘스트 · 금고 · 랭킹 · 주문 도감 · 게시판 · 패치노트.
 // 모든 변경은 서버 API를 거치고, 응답의 profile로 다시 그린다.
 const IT = () => G.ITEMS, SD = () => G.STAGE_DATA;
 const qcol = q => IT().QUALITY[q].color;
@@ -12,8 +12,11 @@ G.Lobby = {
 
   TABS: [
     ['stage', '출정', 'portal'], ['char', '캐릭터', 'bag'], ['talent', '특성', 'talents'], ['shop', '상점', 'gacha_equip'],
-    ['quest', '퀘스트', 'quest'], ['vault', '위대한 금고', 'vault'], ['ranking', '랭킹', 'ranking'], ['codex', '주문 도감', 'scroll'], ['board', '게시판', 'board'],
+    ['quest', '퀘스트', 'quest'], ['vault', '위대한 금고', 'vault'], ['ranking', '랭킹', 'ranking'], ['codex', '주문 도감', 'scroll'], ['board', '게시판', 'board'], ['patch', '패치노트', 'library'],
   ],
+  // 패치노트: 마지막으로 읽은 버전을 브라우저에 기억해 두고, 새 패치가 있으면 탭에 NEW 표시
+  PATCH_SEEN: 'frostmage_patch_seen',
+  patchUnseen() { let s = null; try { s = localStorage.getItem(this.PATCH_SEEN); } catch { /* 저장소 사용 불가 */ } return !!G.PATCH_NOTES.length && s !== G.PATCH_NOTES[0].v; },
   needLogin: ['char', 'talent', 'shop', 'quest', 'vault'],
 
   pr() { return G.Meta.profile; },
@@ -31,7 +34,7 @@ G.Lobby = {
         <div class="lbAcct">${this.account()}</div>
       </div>
       <div class="lbBody">
-        <nav class="lbNav">${this.TABS.map(([id, name, icon]) => `<a href="#" data-tab="${id}" class="${this.tab === id ? 'on' : ''}"><img src="${G.icon(icon)}"><span>${name}</span></a>`).join('')}
+        <nav class="lbNav">${this.TABS.map(([id, name, icon]) => `<a href="#" data-tab="${id}" class="${this.tab === id ? 'on' : ''}"><img src="${G.icon(icon)}"><span>${name}</span>${id === 'patch' && this.tab !== 'patch' && this.patchUnseen() ? '<em class="newTag">NEW</em>' : ''}</a>`).join('')}
           <a href="#" data-help="1"><img src="${G.icon('reroll')}"><span>조작법</span></a></nav>
         <main class="lbMain" id="lbMain"></main>
       </div></div>`);
@@ -51,7 +54,7 @@ G.Lobby = {
       return;
     }
     if (this.tab === 'board') { G.UI.showBoard(); return; }
-    this[{ stage: 'renderStage', char: 'renderChar', talent: 'renderTalent', shop: 'renderShop', quest: 'renderQuest', vault: 'renderVault', ranking: 'renderRanking', codex: 'renderCodex' }[this.tab]](m);
+    this[{ stage: 'renderStage', char: 'renderChar', talent: 'renderTalent', shop: 'renderShop', quest: 'renderQuest', vault: 'renderVault', ranking: 'renderRanking', codex: 'renderCodex', patch: 'renderPatch' }[this.tab]](m);
   },
   refreshTop() { const c = G.UI.el.modal.querySelector('.lbCur'); if (c) c.innerHTML = this.currencyBar(); },
   currencyBar() {
@@ -428,5 +431,20 @@ G.Lobby = {
         ${r.rows.map(x => `<tr class="${x.me ? 'me' : ''}"><td>${x.rank}</td><td>${esc(x.username)}</td><td style="color:${G.CLASSES[x.cls].color}">${G.CLASSES[x.cls].name}</td><td>${x.ilvl}</td><td><b>${R.kind === 'clear' ? U.fmtTime(x.value) : x.value + '단계'}</b></td></tr>`).join('')}</table>`
         : '<div class="dim">아직 기록이 없습니다.</div>';
     } catch (e) { const t = $('rkTable'); if (t) t.textContent = e.message; }
+  },
+
+  // ---------- 패치노트 (js/data/patchnotes.js) ----------
+  renderPatch(m) {
+    const N = G.PATCH_NOTES;
+    let seen = null; try { seen = localStorage.getItem(this.PATCH_SEEN); } catch { /* 저장소 사용 불가 */ }
+    // 처음 보는 사람은 최신 하나만 NEW, 그 뒤로는 지난번에 읽은 버전보다 새것 모두 NEW
+    const seenIdx = N.findIndex(n => n.v === seen), newCount = seenIdx < 0 ? 1 : seenIdx;
+    const li = s => `<li>${esc(s)}</li>`;
+    const body = notes => `<ul>${notes.map(x => typeof x === 'string' ? li(x) : `<li class="pnH">${esc(x.h)}<ul>${x.items.map(li).join('')}</ul></li>`).join('')}</ul>`;
+    m.innerHTML = `<div class="patchWrap"><h2>패치노트</h2><p class="dim">업데이트마다 바뀐 점을 여기에 정리합니다. 지금 버전은 <b>v${G.VERSION}</b>입니다.</p>
+      ${N.map((n, i) => `<details class="patch" ${i < 3 ? 'open' : ''}><summary><b>v${esc(n.v)}</b> ${esc(n.title)}
+        ${i < newCount ? '<em class="newTag">NEW</em>' : ''}${n.v === G.VERSION ? '<em class="curTag">현재 버전</em>' : ''}<small>${esc(n.date)}</small></summary>${body(n.notes)}</details>`).join('')}</div>`;
+    if (N.length) try { localStorage.setItem(this.PATCH_SEEN, N[0].v); } catch { /* 무시 */ }
+    const tag = G.UI.el.modal.querySelector('[data-tab="patch"] .newTag'); if (tag) tag.remove();
   },
 };
