@@ -296,7 +296,7 @@ const IMPL = G.SKILL_IMPL = {
               G.fx.burst(e.x, e.y, 10, { rgb: Math.random() < 0.5 ? '255,140,60' : '200,100,255', sp: 140, size: 10 });
             } else G.fx.burst(e.x, e.y, 7, { rgb: '150,215,255', sp: 120, size: 9 });
             G.fx.shards(e.x, e.y, 3, 140);
-            G.Audio.play('hit', 0.5);
+            G.Audio.play(ff ? 'hitFire' : 'hit', 0.5, e.x);
           },
         });
       }
@@ -407,7 +407,7 @@ const IMPL = G.SKILL_IMPL = {
               G.aoe(z.x, z.y, z.r, s.dmg, 'cometstorm', {}, e => G.chill(e, 0.4, 2));
               G.fx.ring(z.x, z.y, 5, z.r * 1.2, 0.35, '170,220,255', 5, 0.3);
               G.fx.burst(z.x, z.y, 14, { rgb: '150,210,255', sp: 220, size: 12 });
-              G.fx.shards(z.x, z.y, 8, 260); G.fx.wave(z.x, z.y, z.r * 1.3, '170,220,255', 0.3); G.fx.shake(4); G.Audio.play('comet', 0.6);
+              G.fx.shards(z.x, z.y, 8, 260); G.fx.wave(z.x, z.y, z.r * 1.3, '170,220,255', 0.3); G.fx.shake(4); G.Audio.play('comet', 0.6, z.x);
             },
           });
         });
@@ -427,7 +427,7 @@ const IMPL = G.SKILL_IMPL = {
       G.fx.burst(t.x, t.y, 26, { rgb: '170,225,255', sp: 260, size: 12, spread: 10 });
       G.fx.shards(t.x, t.y, 16, 300);
       G.Zones.add({ kind: 'novaice', x: t.x, y: t.y, r: R * 0.9, life: 1.2 });
-      G.Audio.play('nova', 0.7);
+      G.Audio.play('nova', 0.7, t.x);
       return true;
     },
   },
@@ -473,7 +473,7 @@ const IMPL = G.SKILL_IMPL = {
           G.fx.ring(e.x, e.y, 5, R, 0.4, '200,240,255', 6, 0.3);
           G.fx.shards(e.x, e.y, 26, 360); G.fx.burst(e.x, e.y, 18, { rgb: '170,225,255', sp: 220, size: 16 });
           G.fx.wave(e.x, e.y, R * 1.4); G.fx.hitStop(0.06); G.fx.flash('190,230,255', 0.14, 0.16);
-          G.fx.shake(8, Math.cos(a), Math.sin(a)); G.Audio.play('shatter'); G.Audio.play('explode', 0.6);
+          G.fx.shake(8, Math.cos(a), Math.sin(a)); G.Audio.play('shatter', 1, e.x); G.Audio.play('explode', 0.6, e.x);
         },
       });
       G.Audio.play('lance'); G.Audio.play('orb', 0.5);

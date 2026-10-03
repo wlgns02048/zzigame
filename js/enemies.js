@@ -230,7 +230,7 @@ G.Mob = {
         G.Tele.add({ x: e.x, y: e.y, r: s.r, max: T, follow: e, owner: e, color: col, onBoom: () => {
           if (playerIn(e.x, e.y, s.r + p.r)) G.hurtPlayer(dmg, e);
           if (s.zone) hurtZone(e.x, e.y, s.r * 0.7, s.zone.life, col, e.dmg * s.zone.mul);
-          G.fx.ring(e.x, e.y, 15, s.r, 0.35, col, 6, 0.25); G.fx.shake(4); G.Audio.play('explode', 0.35);
+          G.fx.ring(e.x, e.y, 15, s.r, 0.35, col, 6, 0.25); G.fx.shake(4); G.Audio.play('explode', 0.35, e.x);
         } });
         break;
       case 'blast': { // 속박이 붙어 있어 덜 앞지른다
@@ -266,7 +266,7 @@ G.Mob = {
           G.fx.burst(e.x, e.y, 10, { rgb: col, sp: 120, size: 10 });
           e.x = k.x; e.y = k.y;
           if (playerIn(k.x, k.y, s.r + p.r)) G.hurtPlayer(dmg, e);
-          G.fx.ring(k.x, k.y, 10, s.r, 0.3, col, 6, 0.25); G.fx.shake(5); G.Audio.play('explode', 0.35);
+          G.fx.ring(k.x, k.y, 10, s.r, 0.3, col, 6, 0.25); G.fx.shake(5); G.Audio.play('explode', 0.35, k.x);
         } });
         e.mcast.max = T + 0.1;
         break;
@@ -304,7 +304,7 @@ G.Boss = {
         G.Tele.add({ x: e.x, y: e.y, r: 150, max: 1.3, follow: e });
         this.cast(e, '증오의 일격', 1.3, () => {
           if (playerIn(e.x, e.y, 150 + p.r)) G.hurtPlayer(48);
-          G.fx.ring(e.x, e.y, 20, 150, 0.4, '255,80,40', 8, 0.25); G.fx.wave(e.x, e.y, 170, '255,120,70'); G.fx.shake(10); G.Audio.play('explode');
+          G.fx.ring(e.x, e.y, 20, 150, 0.4, '255,80,40', 8, 0.25); G.fx.wave(e.x, e.y, 170, '255,120,70'); G.fx.shake(10); G.Audio.play('explode', 1, e.x);
         });
       }
       if (ai.cloud <= 0) {
@@ -368,7 +368,7 @@ G.Boss = {
         G.Tele.add({ x: e.x, y: e.y, r: 140, max: 1.1, follow: e, color: '120,220,255' });
         this.cast(e, '영혼 수확자', 1.1, () => {
           if (playerIn(e.x, e.y, 140 + p.r)) G.hurtPlayer(52);
-          G.fx.ring(e.x, e.y, 20, 140, 0.4, '120,220,255', 8, 0.3); G.fx.wave(e.x, e.y, 160, '150,230,255'); G.fx.shake(10); G.Audio.play('explode');
+          G.fx.ring(e.x, e.y, 20, 140, 0.4, '120,220,255', 8, 0.3); G.fx.wave(e.x, e.y, 160, '150,230,255'); G.fx.shake(10); G.Audio.play('explode', 1, e.x);
         });
       }
       if (ai.summon <= 0) { ai.summon = 15; this.summon(e, hpPct < 0.5 ? 'gargoyle' : 'ghoul', 10, 160); G.UI.warn('리치 왕이 구울 무리를 소환합니다!', '#7fff7f', 1.8); }
@@ -437,7 +437,7 @@ G.Boss = {
         G.Tele.add({ x: e.x, y: e.y, r: s.r, max: 1.2, follow: e, color: glow });
         this.cast(e, s.name, 1.2, () => {
           if (playerIn(e.x, e.y, s.r + p.r)) { G.hurtPlayer(s.dmg * dm); if (s.root) p.rootT = s.root; }
-          G.fx.ring(e.x, e.y, 20, s.r, 0.4, glow, 8, 0.25); G.fx.wave(e.x, e.y, s.r * 1.15, glow); G.fx.shake(10); G.Audio.play('explode');
+          G.fx.ring(e.x, e.y, 20, s.r, 0.4, glow, 8, 0.25); G.fx.wave(e.x, e.y, s.r * 1.15, glow); G.fx.shake(10); G.Audio.play('explode', 1, e.x);
         });
         break;
       case 'nova':
@@ -445,7 +445,7 @@ G.Boss = {
         G.UI.warn(`${e.def.name}: ${s.name}!`, '#ff6a1a', 1.6);
         this.cast(e, s.name, s.cast || 1.6, () => {
           if (playerIn(e.x, e.y, s.r + p.r)) G.hurtPlayer(s.dmg * dm);
-          G.fx.ring(e.x, e.y, 20, s.r, 0.5, glow, 10, 0.3); G.fx.burst(e.x, e.y, 40, { rgb: glow, sp: 320, size: 14 }); G.fx.wave(e.x, e.y, s.r * 1.2, glow, 0.45); G.fx.shake(12); G.Audio.play('explode');
+          G.fx.ring(e.x, e.y, 20, s.r, 0.5, glow, 10, 0.3); G.fx.burst(e.x, e.y, 40, { rgb: glow, sp: 320, size: 14 }); G.fx.wave(e.x, e.y, s.r * 1.2, glow, 0.45); G.fx.shake(12); G.Audio.play('explode', 1, e.x);
         });
         break;
       case 'volley':

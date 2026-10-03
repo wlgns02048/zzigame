@@ -58,7 +58,7 @@ G.Waves = {
   spawnBoss(id, warn) {
     const [x, y] = this.ringPos(-60);
     const e = G.Enemy.spawn(id, x, y);
-    G.Audio.play('boss'); G.fx.shake(8);
+    G.Audio.play('boss'); G.Audio.duck(0.3, 1.2); G.fx.shake(8);
     if (warn) G.UI.warn(warn, '#ff6a1a', 3);
     return e;
   },

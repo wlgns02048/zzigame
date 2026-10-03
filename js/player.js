@@ -76,7 +76,7 @@ G.P = {
     p.xp += v * p.stats.xpMul;
     while (p.xp >= p.xpNeed) {
       p.xp -= p.xpNeed; p.level++; p.xpNeed = G.P.xpNeed(p.level); p.pendingLv++;
-      G.Audio.play('levelup');
+      G.Audio.play('levelup'); G.Audio.duck(0.4, 0.6);
       G.fx.burst(p.x, p.y, 30, { rgb: '255,215,90', sp: 160, size: 10, life: 0.9 });
       for (let i = 0; i < 26; i++) G.fx.part({ x: p.x + U.rand(-18, 18), y: p.y + U.rand(-10, 20), vy: U.rand(-260, -120), life: U.rand(0.6, 1.1), size: U.rand(6, 12), rgb: '255,220,110' });
       G.fx.ring(p.x, p.y, 10, 90, 0.6, '255,215,90', 5);

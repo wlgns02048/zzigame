@@ -193,7 +193,7 @@ G.updatePickups = dt => {
         else if (k.kind === 'food') { G.P.heal(p.maxHp * 0.3); G.Audio.play('buff', 0.5); }
         else if (k.kind === 'magnet') { for (const o of G.pickups) o.mag = true; G.Audio.play('orb'); } // 경험치 · 골드 · 음식 · 상자 등 바닥의 모든 전리품
         else if (k.kind === 'bloodlust') { G.lustT = G.LUST.dur; G.fx.text(p.x, p.y - 44, '피의 욕망!', '#ff5040', 16); G.Audio.play('buff'); }
-        else if (k.kind === 'chest') { G.chests.push(k.v); G.Audio.play('chest'); }
+        else if (k.kind === 'chest') { G.chests.push(k.v); G.Audio.play('chest'); G.Audio.duck(0.5, 0.4); }
       }
     }
   }

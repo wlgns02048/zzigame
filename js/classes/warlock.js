@@ -346,7 +346,7 @@ Object.assign(G.SKILL_IMPL, {
             if (ds && e.dead && Math.random() < 0.05) addShard(1);
             if (ds) p.siphons.push({ e, x: e.x, y: e.y, t: 0, life: 0.45 }); // 영혼 흡수: 대상에서 영혼을 빨아들이는 줄기 (그림만)
             G.fx.burst(e.x, e.y, 8, { rgb: ds ? '210,120,255' : '170,90,255', sp: 130, size: 10 });
-            G.Audio.play('hit', 0.5);
+            G.Audio.play('hitShadow', 0.5, e.x);
           },
         });
       }

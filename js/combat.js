@@ -87,12 +87,12 @@ G.freeze = (e, dur) => {
       e.shatterT = G.t + 2; e.shatterCd = G.t + 8;
       G.fx.text(e.x, e.y - e.r * 2.4, '얼어붙음', '#bfe8ff', 16, true);
       G.fx.burst(e.x, e.y, 14, { rgb: '200,240,255', sp: 140, size: 12 });
-      G.Audio.play('freeze', 0.6);
+      G.Audio.play('freeze', 0.6, e.x);
     }
     return;
   }
   if (e.elite) dur *= 0.5;
-  if (e.frozenT <= 0) { G.Audio.play('freeze', 0.5); G.fx.burst(e.x, e.y, 6, { rgb: '200,240,255', sp: 80, size: 8 }); }
+  if (e.frozenT <= 0) { G.Audio.play('freeze', 0.5, e.x); G.fx.burst(e.x, e.y, 6, { rgb: '200,240,255', sp: 80, size: 8 }); }
   e.frozenT = Math.max(e.frozenT, dur);
 };
 G.chill = (e, amt, dur) => {
@@ -137,6 +137,7 @@ G.hit = (e, base, src, o = {}) => {
   }
   if (crit) {
     G.cls(p).onCrit(e, p);
+    if (!o.small) G.Audio.play('crit', 0.5, e.x);
     if ((e.boss || e.elite) && d >= e.maxHp * 0.04) G.fx.hitStop(0.035);
   }
   if (e.hp <= 0) G.killEnemy(e, frozen, o.school);
@@ -158,14 +159,16 @@ G.killEnemy = (e, frozen, school) => {
     G.fx.shards(e.x, e.y, e.boss ? 40 : e.elite ? 22 : 10, e.boss ? 400 : 220);
     G.fx.burst(e.x, e.y, 5, { rgb: '190,235,255', sp: 100, size: 14 });
     G.fx.decal(e.x, e.y + e.r * 0.6, 'frost', ds);
-    G.Audio.play('shatter', 0.6);
+    G.Audio.play('shatter', 0.6, e.x);
   } else {
     G.fx.corpse(e);
     G.fx.burst(e.x, e.y, 6, { rgb: '30,30,40', add: false, type: 'smoke', sp: 60, size: 12, life: 0.6, drag: 4 });
     if (Math.random() < 0.4) G.fx.burst(e.x, e.y, 2, { type: 'bone', add: false, sp: 120, size: 1, sMin: 1, size1: 1, life: 0.7, grav: 200, drag: 1 });
     G.fx.decal(e.x, e.y + e.r * 0.6, school === 'fire' || school === 'shadow' ? 'scorch' : 'ichor', ds);
+    G.Audio.play('pop', 0.35, e.x);
   }
   if (big) {
+    G.Audio.play('eliteKill', e.boss ? 1 : 0.7, e.x); G.Audio.duck(e.boss ? 0.25 : 0.5, e.boss ? 1 : 0.3);
     G.fx.wave(e.x, e.y, e.boss ? 260 : 120, e.boss ? '255,230,160' : '255,210,110', e.boss ? 0.6 : 0.4);
     G.fx.shake(e.boss ? 16 : 7);
     G.fx.hitStop(e.boss ? 0.15 : 0.07);

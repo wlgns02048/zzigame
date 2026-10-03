@@ -350,6 +350,8 @@ G.UI = {
   },
   // ---------- 설정 (연출 · 소리) ----------
   SETTINGS: [
+    { k: 'sfx', type: 'range', name: '효과음 음량', min: 0, max: 1, step: 0.05, fmt: v => Math.round(v * 100) + '%', apply: v => { G.Audio.setSfx(v); G.Audio.play('gold'); } },
+    { k: 'music', type: 'range', name: '배경음악 음량', min: 0, max: 1, step: 0.05, fmt: v => Math.round(v * 100) + '%' },
     { k: 'shake', type: 'range', name: '화면 흔들림', min: 0, max: 1.5, step: 0.25, fmt: v => v ? Math.round(v * 100) + '%' : '끔' },
     { k: 'flash', type: 'check', name: '화면 번쩍임', desc: '큰 기술 · 보스 처치 때 화면이 잠깐 밝아짐' },
     { k: 'hitstop', type: 'check', name: '타격 멈춤', desc: '큰 타격 순간 아주 잠깐 멈칫함' },

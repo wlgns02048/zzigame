@@ -118,7 +118,7 @@
 
   G.Music = {
     THEMES, vol: 0.5, on: true, id: null, T: null, bus: null, out: null, verb: null,
-    pos: 0, nextT: 0, int: 1, duck: 1, motif: null, motifs: {},
+    pos: 0, nextT: 0, int: 1, duck: -1, dens: 0, lpf: 20000, heartT: 0, motif: null, motifs: {},
     KEY: 'frostmage_music',
 
     start() {
@@ -132,7 +132,11 @@
     },
     setup() {
       const c = G.Audio.ctx;
-      this.out = c.createGain(); this.out.gain.value = this.vol; this.out.connect(G.Audio.master);
+      // out(음량 · 일시 정지 감쇠) → lp(위기 때 먹먹하게) → dk(효과음 덕킹) → master
+      this.out = c.createGain(); this.out.gain.value = 0;
+      this.lp = c.createBiquadFilter(); this.lp.type = 'lowpass'; this.lp.frequency.value = 20000; this.lp.Q.value = 0.7;
+      this.dk = c.createGain();
+      this.out.connect(this.lp); this.lp.connect(this.dk); this.dk.connect(G.Audio.master);
       // 던전 잔향: 지수 감쇠 잡음으로 만든 2.8초 임펄스
       const len = c.sampleRate * 2.8, ir = c.createBuffer(2, len, c.sampleRate);
       for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
@@ -149,10 +153,20 @@
       if (!this.out) this.setup();
       const id = this.want();
       if (id !== this.id) this.play(id);
-      if (!this.T) return;
-      this.int = G.state === 'play' && G.enemies.some(e => e.boss && !e.dead) ? 2 : 1;
-      const duck = G.state === 'play' && (G.UI.modalKind === 'pause' || G.UI.modalKind === 'help') ? 0.35 : 1;
+      const play = G.state === 'play', p = G.player;
+      this.int = play && G.enemies.some(e => e.boss && !e.dead) ? 2 : 1;
+      // 혼잡도: 플레이어 주변 적 수 (많으면 아르페지오 · 하이햇 층이 더해진다)
+      let n = 0;
+      if (play && p) for (const e of G.enemies) if (!e.dead && Math.abs(e.x - p.x) < 800 && Math.abs(e.y - p.y) < 500) n++;
+      this.dens += (Math.min(1, n / 70) - this.dens) * 0.05;
+      const duck = (play && (G.UI.modalKind === 'pause' || G.UI.modalKind === 'help' || G.UI.modalKind === 'settings') ? 0.35 : 1) * G.Settings.get('music');
       if (duck !== this.duck) { this.duck = duck; this.out.gain.setTargetAtTime(this.vol * duck, c.currentTime, 0.3); }
+      // 위기(생명력 30% 미만): 음악이 먹먹해지고 심장 박동이 들린다 (15% 미만이면 더 빨리)
+      const low = play && !G.paused && p && !p.dead ? Math.round(p.hp / p.maxHp * 20) / 20 : 1;
+      const lpf = low < 0.3 ? 600 + low * 3000 : 20000;
+      if (lpf !== this.lpf) { this.lpf = lpf; this.lp.frequency.setTargetAtTime(lpf, c.currentTime, lpf < 20000 ? 0.4 : 0.8); }
+      if (low < 0.3 && c.currentTime >= this.heartT) { this.heartT = c.currentTime + (low < 0.15 ? 0.6 : 0.85); G.Audio.play('heart', low < 0.15 ? 1 : 0.7); }
+      if (!this.T) return;
       if (this.nextT < c.currentTime) this.nextT = c.currentTime + 0.05; // 탭이 잠들었다 깨면 밀린 음을 몰아 치지 않는다
       while (this.nextT < c.currentTime + 0.25) { this.step(this.nextT); this.nextT += this.stepDur(); }
     },
@@ -180,7 +194,7 @@
 
     step(t) {
       const T = this.T, n = T.steps, s = this.pos % n, bar = Math.floor(this.pos / n), bi = bar % 4, ph = Math.floor(bar / 4);
-      const boss = this.int >= 2 && !T.calm, sec = ph % 4, intro = ph === 0 && !boss, sd = this.stepDur();
+      const boss = this.int >= 2 && !T.calm, busy = !boss && !T.calm && this.dens > 0.45, sec = ph % 4, intro = ph === 0 && !boss && !busy, sd = this.stepDur();
       const ch = T.prog[bar % T.prog.length];
       const tone = (k, base) => this.deg(ch + 2 * (k % 3) + 7 * Math.floor(k / 3), base);
       this.pos++;
@@ -194,7 +208,7 @@
         this.bass(t, m, this.hold(T.bass.pat, s) * sd, T.bass.vol * (boss ? 1.15 : 1));
       }
       // 층 구성: 프레이즈 0 패드 · 베이스 → 1 +아르페지오 → 2 +선율 → 3 선율만. 보스전은 전부.
-      if (!intro && (boss || sec === 1 || sec === 2)) {
+      if (!intro && (boss || busy || sec === 1 || sec === 2)) {
         const c = T.arp.pat[s], base = T.root + 12 * T.arp.oct;
         if (c === 'c') for (let k = 0; k < 3; k++) this.note(T.arp.inst, t, tone(k, base), sd * 1.5, T.arp.vol * 0.7);
         else if (c >= '0' && c <= '9') this.note(T.arp.inst, t, tone(+c, base), this.hold(T.arp.pat, s) * sd, T.arp.vol);
@@ -207,7 +221,8 @@
         }
       }
       if (!intro) {
-        const P = boss ? { ...T.drums, ...T.boss } : T.drums;
+        // 적이 몰려들면 하이햇이 더해져 긴장감이 오른다
+        const P = boss ? { ...T.drums, ...T.boss } : busy && !T.drums.h ? { ...T.drums, h: T.steps === 12 ? '..x..x..x..x' : '..x...x...x...x.' } : T.drums;
         for (const k in P) {
           const c = P[k][s];
           if ((c === 'x' || c === 'X') && !(k === 'b' && bar % 2)) this.drum(k, t, c === 'X' ? 1 : 0.6);
