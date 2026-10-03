@@ -254,21 +254,23 @@
 
   // ---------- 일일 · 주간 퀘스트 ----------
   // track: 런 보고/행동에서 올라가는 카운터 이름
+  // 보상 기준: 일반 던전 1회 클리어 ≈ 골드 1,000~1,300 · 휘장 6 · 장비 3~4개 (영웅 ≈ 골드 1,500 · 휘장 12).
+  // 퀘스트 하나는 필요한 판 수만큼의 재화 보상과 비슷하거나 조금 더 주도록 맞춘다.
   const QUESTS = {
     daily: [
-      { id: 'd_clear2', name: '던전 정복', desc: '스테이지 2회 클리어', track: 'clear', goal: 2, reward: { badge: 4 } },
-      { id: 'd_kill2000', name: '스컬지 소탕', desc: '적 2,000마리 처치', track: 'kill', goal: 2000, reward: { gold: 300 } },
-      { id: 'd_boss5', name: '우두머리 사냥', desc: '보스 5회 처치', track: 'boss', goal: 5, reward: { badge: 5 } },
-      { id: 'd_endless5', name: '끝없는 시련', desc: '엔드리스 5단계 도달', track: 'endless', goal: 5, reward: { rough: 12 } },
-      { id: 'd_heroic1', name: '영웅의 길', desc: '영웅 난이도 클리어 1회', track: 'heroic', goal: 1, reward: { badge: 6 } },
-      { id: 'd_de5', name: '마력 추출', desc: '장비 5개 분해', track: 'de', goal: 5, reward: { dust: 20 } },
-      { id: 'd_gacha3', name: '운명 시험', desc: '뽑기 3회', track: 'gacha', goal: 3, reward: { rough: 6 } },
-      { id: 'd_play3', name: '출정', desc: '3판 플레이 (5분 이상 생존)', track: 'play', goal: 3, reward: { gold: 250 } },
+      { id: 'd_clear2', name: '던전 정복', desc: '스테이지 2회 클리어', track: 'clear', goal: 2, reward: { badge: 12, gold: 500 } },
+      { id: 'd_kill2000' /* 목표를 올렸지만 오늘 이미 받은 사람이 또 받지 않게 id 유지 */, name: '스컬지 소탕', desc: '적 10,000마리 처치', track: 'kill', goal: 10000, reward: { gold: 1200 } },
+      { id: 'd_boss5', name: '우두머리 사냥', desc: '보스 5회 처치', track: 'boss', goal: 5, reward: { badge: 12 } },
+      { id: 'd_endless5', name: '끝없는 시련', desc: '엔드리스 5단계 도달', track: 'endless', goal: 5, reward: { rough: 25 } },
+      { id: 'd_heroic1', name: '영웅의 길', desc: '영웅 난이도 클리어 1회', track: 'heroic', goal: 1, reward: { badge: 15 } },
+      { id: 'd_de5', name: '마력 추출', desc: '장비 5개 분해', track: 'de', goal: 5, reward: { dust: 40, essence: 2 } },
+      { id: 'd_gacha3', name: '운명 시험', desc: '뽑기 3회', track: 'gacha', goal: 3, reward: { rough: 15 } },
+      { id: 'd_play3', name: '출정', desc: '3판 플레이 (5분 이상 생존)', track: 'play', goal: 3, reward: { gold: 1500, badge: 6 } },
     ],
     weekly: [
-      { id: 'w_clear12', name: '주간 원정', desc: '스테이지 12회 클리어', track: 'clear', goal: 12, reward: { badge: 25, essence: 3 } },
-      { id: 'w_raid3', name: '공격대의 위협', desc: '공격대 3회 클리어', track: 'raid', goal: 3, reward: { badge: 30 } },
-      { id: 'w_endless10', name: '시간의 균열', desc: '엔드리스 10단계 도달', track: 'endless', goal: 10, reward: { rough: 50 } },
+      { id: 'w_clear12', name: '주간 원정', desc: '스테이지 12회 클리어', track: 'clear', goal: 12, reward: { badge: 60, essence: 6 } },
+      { id: 'w_raid3', name: '공격대의 위협', desc: '공격대 3회 클리어', track: 'raid', goal: 3, reward: { badge: 50, essence: 3 } },
+      { id: 'w_endless10', name: '시간의 균열', desc: '엔드리스 10단계 도달', track: 'endless', goal: 10, reward: { rough: 80 } },
     ],
     dailyCount: 3,
   };

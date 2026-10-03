@@ -244,7 +244,8 @@ G.endRun = victory => {
 };
 // 클리어 후 "보상 받고 종료": 최종 보고만 하고 로비로
 G.leaveRun = () => {
-  if (G.run && G.Waves.clearT != null && !G.Waves.endless) G.Net.reportRun(G.run, { victory: true, final: true }).catch(() => {});
+  // (Waves.clearT는 엔드리스를 시작할 때만 정해지므로 조건으로 쓰면 안 된다 — 이 버튼은 클리어 화면에만 있다)
+  if (G.run && !G.Waves.endless) G.Net.reportRun(G.run, { victory: true, final: true }).catch(() => {});
   G.run = null; G.state = 'menu'; G.UI.showMenu();
 };
 
