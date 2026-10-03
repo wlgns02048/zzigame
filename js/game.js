@@ -19,6 +19,7 @@ G.init = async () => {
   G.cam.x = 0; G.cam.y = 0;
   G.UI.showMenu();
   G.Update.start();
+  G.Music.start();
   if (G.params.get('test')) { G.Bot.on = true; G.startRun(); }
   if (G.params.get('sim')) G.simulate(+G.params.get('sim'));
   let last = performance.now();
@@ -45,6 +46,7 @@ G.Input = () => {
     G.Audio.init();
     if (e.code === 'Tab') { e.preventDefault(); if (G.state === 'play') G.UI.toggleMeter(); return; }
     if (e.code === 'KeyM') { G.Audio.toggle(); return; }
+    if (e.code === 'KeyN') { G.Music.toggle(); return; }
     if (e.code === 'Escape') {
       if (G.state !== 'play') return;
       if (G.UI.modalKind === 'pause') G.resume();

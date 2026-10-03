@@ -338,7 +338,7 @@ G.UI = {
       warlock: '부패 · 고통 · 생명력 착취 · 불안정한 고통 같은 지속 피해를 여러 적에게 걸고(적 발밑 고리와 머리 위 아이콘으로 표시), 어둠의 화살은 지속 피해가 많이 걸린 적에게 더 아픕니다. 고통이 만드는 영혼의 조각 3개 이상을 악의적인 환희(R)로 한 번에 터뜨리세요. 악마의 마법진(Space)은 처음엔 마법진을 그리고, 다시 누르면 그곳으로 돌아갑니다.',
     };
     const keys = [['WASD / 방향키', '이동'], ['마우스', '조준 (단축키 주문 방향)'], ['자동 주문', autos.join(' · ')],
-      ...actives.map(d => [G.KEY_LABEL[d.key] || d.key, d.name]), ['액션바 오른쪽 클릭', `자동 시전 켜기/끄기 (재사용 대기시간 +${Math.round(G.Skills.autoPen() * 100)}%, 달라란 도서관에서 줄일 수 있음)`], ['TAB', '피해 미터 (Details!)'], ['ESC', '일시 정지'], ['M', '소리 켜기/끄기'],
+      ...actives.map(d => [G.KEY_LABEL[d.key] || d.key, d.name]), ['액션바 오른쪽 클릭', `자동 시전 켜기/끄기 (재사용 대기시간 +${Math.round(G.Skills.autoPen() * 100)}%, 달라란 도서관에서 줄일 수 있음)`], ['TAB', '피해 미터 (Details!)'], ['ESC', '일시 정지'], ['M', '소리 켜기/끄기'], ['N', '배경음악 켜기/끄기'],
       ['레벨업', '숫자 키 또는 클릭으로 선택']];
     this.open('help', `<div class="panel"><h2>조작법 · ${C.name}</h2><div class="helpGrid">${keys.map(([k, v]) => `<div class="k">${k}</div><div>${v}</div>`).join('')}</div>
       <p class="tt-sub" style="max-width:560px">단축키 주문은 레벨업에서 배워야 액션바에 나타납니다. ${tips[cls] || ''}</p>
