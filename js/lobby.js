@@ -104,6 +104,7 @@ G.Lobby = {
         <div class="diffs">${Object.entries(df).map(([k, d]) => `<button class="btn small ${this.diff === k ? 'sel' : ''}" data-diff="${k}" ${this.stageOpen(this.stage, k) ? '' : 'disabled'}>${d.name}</button>`).join('')}</div>
         <div class="bossRow">${st.bosses.map(b => `<div class="boss" data-tip="<div class='tt-title'>${G.ENEMIES[b.id].name}</div><div class='tt-desc'>${G.ENEMIES[b.id].title || ''}</div>"><img src="${G.icon(G.ENEMIES[b.id].icon)}"><small>${G.ENEMIES[b.id].name}</small></div>`).join('')}</div>
         <div class="sdRec">${p ? `클리어 ${p.clears}회 · 최고 기록 <b>${U.fmtTime(p.best)}</b>${p.endless ? ` · 엔드리스 최고 <b>${p.endless}단계</b>` : ''}` : '아직 클리어하지 못했습니다.'}</div>
+        <div class="sdRew">보상 배율: 골드 <b>×${SD().goldMul(this.stage, this.diff)}</b> · 정의의 휘장 <b>×${df[this.diff].badge}</b>${this.diff === 'heroic' ? ' · 아이템 레벨 +' + df.heroic.ilvl + ' · 높은 품질 · 클리어 상자 +1' : ''}</div>
         <div class="sdLoot"><h4>주요 전리품</h4>${st.loot.map(l => `<span style="color:${qcol(3)}">${l.name}</span>`).join(' · ')}</div>
         <div class="sdAffix"><h4>이번 주 엔드리스 접두어</h4>${aff.map((a, i) => `<span data-tip="<div class='tt-title'>${E.affixes[a].name}</div><div class='tt-desc'>${E.affixes[a].desc}</div>"><img src="${G.icon(E.affixes[a].icon)}">${E.affixes[a].name}<small>${E.slots[i].at}단계~</small></span>`).join('')}</div>
         <h4>캐릭터</h4><div class="clsRow">${chars}</div>
@@ -172,15 +173,13 @@ G.Lobby = {
     $('bagSort').value = this.bagSort;
     $('bagSort').onchange = e => { this.bagSort = e.target.value; this.render(); };
     m.querySelectorAll('.charHead [data-cls]').forEach(a => (a.onclick = e => { e.preventDefault(); this.cls = a.dataset.cls; this.selItem = null; this.render(); }));
-    m.querySelectorAll('[data-item]').forEach(el => {
-      el.onclick = () => { this.selItem = +el.dataset.item; this.render(); };
-      el.onmouseenter = ev => G.UI.showTip(this.itemTip(this.findItem(+el.dataset.item), cls), ev);
-      el.onmouseleave = () => G.UI.hideTip();
-    });
+    // 툴팁은 ui.js의 mouseover 위임이 itemTipFor로 띄운다
+    m.querySelectorAll('[data-item]').forEach(el => (el.onclick = () => { this.selItem = +el.dataset.item; this.render(); }));
     $('bagDE').onclick = () => this.bulkDE();
     this.bindItemPanel(cls);
   },
   findItem(id) { return this.pr().items.find(i => i.id === id); },
+  itemTipFor(el) { const it = this.pr() && this.findItem(+el.dataset.item); return it ? this.itemTip(it, this.curCls()) : ''; },
   itemPanel(cls) {
     const it = this.selItem && this.findItem(this.selItem);
     if (!it) return '<div class="dim">아이템을 선택하세요. 마우스를 올리면 착용 중인 장비와 비교합니다.</div>';

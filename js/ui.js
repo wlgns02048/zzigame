@@ -27,8 +27,10 @@ G.UI = {
     }
     // 툴팁 (위임)
     document.addEventListener('mouseover', e => {
-      const t = e.target.closest('[data-tip]'), s = e.target.closest('[data-skill]');
+      const t = e.target.closest('[data-tip]'), s = e.target.closest('[data-skill]'), it = e.target.closest('[data-item]');
+      const itTip = it && G.Lobby.itemTipFor(it); // 가방 · 장비 칸 (안쪽 그림 위로 옮겨도 유지)
       if (s && s.dataset.skill) this.showTip(this.skillTip(s.dataset.skill), e);
+      else if (itTip) this.showTip(itTip, e);
       else if (t) this.showTip(t.dataset.tip, e);
       else if (e.target.closest('.slot')) { const k = e.target.closest('.slot').dataset.key; const id = k && this.skillForKey(k); if (id) this.showTip(this.skillTip(id), e); else this.hideTip(); }
       else this.hideTip();
@@ -162,6 +164,7 @@ G.UI = {
     // 버프
     const buffs = C.buffs(p);
     if (p.rootT > 0) buffs.push(['freeze', p.rootT, '', '서리 폭발', '이동 불가', true]);
+    if (G.lustT > 0) buffs.push(['bloodlust', G.lustT, '', '피의 욕망', `게임 전체 속도 +${Math.round((G.LUST.speed - 1) * 100)}%`]);
     const sig = buffs.map(b => b[0]).join();
     if (sig !== this.buffSig) {
       this.buffSig = sig;

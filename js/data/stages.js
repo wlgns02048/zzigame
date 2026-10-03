@@ -170,8 +170,8 @@
   ];
   // 영웅 난이도
   const DIFFICULTY = {
-    normal: { name: '일반', hp: 1, dmg: 1, ilvl: 0, badge: 1 },
-    heroic: { name: '영웅', hp: 1.4, dmg: 1.25, ilvl: 12, badge: 2 },
+    normal: { name: '일반', hp: 1, dmg: 1, ilvl: 0, badge: 1, gold: 1 },
+    heroic: { name: '영웅', hp: 1.4, dmg: 1.25, ilvl: 12, badge: 2, gold: 1.5 },
   };
   // 엔드리스 (쐐기돌식): 60초마다 단계 +1
   const ENDLESS = {
@@ -202,8 +202,11 @@
     const list = Object.entries(STAGES).filter(([, v]) => v.chapter === s.chapter).sort((a, b) => a[1].order - b[1].order).map(([k]) => k);
     const i = list.indexOf(id); return i > 0 ? list[i - 1] : null;
   };
+  // 골드 배율: 스테이지 단계(권장 아이템 레벨 20 → 1배, 80 → 2.5배) × 난이도(영웅 1.5배)
+  // 판에서 줍는 골드 · 시간 보너스 · 클리어 보너스 모두에 붙는다 (브라우저는 줍는 골드, 서버는 나머지와 검증 한도)
+  const goldMul = (stage, diff) => +((1 + (STAGES[stage].ilvl - 20) / 40) * DIFFICULTY[diff].gold).toFixed(3);
   for (const id in STAGES) STAGES[id].id = id;
-  const API = { STAGES, CHAPTERS, DIFFICULTY, ENDLESS, SWARMS, weeklyAffixes, bossesBy, prevStage };
+  const API = { STAGES, CHAPTERS, DIFFICULTY, ENDLESS, SWARMS, weeklyAffixes, bossesBy, prevStage, goldMul };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else Object.assign(root.G, { STAGE_DATA: API });
 })(this);

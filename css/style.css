@@ -286,6 +286,7 @@ select { cursor: pointer; }
 .bossRow { display: flex; gap: 14px; margin: 10px 0; }
 .boss { text-align: center; width: 92px; } .boss img { width: 48px; height: 48px; border: 1px solid #000; box-shadow: 0 0 0 1px #8a1a12; } .boss small { display: block; font-size: 11px; color: #ccc; }
 .sdRec { font-size: 14px; color: #bcd; } .sdRec b { color: var(--wow-yellow); }
+.sdRew { font-size: 13px; color: #bcd; } .sdRew b { color: var(--wow-yellow); }
 .sdLoot { font-size: 13px; }
 .sdAffix span { display: inline-flex; align-items: center; gap: 4px; margin-right: 12px; font-size: 13px; }
 .sdAffix img { width: 22px; height: 22px; } .sdAffix small { color: #888; }

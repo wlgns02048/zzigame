@@ -227,7 +227,7 @@ G.R = {
         c.drawImage(s, p.x - 8 * sc, p.y - 10 * sc - 2 + bob, 16 * sc, 20 * sc);
       } else {
         const size = p.kind === 'chest' ? 34 : p.kind === 'gold' ? 18 : 24, im = G.IMG[p.kind === 'gold' ? 'gold' : p.kind];
-        const col = p.kind === 'chest' ? '255,200,80' : p.kind === 'gold' ? '255,210,80' : p.kind === 'magnet' ? '120,200,255' : '255,220,160';
+        const col = p.kind === 'chest' ? '255,200,80' : p.kind === 'gold' ? '255,210,80' : p.kind === 'magnet' ? '120,200,255' : p.kind === 'bloodlust' ? '255,60,50' : '255,220,160';
         c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.55 + Math.sin(now * 5) * 0.2;
         c.drawImage(G.Spr.glow(col, 64), p.x - size * 1.1, p.y - size * 1.1 + bob, size * 2.2, size * 2.2);
         if (p.kind === 'chest') { c.globalAlpha = 0.25; c.drawImage(G.Spr.glow(col, 64), p.x - 20, p.y - 200, 40, 200); }
@@ -272,7 +272,7 @@ G.R = {
       c.fillStyle = e.elite ? '#e0a020' : '#c81e1e'; c.fillRect(e.x - w / 2, y, w * Math.max(0, e.hp / e.maxHp), 4);
     }
     // 지속 피해 아이콘 (체력바 위)
-    for (const e of list) if (e.dots || e.haunted > G.t) G.Dots.drawIcons(c, e, headY(e) - 26 + (e.def.fly && !e.boss ? -10 : 0) - (e.elite || e.boss ? 16 : 0));
+    for (const e of list) if (G.Dots.marks(e)) G.Dots.drawIcons(c, e, headY(e) - 26 + (e.def.fly && !e.boss ? -10 : 0) - (e.elite || e.boss ? 16 : 0));
   },
 
   // 정예 표시 ① 발밑: 금색 이중 고리 + 돌아가는 가시 (덩치 큰 일반 적과 구분)
@@ -319,7 +319,7 @@ G.R = {
       c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
     }
     if (e.elite) this.drawEliteRing(c, e);
-    if (e.dots) G.Dots.drawRing(c, e);
+    if (e.dots || e.seedEnd > G.t) G.Dots.drawRing(c, e);
     c.save();
     c.translate(e.x, e.y + e.r * 0.85 + fly + bob);
     if (e.face < 0) c.scale(-1, 1);

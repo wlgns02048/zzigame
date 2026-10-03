@@ -357,7 +357,8 @@ module.exports = ({ db, route, fail, limit, readJson, STATIC_DIR, log }) => {
     const st = STAGES[run.stage], df = DIFFICULTY[run.difficulty], raid = st.type === 'raid';
     const won = s.clearT != null;
     return {
-      gold: Math.floor(s.gold + s.timeBonus + (won ? (raid ? 500 : 300) * (df.badge === 2 ? 1.5 : 1) : 0)),
+      // 줍는 골드(s.gold)는 브라우저에서 이미 배율이 붙어 온다
+      gold: Math.floor(s.gold + (s.timeBonus + (won ? (raid ? 500 : 300) : 0)) * SD.goldMul(run.stage, run.difficulty)),
       badge: s.bossKills * (raid ? 2 : 1) * df.badge + (won ? (raid ? 6 : 3) * df.badge : 0),
       rough: s.endlessLv + Math.floor(s.endlessLv / 5) * 3,
     };
@@ -391,10 +392,12 @@ module.exports = ({ db, route, fail, limit, readJson, STATIC_DIR, log }) => {
       const endlessLv = clearT != null ? Math.max(0, Math.floor((t - clearT) / ENDLESS.interval)) : 0;
       const maxBosses = SD.bossesBy(run.stage, Math.min(t, st.duration)) + (clearT != null ? Math.floor(endlessLv / ENDLESS.bossEvery) + 1 : 0);
       const bad = [];
-      if (!SKIP_CLOCK && t > real * L.clockSlack + L.clockFlat) bad.push('time');
+      // 피의 욕망으로 더 흐른 게임 시간(lust)은 인정하되, 판 내내 켜져 있는 경우(실제 시간 × 0.5)를 넘지 못한다
+      const lust = Math.min(Number.isFinite(b.lust) && b.lust > 0 ? b.lust : 0, real * 0.5);
+      if (!SKIP_CLOCK && t > real * L.clockSlack + L.clockFlat + lust) bad.push('time');
       if (t < run.t || kills < run.kills || gold < run.gold || bossKills < run.boss_kills) bad.push('rewind');
       if (kills > t * L.killsPerSec + L.killsFlat) bad.push('kills');
-      if (gold > t * L.goldPerSec + L.goldFlat) bad.push('gold');
+      if (gold > (t * L.goldPerSec + L.goldFlat) * SD.goldMul(run.stage, run.difficulty)) bad.push('gold');
       if (bossKills > maxBosses) bad.push('bosses');
       if (victory && run.clear_t == null && t < st.duration - 5) bad.push('victory');
       if (bad.length) {

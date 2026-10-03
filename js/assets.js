@@ -9,7 +9,9 @@ G.ICON_KEYS = [
   'pickup', 'projectile', 'rayoffrost', 'regen', 'reroll', 'shatter', 'shiftingpower', 'skeleton', 'soulstone', 'speed', 'splinter',
   'splinterstorm', 'splittingice', 'stamina', 'thermalvoid', 'timewarp', 'waterelemental', 'winterschill', 'xp', 'zombie',
   // 지속 피해 표시 (적 머리 위)
-  'corruption', 'agony', 'unstableaffliction', 'siphonlife', 'haunt',
+  'corruption', 'agony', 'unstableaffliction', 'siphonlife', 'haunt', 'seedofcorruption',
+  // 전리품
+  'bloodlust',
 ];
 G.icon = k => `assets/icons/${k}.jpg`;
 G.IMG = {};

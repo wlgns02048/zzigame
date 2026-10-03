@@ -3,7 +3,10 @@
 const KEYMAP = { KeyQ: 'Q', KeyE: 'E', KeyR: 'R', KeyF: 'F', KeyT: 'T', Space: 'SPACE', Digit1: '1', Digit2: '2', Digit3: '3', Digit4: '4', Digit5: '5', Digit6: '6' };
 
 G.timeScale = Math.max(1, Math.min(20, +(G.params.get('ts') || 1)));
-G.stats = { kills: 0, gold: 0, banked: 0 };
+G.stats = { kills: 0, gold: 0, banked: 0, lust: 0 };
+// 피의 욕망 (드문 전리품): 실제 시간 dur초 동안 게임 전체가 speed배로 흐른다. stats.lust = 그 덕에 더 흐른 게임 시간 (서버 시계 검증용)
+G.LUST = { speed: 1.5, dur: 40 };
+G.lustT = 0;
 G.chests = [];
 
 G.init = async () => {
@@ -27,7 +30,14 @@ G.init = async () => {
     requestAnimationFrame(frame);
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = Math.max(last, now);
     try {
-      if (G.state === 'play' && !G.paused && !G.simulating) { for (let i = 0; i < G.timeScale; i++) G.update(dt); }
+      if (G.state === 'play' && !G.paused && !G.simulating) {
+        for (let i = 0; i < G.timeScale; i++) {
+          G.update(dt);
+          // 피의 욕망: 남는 배속만큼 한 번 더 진행 (한 번에 큰 dt로 돌리면 빠른 투사체가 적을 뚫고 지나갈 수 있어서)
+          if (G.lustT > 0 && G.state === 'play' && !G.paused) { const x = dt * (G.LUST.speed - 1); G.update(x); G.stats.lust += x; }
+        }
+        G.lustT = Math.max(0, G.lustT - dt);
+      }
       else if (G.state === 'menu') { G.cam.x += dt * 25; G.cam.y += dt * 8; }
       if (!G.simulating) G.R.draw(dt);
       G.UI.update(dt);
@@ -77,7 +87,7 @@ G.startRun = (cls, stage, diff) => {
   stage ||= G.selectedStage || G.params.get('stage') || 'icecrown';
   diff ||= G.selectedDiff || G.params.get('diff') || 'normal';
   Object.assign(G, { t: 0, enemies: [], projs: [], eprojs: [], zones: [], tele: [], pickups: [], parts: [], texts: [], rings: [], pets: [], images: [], delayed: [], chests: [] });
-  G.stats = { kills: 0, gold: 0, banked: 0 };
+  G.stats = { kills: 0, gold: 0, banked: 0, lust: 0 }; G.lustT = 0;
   G.Aim.reset();
   G.state = 'play'; G.paused = false;
   G.player = G.P.create(cls);
@@ -155,9 +165,10 @@ G.updatePickups = dt => {
       if (d < 18) {
         k.done = true;
         if (k.kind === 'xp') { G.P.gainXp(k.v); G.Audio.play('xp'); }
-        else if (k.kind === 'gold') { G.stats.gold += k.v * (1 + G.Meta.lib('luck') * 0.1); G.Audio.play('gold'); }
+        else if (k.kind === 'gold') { G.stats.gold += k.v * (1 + G.Meta.lib('luck') * 0.1) * G.Waves.goldMul; G.Audio.play('gold'); } // 스테이지 · 난이도 배율
         else if (k.kind === 'food') { G.P.heal(p.maxHp * 0.3); G.Audio.play('buff', 0.5); }
-        else if (k.kind === 'magnet') { for (const o of G.pickups) if (o.kind === 'xp') o.mag = true; G.Audio.play('orb'); }
+        else if (k.kind === 'magnet') { for (const o of G.pickups) o.mag = true; G.Audio.play('orb'); } // 경험치 · 골드 · 음식 · 상자 등 바닥의 모든 전리품
+        else if (k.kind === 'bloodlust') { G.lustT = G.LUST.dur; G.fx.text(p.x, p.y - 44, '피의 욕망!', '#ff5040', 16); G.Audio.play('buff'); }
         else if (k.kind === 'chest') { G.chests.push(k.v); G.Audio.play('chest'); }
       }
     }

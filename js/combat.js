@@ -124,6 +124,7 @@ G.killEnemy = (e, frozen) => {
     if (Math.random() < 0.025 * gm) G.dropPickup('gold', e.x, e.y, U.randi(1, 3));
     if (Math.random() < 0.005) G.dropPickup('food', e.x, e.y, 1);
     if (Math.random() < 0.0035) G.dropPickup('magnet', e.x, e.y, 1);
+    else if (Math.random() < 0.0006) G.dropPickup('bloodlust', e.x, e.y, 1); // 피의 욕망: 10분 판에 한두 번
   }
   G.cls().onKill(e, G.player);
   G.Waves.onKill(e);

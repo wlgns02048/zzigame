@@ -39,28 +39,34 @@ G.Dots = {
   },
 
   // ---------- 표시: 누가 어떤 지속 피해에 걸렸는지 ----------
-  // 발밑: 걸린 지속 피해 색으로 나눈 고리 (멀리서도 구분)
+  // 부패의 씨앗은 지속 피해가 아니지만 같은 자리에 표시 (터질 때까지 남은 시간)
+  seedLeft(e) { return e.seedEnd > G.t ? (e.seedEnd - G.t) / e.seedDur : 0; },
+  marks(e) { return !!(e.dots || e.haunted > G.t || e.seedEnd > G.t); },
+  // 발밑: 걸린 지속 피해 색으로 나눈 고리 (멀리서도 구분). 씨앗 칸은 터질 때가 가까울수록 빨리 깜빡인다
   drawRing(c, e) {
-    const ids = Object.keys(e.dots), n = ids.length, y = e.y + e.r * 0.8, rx = e.r * 1.25 + 3, ry = e.r * 0.5 + 2;
+    const ids = Object.keys(e.dots || {}), seed = this.seedLeft(e); if (seed) ids.push('seed');
+    if (!ids.length) return;
+    const n = ids.length, y = e.y + e.r * 0.8, rx = e.r * 1.25 + 3, ry = e.r * 0.5 + 2;
     const seg = Math.PI * 2 / n, gap = n > 1 ? 0.25 : 0, rot = G.t * 1.5;
     c.lineWidth = 3;
     ids.forEach((id, i) => {
-      c.strokeStyle = `rgba(${e.dots[id].color},0.9)`;
+      c.strokeStyle = id === 'seed' ? `rgba(${SEED_RGB},${0.6 + 0.4 * Math.sin(G.t * (8 + 16 * (1 - seed)))})` : `rgba(${e.dots[id].color},0.9)`;
       c.beginPath(); c.ellipse(e.x, y, rx, ry, 0, rot + i * seg, rot + (i + 1) * seg - gap); c.stroke();
     });
   },
-  // 머리 위: 지속 피해 아이콘 + 남은 시간 막대 + 중첩 수 (유령 출몰 표시 포함)
+  // 머리 위: 지속 피해 아이콘 + 남은 시간 막대 + 중첩 수 (유령 출몰 · 부패의 씨앗 표시 포함)
   drawIcons(c, e, top) {
     const ids = Object.keys(e.dots || {}); if (e.haunted > G.t) ids.push('haunt');
+    const seed = this.seedLeft(e); if (seed) ids.push('seed');
     if (!ids.length) return;
     const sz = 14, gap = 2;
     let x = e.x - (ids.length * (sz + gap) - gap) / 2;
     c.font = 'bold 10px sans-serif'; c.textAlign = 'right'; c.textBaseline = 'alphabetic';
     for (const id of ids) {
-      const d = e.dots && e.dots[id], col = d ? d.color : '110,130,255', img = G.IMG[d ? d.icon : 'haunt'];
+      const d = e.dots && e.dots[id], col = d ? d.color : id === 'seed' ? SEED_RGB : '110,130,255', img = G.IMG[d ? d.icon : id === 'seed' ? 'seedofcorruption' : 'haunt'];
       c.fillStyle = `rgb(${col})`; c.fillRect(x - 1, top - 1, sz + 2, sz + 2);
       if (img && img.complete && img.naturalWidth) c.drawImage(img, x, top, sz, sz);
-      const f = d ? Math.max(0, 1 - d.t / d.dur) : Math.max(0, (e.haunted - G.t) / 10);
+      const f = d ? Math.max(0, 1 - d.t / d.dur) : id === 'seed' ? seed : Math.max(0, (e.haunted - G.t) / 10);
       c.fillStyle = '#000'; c.fillRect(x - 1, top + sz + 1, sz + 2, 3);
       c.fillStyle = `rgb(${col})`; c.fillRect(x, top + sz + 1.5, sz * f, 2);
       const n = d ? d.uaN || d.stack : 0;
@@ -71,6 +77,7 @@ G.Dots = {
   },
 };
 
+const SEED_RGB = '200,90,255'; // 부패(150,60,220)와 구분되게 밝은 보라
 // 불안정한 고통 중첩: 최대 중첩 · 중첩당 피해 증가 (합연산, 3중첩이면 1.8배)
 const UA_MAX = 3, UA_STEP = 0.4;
 
@@ -365,9 +372,13 @@ Object.assign(G.SKILL_IMPL, {
         const d = G.densestPoint(p.x, p.y, 520, 90), e = d && G.nearestEnemy(d.x, d.y, 120, o => !o.seed);
         if (!e) break;
         e.seed = true; made++;
+        e.seedDur = s.delay; e.seedEnd = G.t + s.delay; // 머리 위 · 발밑 표시용
+        G.fx.burst(e.x, e.y - 10, 8, { rgb: SEED_RGB, sp: 70, size: 9 });
         const R = s.radius * p.stats.area;
+        let done = false;
         const boom = () => {
-          if (e.seedDone) return; e.seedDone = true;
+          if (done) return; done = true;
+          e.seed = false; e.seedEnd = 0; // 터진 뒤 살아남은 적에게는 다시 심을 수 있다
           G.aoe(e.x, e.y, R, s.dmg, 'seedofcorruption', { school: 'shadow' }, o => { if (s.corrupt) G.Dots.apply(o, 'corruption', corruptionOpts(dotStats('corruption'))); });
           G.fx.ring(e.x, e.y, 5, R, 0.4, '150,60,220', 6, 0.3); G.fx.burst(e.x, e.y, 24, { rgb: '150,60,220', sp: 220, size: 12 }); G.Audio.play('explode', 0.5);
         };

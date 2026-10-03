@@ -13,6 +13,7 @@ G.Waves = {
     this.affixes = G.run && G.run.affixes ? G.run.affixes : SD.weeklyAffixes(G.ITEMS.periodKeys().weekly);
     const tr = G.Meta.lib('treasure');
     this.eliteEvery = 65 * (1 - tr * 0.15) / this.k;
+    this.goldMul = SD.goldMul(stageId, diff);
   },
   tt() { return G.t * this.k; },
   affix(a) { return this.endless && this.activeAffixes().includes(a); },
