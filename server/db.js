@@ -147,6 +147,9 @@ module.exports = dataDir => {
     ilvl: 'INTEGER NOT NULL DEFAULT 0', paid_json: "TEXT NOT NULL DEFAULT '{}'",
   });
   db.exec('CREATE INDEX IF NOT EXISTS runs_rank ON runs (stage, difficulty, clear_t)');
+  // 전문화: 캐릭터 = 직업, 전문화는 캐릭터에 저장 (빈 값 = 그 직업의 기본 전문화)
+  ensure('characters', { spec: "TEXT NOT NULL DEFAULT ''" });
+  ensure('runs', { spec: "TEXT NOT NULL DEFAULT ''" });
 
   // 여러 쓰기를 하나로 묶는다 (중간에 실패하면 전부 취소)
   db.tx = fn => {

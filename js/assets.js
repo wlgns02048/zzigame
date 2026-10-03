@@ -9,7 +9,9 @@ G.ICON_KEYS = [
   'pickup', 'projectile', 'rayoffrost', 'regen', 'reroll', 'shatter', 'shiftingpower', 'skeleton', 'soulstone', 'speed', 'splinter',
   'splinterstorm', 'splittingice', 'stamina', 'thermalvoid', 'timewarp', 'waterelemental', 'winterschill', 'xp', 'zombie',
   // 지속 피해 표시 (적 머리 위)
-  'corruption', 'agony', 'unstableaffliction', 'siphonlife', 'haunt', 'seedofcorruption',
+  'corruption', 'agony', 'unstableaffliction', 'siphonlife', 'haunt', 'seedofcorruption', 'blackarrow',
+  // 사냥꾼 표식 (적 머리 위)
+  'eagle', 'huntersmark', 'sentinel',
   // 전리품
   'bloodlust',
 ];

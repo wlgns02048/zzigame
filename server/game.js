@@ -9,7 +9,7 @@ module.exports = ({ db, route, fail, limit, readJson, STATIC_DIR, log }) => {
   const data = f => require(path.join(STATIC_DIR, 'js', 'data', f));
   const TALENTS = data('talents.js'), ITEMS = data('items.js'), SD = data('stages.js');
   const { STAGES, DIFFICULTY, ENDLESS } = SD;
-  const CLASSES = ['mage', 'warlock'];
+  const CLASSES = Object.keys(ITEMS.CLASS_GEAR);
   const rng = () => crypto.randomInt(0, 2 ** 32) / 2 ** 32;
   // 런 보고 검증 한도 — 정상 플레이 최고치(골드 0.8/초, 처치 8.5/초)의 여유분. 엔드리스 후반 밀도까지 감안
   const RUN_LIMITS = { goldPerSec: 4, goldFlat: 300, killsPerSec: 30, killsFlat: 200, clockSlack: 1.1, clockFlat: 20 };
@@ -151,9 +151,11 @@ module.exports = ({ db, route, fail, limit, readJson, STATIC_DIR, log }) => {
     const gacha = {};
     for (const r of db.prepare('SELECT kind, pity, pulls FROM gacha_state WHERE user_id = ?').all(uid)) gacha[r.kind] = { pity: r.pity, pulls: r.pulls };
     const pr = db.prepare('SELECT best_time, wins FROM profiles WHERE user_id = ?').get(uid) || { best_time: 0, wins: 0 };
+    const chars = db.prepare('SELECT cls, spec FROM characters WHERE user_id = ? ORDER BY created_at').all(uid);
     return {
       wallet: getWallet(uid),
-      characters: db.prepare('SELECT cls FROM characters WHERE user_id = ? ORDER BY created_at').all(uid).map(r => r.cls),
+      characters: chars.map(r => r.cls),
+      specs: Object.fromEntries(chars.map(r => [r.cls, ITEMS.specOf(r.cls, r.spec)])),
       talents: talentView(uid),
       items: db.prepare('SELECT * FROM items WHERE user_id = ? ORDER BY id').all(uid).map(itemRow),
       stacks, progress, gacha, quests: questView(uid), vault: vaultView(uid),
@@ -173,14 +175,27 @@ module.exports = ({ db, route, fail, limit, readJson, STATIC_DIR, log }) => {
   route('POST', '/api/characters', async (req, u) => {
     const { cls } = await readJson(req);
     if (!CLASSES.includes(cls)) fail(400, '알 수 없는 직업입니다.');
-    db.prepare('INSERT OR IGNORE INTO characters (user_id, cls, created_at) VALUES (?, ?, ?)').run(u.id, cls, Date.now());
+    db.prepare('INSERT OR IGNORE INTO characters (user_id, cls, created_at, spec) VALUES (?, ?, ?, ?)').run(u.id, cls, Date.now(), ITEMS.defaultSpec(cls));
     return ok(u.id);
   }, { auth: true });
+  // 전문화 전환: 같은 장비의 주 능력치 · 특성 트리가 바뀐다
+  route('POST', '/api/characters/spec', async (req, u) => {
+    const { cls, spec } = await readJson(req);
+    requireChar(u.id, cls);
+    if (!ITEMS.SPECS[spec] || ITEMS.SPECS[spec].cls !== cls) fail(400, '이 직업의 전문화가 아닙니다.');
+    db.prepare('UPDATE characters SET spec = ? WHERE user_id = ? AND cls = ?').run(spec, u.id, cls);
+    return ok(u.id);
+  }, { auth: true });
+  const charSpec = (uid, cls) => { const r = db.prepare('SELECT spec FROM characters WHERE user_id = ? AND cls = ?').get(uid, cls); return ITEMS.specOf(cls, r && r.spec); };
 
   // ---------- 특성 ----------
+  // 트리 = 전문화의 특성 트리. 그 전문화를 가진 직업 캐릭터가 있어야 한다
   const treeOwned = (uid, tree) => {
     if (!TALENTS.TREES[tree]) fail(400, '알 수 없는 특성 트리입니다.');
-    if (tree !== 'library') requireChar(uid, tree);
+    if (tree === 'library') return;
+    const sp = Object.values(ITEMS.SPECS).find(s => s.tree === tree);
+    if (!sp) fail(400, '알 수 없는 특성 트리입니다.');
+    requireChar(uid, sp.cls);
   };
   route('POST', '/api/talents/point', async (req, u) => {
     const { tree } = await readJson(req);
@@ -228,6 +243,8 @@ module.exports = ({ db, route, fail, limit, readJson, STATIC_DIR, log }) => {
     return db.tx(() => {
       const it = getItem(u.id, itemId);
       if (!ITEMS.canEquip(slot, it.slot)) fail(400, '그 칸에 착용할 수 없는 아이템입니다.');
+      if (!ITEMS.canUse(cls, it)) fail(400, '이 직업은 착용할 수 없는 아이템입니다.');
+      if (!ITEMS.canEquipFor(cls, slot, it)) fail(400, '쌍수를 쓸 수 없는 직업은 보조무기 칸에 한손 무기를 낄 수 없습니다.');
       if (it.equip) fail(400, '이미 착용 중인 아이템입니다.');
       const unequip = s => db.prepare('UPDATE items SET equip_cls = NULL, equip_slot = NULL WHERE user_id = ? AND equip_cls = ? AND equip_slot = ?').run(u.id, cls, s);
       unequip(slot);
@@ -347,8 +364,8 @@ module.exports = ({ db, route, fail, limit, readJson, STATIC_DIR, log }) => {
     if (!DIFFICULTY[difficulty]) fail(400, '알 수 없는 난이도입니다.');
     if (!stageUnlocked(u.id, stage, difficulty)) fail(403, '아직 열리지 않은 스테이지입니다.');
     const id = crypto.randomBytes(16).toString('base64url'), now = Date.now();
-    db.prepare('INSERT INTO runs (id, user_id, cls, stage, difficulty, ilvl, started_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(id, u.id, cls, stage, difficulty, equippedIlvl(u.id, cls), now, now);
+    db.prepare('INSERT INTO runs (id, user_id, cls, spec, stage, difficulty, ilvl, started_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(id, u.id, cls, charSpec(u.id, cls), stage, difficulty, equippedIlvl(u.id, cls), now, now);
     return { runId: id, affixes: SD.weeklyAffixes(ITEMS.periodKeys().weekly) };
   }, { auth: true });
 

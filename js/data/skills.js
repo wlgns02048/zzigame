@@ -191,20 +191,20 @@ G.SKILLS = {
   },
 
   // ================= 특성/능력치 =================
-  arcaneint: { name: '신비한 지능', icon: 'arcaneint', alt: { warlock: ['어둠의 지식', 'shadowmastery'] }, kind: 'passive', max: 5, val: 8, unit: '%', desc: v => `주문력 +${v}%`, apply: (st, v) => (st.dmg += v / 100) },
+  arcaneint: { name: '신비한 지능', icon: 'arcaneint', alt: { warlock: ['어둠의 지식', 'shadowmastery'], hunter: ['사냥꾼의 기술', 'rangedspec'] }, kind: 'passive', max: 5, val: 8, unit: '%', desc: v => `${G.player && G.player.cls === 'hunter' ? '공격력' : '주문력'} +${v}%`, apply: (st, v) => (st.dmg += v / 100) },
   haste: { name: '가속', icon: 'haste', kind: 'passive', max: 5, val: 6, unit: '%', desc: v => `시전 속도 및 재사용 속도 +${v}%` + (G.player && G.player.cls === 'warlock' ? ', 지속 피해 주기 빨라짐' : ''), apply: (st, v) => (st.haste += v / 100) },
   crit: { name: '치명타', icon: 'crit', kind: 'passive', max: 5, val: 4, unit: '%', desc: v => `치명타 확률 +${v}%`, apply: (st, v) => (st.crit += v / 100) },
   stamina: { name: '체력', icon: 'stamina', kind: 'passive', max: 5, val: 15, unit: '%', desc: v => `최대 생명력 +${v}%`, apply: (st, v) => (st.hpMul += v / 100) },
   speed: { name: '질주', icon: 'speed', kind: 'passive', max: 4, val: 7, unit: '%', desc: v => `이동 속도 +${v}%`, apply: (st, v) => (st.speedMul += v / 100) },
   pickup: { name: '마력 흡수', icon: 'pickup', kind: 'passive', max: 4, val: 25, unit: '%', desc: v => `획득 반경 +${v}%`, apply: (st, v) => (st.pickupMul += v / 100) },
-  area: { name: '북극의 바람', icon: 'area', alt: { warlock: ['음산한 손길', 'grimreach'] }, kind: 'passive', max: 5, val: 10, unit: '%', desc: v => `주문 범위 +${v}%`, apply: (st, v) => (st.area += v / 100) },
+  area: { name: '북극의 바람', icon: 'area', alt: { warlock: ['음산한 손길', 'grimreach'], hunter: ['매의 눈', 'hawkeye'] }, kind: 'passive', max: 5, val: 10, unit: '%', desc: v => `주문 범위 +${v}%`, apply: (st, v) => (st.area += v / 100) },
   // 흑마법사는 지속시간 대신 '끝없는 저주'(지속 피해 주기, classes/warlock.js)를 받는다: 졸개는 지속 피해가 끝나기 전에 죽어 지속시간 증가가 거의 버려진다
-  duration: { name: '영원한 겨울', icon: 'duration', req: p => p.cls !== 'warlock', kind: 'passive', max: 5, val: 12, unit: '%', desc: v => `주문 지속시간 +${v}%`, apply: (st, v) => (st.dur += v / 100) },
-  regen: { name: '창조된 물', icon: 'regen', alt: { warlock: ['생명력 전환', 'lifetap'] }, kind: 'passive', max: 5, val: 0.8, unit: '', desc: v => `초당 생명력 회복 +${v.toFixed(1)}`, apply: (st, v) => (st.regen += v) },
+  duration: { name: '영원한 겨울', icon: 'duration', alt: { hunter: ['끈기', 'duration'] }, req: p => p.cls !== 'warlock', kind: 'passive', max: 5, val: 12, unit: '%', desc: v => `주문 지속시간 +${v}%`, apply: (st, v) => (st.dur += v / 100) },
+  regen: { name: '창조된 물', icon: 'regen', alt: { warlock: ['생명력 전환', 'lifetap'], hunter: ['자연의 치유', 'exhilaration'] }, kind: 'passive', max: 5, val: 0.8, unit: '', desc: v => `초당 생명력 회복 +${v.toFixed(1)}`, apply: (st, v) => (st.regen += v) },
   frostarmor: { name: '서리 갑옷', icon: 'frostarmor', kind: 'passive', max: 5, val: 6, unit: '%', desc: v => `받는 피해 -${v}%`, apply: (st, v) => (st.armor += v / 100) },
   luck: { name: '행운', icon: 'luck', kind: 'passive', max: 3, val: 15, unit: '%', desc: v => `높은 등급 선택지 확률 +${v}%`, apply: (st, v) => (st.luck += v / 100) },
   icefloes: { name: '얼음발', icon: 'icefloes', kind: 'passive', max: 2, val: 50, unit: '%', fixed: true, desc: v => `이동 중 시전 속도 감소 효과 -${v}%`, apply: (st, v) => (st.movePenalty *= 1 - v / 100) },
-  projectile: { name: '주문 분열', icon: 'projectile', kind: 'passive', max: 2, val: 1, unit: '', fixed: true, rarity: 3, desc: () => `모든 투사체 주문의 투사체 +1`, apply: (st, v) => (st.proj += v) },
+  projectile: { name: '주문 분열', icon: 'projectile', alt: { hunter: ['다중 화살', 'multishot'] }, kind: 'passive', max: 2, val: 1, unit: '', fixed: true, rarity: 3, desc: () => `모든 투사체 주문의 투사체 +1`, apply: (st, v) => (st.proj += v) },
   fingersoffrost: {
     name: '서리의 손가락', icon: 'fingersoffrost', kind: 'passive', max: 3, val: 12, unit: '%', fixed: true, req: p => !!p.skills.icelance,
     desc: v => `얼음화살/구슬/광선 적중 시 ${v}% 확률로 발동: 다음 얼음창이 즉시 시전되며 얼어붙은 대상처럼 취급`, apply: (st, v) => (st.fof += v / 100),

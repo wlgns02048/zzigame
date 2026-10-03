@@ -655,7 +655,7 @@ function drawDarkglare(c, g) {
 const WL_DEFENSIVE = ['unendingresolve', 'healthstone', 'demoniccircle', 'darksoul', 'deathcoil'];
 G.CLASSES.warlock = {
   id: 'warlock', name: '고통 흑마법사', className: '흑마법사', spec: '고통', color: '#8788ee', icon: 'classwarlock',
-  starter: 'shadowbolt', masteryText: '특화: 지속 피해 +2%/점',
+  starter: 'shadowbolt', bar: 'shards', masteryText: '특화: 지속 피해 +2%/점',
 
   init(p) { Object.assign(p, { siphons: [], shards: 0, shardMax: 5, demons: [], drains: null, nightfall: 0, nfT: 0, dsT: 0, drT: 0, dr: 0, circle: null, glare: null }); },
   recalc(st, p) {

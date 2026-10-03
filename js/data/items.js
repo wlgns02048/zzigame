@@ -23,8 +23,12 @@
 
   // ---------- 능력치 ----------
   // 수치(rating) → 효과. 2차 능력치는 와우처럼 30% 이후 효율 감소.
+  // 주 능력치(지능 · 민첩 · 힘)는 전문화가 쓰는 것 하나만 적용된다 (한밤 방식). main = 보석 · 마법부여의 '주 능력치' (항상 적용)
   const STATS = {
     int: { name: '지능', short: '지능', primary: true },
+    agi: { name: '민첩', short: '민첩', primary: true },
+    str: { name: '힘', short: '힘', primary: true },
+    main: { name: '주 능력치', short: '주능', primary: true },
     sta: { name: '체력', short: '체력', primary: true },
     crit: { name: '치명타', short: '치명', per: 25 },     // 25 = 1%
     haste: { name: '가속', short: '가속', per: 25 },
@@ -39,9 +43,10 @@
     for (const [cap, eff] of DR) { if (pct <= prev) break; out += (Math.min(pct, cap) - prev) * eff; prev = cap; }
     return out;
   };
-  // 장비 능력치 합 → 게임 수치
-  const derive = t => ({
-    dmg: (t.int || 0) * 0.0012,                       // 지능 1당 주문력 +0.12%
+  const PRIMARY = ['int', 'agi', 'str'];
+  // 장비 능력치 합 → 게임 수치. primary: 전문화의 주 능력치 (나머지 주 능력치는 버려진다)
+  const derive = (t, primary = 'int') => ({
+    dmg: ((t[primary] || 0) + (t.main || 0)) * 0.0012, // 주 능력치 1당 공격력/주문력 +0.12%
     hp: (t.sta || 0) * 0.4,                           // 체력 1당 생명력 +0.4
     crit: diminish((t.crit || 0) / STATS.crit.per) / 100,
     haste: diminish((t.haste || 0) / STATS.haste.per) / 100,
@@ -49,33 +54,111 @@
     vers: diminish((t.vers || 0) / STATS.vers.per) / 100,
   });
 
+  // ---------- 방어구 종류 ----------
+  // 와우처럼 자기 종류와 그보다 낮은 종류만 입을 수 있다. prim: 붙는 주 능력치 (전부 같은 양, 전문화가 쓰는 것 하나만 적용)
+  const ARMOR = {
+    cloth: { name: '천', rank: 1, prim: ['int'] },
+    leather: { name: '가죽', rank: 2, prim: ['agi', 'int'] },
+    mail: { name: '사슬', rank: 3, prim: ['agi', 'int'] },
+    plate: { name: '판금', rank: 4, prim: ['str', 'int'] },
+  };
+  const ARMOR_TYPES = Object.keys(ARMOR);
+
   // ---------- 부위 ----------
-  // mod: 아이템 레벨 대비 능력치 예산 비율 (와우 부위 계수)
+  // mod: 아이템 레벨 대비 능력치 예산 비율 (와우 부위 계수). armored: 방어구 종류가 있는 부위 (bases는 종류별 이름)
+  // prim: 주 능력치 — 'armor'면 방어구 종류를 따라 전부, 배열이면 그중 하나를 굴림, 'all'이면 셋 다(망토), 없으면 주 능력치 없음(목 · 반지)
+  // 무기 hand: two 양손 · one 한손(주무기/보조무기 어디든) · main 주무기 전용 · off 보조무기 전용
   const SLOTS = [
-    { id: 'head', name: '머리', mod: 1, icon: 'eq_head', bases: ['두건', '관', '왕관'] },
+    { id: 'head', name: '머리', mod: 1, icon: 'eq_head', armored: true, prim: 'armor',
+      bases: { cloth: ['두건', '관', '왕관'], leather: ['가죽 투구', '가면'], mail: ['사슬 투구', '사슬 두건'], plate: ['판금 투구', '대투구'] } },
     { id: 'neck', name: '목', mod: 0.56, icon: 'eq_neck', bases: ['목걸이', '펜던트', '목장식'] },
-    { id: 'shoulder', name: '어깨', mod: 0.77, icon: 'eq_shoulder', bases: ['어깨보호구', '어깨덧옷'] },
-    { id: 'back', name: '등', mod: 0.56, icon: 'eq_back', bases: ['망토', '외투'] },
-    { id: 'chest', name: '가슴', mod: 1, icon: 'eq_chest', bases: ['로브', '예복', '조끼'] },
-    { id: 'wrist', name: '손목', mod: 0.56, icon: 'eq_wrist', bases: ['손목보호구', '팔찌'] },
-    { id: 'hands', name: '손', mod: 0.77, icon: 'eq_hands', bases: ['장갑', '손싸개'] },
-    { id: 'waist', name: '허리', mod: 0.77, icon: 'eq_waist', bases: ['허리띠', '장식띠'] },
-    { id: 'legs', name: '다리', mod: 1, icon: 'eq_legs', bases: ['바지', '다리보호구'] },
-    { id: 'feet', name: '발', mod: 0.77, icon: 'eq_feet', bases: ['신발', '장화'] },
+    { id: 'shoulder', name: '어깨', mod: 0.77, icon: 'eq_shoulder', armored: true, prim: 'armor',
+      bases: { cloth: ['어깨보호구', '어깨덧옷'], leather: ['가죽 어깨보호대', '어깨덮개'], mail: ['사슬 어깨갑옷', '미늘 견갑'], plate: ['판금 견갑', '어깨갑옷'] } },
+    { id: 'back', name: '등', mod: 0.56, icon: 'eq_back', prim: 'all', bases: ['망토', '외투'] },
+    { id: 'chest', name: '가슴', mod: 1, icon: 'eq_chest', armored: true, prim: 'armor',
+      bases: { cloth: ['로브', '예복'], leather: ['조끼', '가죽 튜닉'], mail: ['사슬 갑옷', '미늘 갑옷'], plate: ['흉갑', '판금 갑옷'] } },
+    { id: 'wrist', name: '손목', mod: 0.56, icon: 'eq_wrist', armored: true, prim: 'armor',
+      bases: { cloth: ['손목보호구', '팔찌'], leather: ['가죽 손목보호구', '가죽 띠'], mail: ['사슬 팔보호구', '사슬 손목보호구'], plate: ['판금 손목보호구', '팔갑옷'] } },
+    { id: 'hands', name: '손', mod: 0.77, icon: 'eq_hands', armored: true, prim: 'armor',
+      bases: { cloth: ['장갑', '손싸개'], leather: ['가죽 장갑', '손보호구'], mail: ['사슬 장갑', '미늘 장갑'], plate: ['건틀릿', '판금 장갑'] } },
+    { id: 'waist', name: '허리', mod: 0.77, icon: 'eq_waist', armored: true, prim: 'armor',
+      bases: { cloth: ['허리띠', '장식띠'], leather: ['가죽 허리띠', '혁대'], mail: ['사슬 허리띠', '사슬 허리보호구'], plate: ['판금 허리갑옷', '판금 허리띠'] } },
+    { id: 'legs', name: '다리', mod: 1, icon: 'eq_legs', armored: true, prim: 'armor',
+      bases: { cloth: ['바지', '다리보호구'], leather: ['가죽 바지', '가죽 다리보호구'], mail: ['사슬 다리보호구', '미늘 바지'], plate: ['판금 다리갑옷', '다리갑옷'] } },
+    { id: 'feet', name: '발', mod: 0.77, icon: 'eq_feet', armored: true, prim: 'armor',
+      bases: { cloth: ['신발', '덧신'], leather: ['가죽 장화', '사냥 장화'], mail: ['사슬 장화', '미늘 장화'], plate: ['판금 장화', '철갑화'] } },
     { id: 'finger', name: '손가락', mod: 0.56, icon: 'eq_finger', bases: ['반지', '인장 반지'] },
-    { id: 'trinket', name: '장신구', mod: 0.7, icon: 'eq_trinket', bases: ['부적', '우상', '유물'] },
-    { id: 'staff', name: '양손 무기', mod: 2, icon: 'eq_staff', bases: ['지팡이'], twoHand: true },
-    { id: 'dagger', name: '한손 무기', mod: 1.1, icon: 'eq_dagger', bases: ['단검', '마법봉'] },
-    { id: 'offhand', name: '보조장비', mod: 0.9, icon: 'eq_offhand', bases: ['마법서', '수정구', '해골'] },
+    { id: 'trinket', name: '장신구', mod: 0.7, icon: 'eq_trinket', prim: ['int', 'agi', 'str'], bases: ['부적', '우상', '유물'] },
+    // 무기 (양손)
+    { id: 'staff', name: '지팡이', hand: 'two', mod: 2, icon: 'eq_staff', prim: ['int', 'int', 'agi'], bases: ['지팡이', '장대'] },
+    { id: 'polearm', name: '장창', hand: 'two', mod: 2, icon: 'eq_polearm', prim: ['agi', 'str'], bases: ['미늘창', '창'] },
+    { id: 'axe2h', name: '양손 도끼', hand: 'two', mod: 2, icon: 'eq_axe2h', prim: ['str'], bases: ['대도끼', '전투도끼'] },
+    { id: 'sword2h', name: '양손 검', hand: 'two', mod: 2, icon: 'eq_sword2h', prim: ['str'], bases: ['대검', '양손검'] },
+    { id: 'mace2h', name: '양손 둔기', hand: 'two', mod: 2, icon: 'eq_mace2h', prim: ['str'], bases: ['전쟁망치', '대형 철퇴'] },
+    { id: 'bow', name: '활', hand: 'two', ranged: true, mod: 2, icon: 'eq_bow', prim: ['agi'], bases: ['장궁', '단궁', '활'] },
+    { id: 'gun', name: '총', hand: 'two', ranged: true, mod: 2, icon: 'eq_gun', prim: ['agi'], bases: ['소총', '나팔총', '사냥총'] },
+    { id: 'crossbow', name: '석궁', hand: 'two', ranged: true, mod: 2, icon: 'eq_crossbow', prim: ['agi'], bases: ['석궁', '중석궁'] },
+    // 무기 (한손) — 기존 아이템은 dagger에 마법봉도 섞여 있다
+    { id: 'dagger', name: '단검', hand: 'one', mod: 1, icon: 'eq_dagger', prim: ['int', 'agi'], bases: ['단검', '비수'] },
+    { id: 'sword1h', name: '한손 검', hand: 'one', mod: 1, icon: 'eq_sword1h', prim: ['int', 'agi', 'str'], bases: ['장검', '세검', '검'] },
+    { id: 'axe1h', name: '한손 도끼', hand: 'one', mod: 1, icon: 'eq_axe1h', prim: ['agi', 'str'], bases: ['손도끼', '도끼'] },
+    { id: 'mace1h', name: '한손 둔기', hand: 'one', mod: 1, icon: 'eq_mace1h', prim: ['str', 'int'], bases: ['철퇴', '망치'] },
+    { id: 'fist', name: '장착 무기', hand: 'one', mod: 1, icon: 'eq_fist', prim: ['agi'], bases: ['갈퀴손', '손톱'] },
+    { id: 'wand', name: '마법봉', hand: 'main', mod: 1, icon: 'eq_wand', prim: ['int'], bases: ['마법봉', '마술봉'] },
+    // 보조무기 칸 전용
+    { id: 'offhand', name: '보조장비', hand: 'off', mod: 1, icon: 'eq_offhand', prim: ['int'], bases: ['마법서', '수정구', '해골'] },
+    { id: 'shield', name: '방패', hand: 'off', mod: 1, icon: 'eq_shield', prim: ['str', 'int'], pair: true, bases: ['방패', '대방패', '원형 방패'] },
   ];
+  for (const s of SLOTS) { if (s.hand) s.weapon = true; if (s.hand === 'two') s.twoHand = true; }
   const SLOT = Object.fromEntries(SLOTS.map(s => [s.id, s]));
+  const WEAPONS = SLOTS.filter(s => s.weapon).map(s => s.id);
+  const ARMORED = SLOTS.filter(s => s.armored).map(s => s.id);
   // 착용 칸 16개 → 들어갈 수 있는 부위
   const EQUIP = [
     ['head', 'head'], ['neck', 'neck'], ['shoulder', 'shoulder'], ['back', 'back'], ['chest', 'chest'], ['wrist', 'wrist'],
     ['hands', 'hands'], ['waist', 'waist'], ['legs', 'legs'], ['feet', 'feet'], ['finger1', 'finger'], ['finger2', 'finger'],
-    ['trinket1', 'trinket'], ['trinket2', 'trinket'], ['mainhand', 'staff|dagger'], ['offhand', 'offhand'],
-  ].map(([id, accepts]) => ({ id, accepts: accepts.split('|'), name: id === 'mainhand' ? '주무기' : id === 'offhand' ? '보조장비' : SLOT[accepts.split('|')[0]].name + (/\d$/.test(id) ? ' ' + id.slice(-1) : '') }));
+    ['trinket1', 'trinket'], ['trinket2', 'trinket'],
+    ['mainhand', WEAPONS.filter(w => SLOT[w].hand !== 'off').join('|')], ['offhand', WEAPONS.filter(w => SLOT[w].hand === 'off' || SLOT[w].hand === 'one').join('|')],
+  ].map(([id, accepts]) => ({ id, accepts: accepts.split('|'), name: id === 'mainhand' ? '주무기' : id === 'offhand' ? '보조무기' : SLOT[accepts.split('|')[0]].name + (/\d$/.test(id) ? ' ' + id.slice(-1) : '') }));
   const canEquip = (eqSlot, itemSlot) => { const e = EQUIP.find(x => x.id === eqSlot); return !!e && e.accepts.includes(itemSlot); };
+
+  // ---------- 직업 · 전문화 ----------
+  // 착용 자격은 직업 단위, 주 능력치는 전문화 단위 (같은 판금 장비가 징벌 성기사에게는 힘, 신성 성기사에게는 지능)
+  // 보조장비(마법서 · 수정구)는 와우처럼 모든 직업이 들 수 있다. dual: 한손 무기를 보조무기 칸에 낄 수 있음(쌍수)
+  const CLASS_GEAR = {
+    mage: { armor: 'cloth', weapons: ['staff', 'dagger', 'sword1h', 'wand', 'offhand'], dual: false },
+    warlock: { armor: 'cloth', weapons: ['staff', 'dagger', 'sword1h', 'wand', 'offhand'], dual: false },
+    hunter: { armor: 'mail', weapons: ['bow', 'gun', 'crossbow', 'polearm', 'staff', 'axe2h', 'sword2h', 'dagger', 'sword1h', 'axe1h', 'fist', 'offhand'], dual: true },
+  };
+  // tree: 직업 특성 트리 id (기존 트리 데이터를 그대로 쓰도록 직업 id와 같게 둔다)
+  const SPECS = {
+    frost: { cls: 'mage', name: '냉기', primary: 'int', tree: 'mage' },
+    affliction: { cls: 'warlock', name: '고통', primary: 'int', tree: 'warlock' },
+    marksmanship: { cls: 'hunter', name: '사격', primary: 'agi', tree: 'hunter' },
+  };
+  const specsOf = cls => Object.keys(SPECS).filter(k => SPECS[k].cls === cls);
+  const defaultSpec = cls => specsOf(cls)[0];
+  const specOf = (cls, spec) => (spec && SPECS[spec] && SPECS[spec].cls === cls ? spec : defaultSpec(cls));
+  const primaryOf = (cls, spec) => { const s = SPECS[specOf(cls, spec)]; return s ? s.primary : 'int'; };
+  const armorOf = it => (SLOT[it.slot] && SLOT[it.slot].armored ? it.armor || 'cloth' : null); // 예전 아이템은 천
+  // 이 직업이 이 아이템을 쓸 수 있는가 (칸 무관)
+  const canUse = (cls, it) => {
+    const g = CLASS_GEAR[cls], s = SLOT[it.slot]; if (!g || !s) return false;
+    if (s.armored) return ARMOR[armorOf(it)].rank <= ARMOR[g.armor].rank;
+    if (s.weapon) return g.weapons.includes(it.slot);
+    return true;
+  };
+  // 이 직업이 이 아이템을 이 칸에 낄 수 있는가 (서버 검증 · 착용 버튼 공용)
+  const canEquipFor = (cls, eqSlot, it) => {
+    if (!canEquip(eqSlot, it.slot) || !canUse(cls, it)) return false;
+    if (eqSlot === 'offhand' && SLOT[it.slot].hand === 'one' && !CLASS_GEAR[cls].dual) return false;
+    return true;
+  };
+  // 방어구 전문화: 방어구 8부위를 모두 자기 방어구 종류로 입으면 주 능력치 +5%
+  const armorSpec = (cls, equipped) => {
+    const g = CLASS_GEAR[cls]; if (!g) return false;
+    return ARMORED.every(sl => equipped[sl] && armorOf(equipped[sl]) === g.armor);
+  };
 
   // 무작위 2차 능력치 조합 → 접미사 (와우 클래식 "~의" 방식)
   const SUFFIXES = [
@@ -91,16 +174,26 @@
     for (const [v, w] of entries) { if ((r -= w) < 0) return v; }
     return entries[entries.length - 1][0];
   };
-  // 예산 → 능력치. 주 능력치 55%(지능 6 : 체력 4), 2차 능력치 45%를 두 가지로 나눔
-  const rollStats = (rng, slotId, quality, ilvl, sec) => {
+  // 붙을 주 능력치 목록. armor: 방어구 종류, prim: 고정 (이름 있는 아이템 · 시뮬레이터)
+  const rollPrims = (rng, slotId, armor, prim) => {
+    const s = SLOT[slotId];
+    if (prim) return [].concat(prim);
+    if (s.prim === 'armor') return ARMOR[armor].prim;
+    if (s.prim === 'all') return PRIMARY;
+    if (!s.prim) return [];
+    return s.pair ? s.prim : [pick(rng, s.prim)];
+  };
+  // 예산 → 능력치. 주 능력치 55%(주 능력치 6 : 체력 4), 2차 능력치 45%를 두 가지로 나눔.
+  // 주 능력치가 여러 개면 전부 같은 양 (하나만 적용되므로). 목 · 반지는 주 능력치 대신 2차 능력치 · 체력이 많다
+  const rollStats = (rng, slotId, quality, ilvl, sec, prims) => {
     const b = ilvl * SLOT[slotId].mod * QUALITY[quality].budget;
     const prim = b * 0.55, second = b * 0.45;
-    const split = 0.4 + rng() * 0.2;
-    const st = { int: Math.round(prim * 0.6), sta: Math.round(prim * 0.4 * 1.5) };
-    st[sec[0]] = Math.round(second * split * 1.2);
-    st[sec[1]] = Math.round(second * (1 - split) * 1.2);
-    if (slotId === 'trinket') { st.int = Math.round(st.int * 1.3); delete st.sta; } // 장신구는 체력 대신 지능 위주
-    if (slotId === 'neck' || slotId === 'finger') st.sta = Math.round((st.sta || 0) * 1.2);
+    const split = 0.4 + rng() * 0.2, sm = prims.length ? 1.2 : 1.8;
+    const st = {};
+    for (const k of prims) st[k] = Math.round(prim * 0.6 * (slotId === 'trinket' ? 1.3 : 1)); // 장신구는 체력 대신 주 능력치 위주
+    if (slotId !== 'trinket') st.sta = Math.round(prim * 0.4 * 1.5 * (prims.length ? 1 : 1.3));
+    st[sec[0]] = Math.round(second * split * sm);
+    st[sec[1]] = Math.round(second * (1 - split) * sm);
     return st;
   };
   const rollSockets = (rng, slotId, quality) => {
@@ -108,21 +201,38 @@
     const n = quality >= 4 ? 2 : quality === 3 ? (rng() < 0.5 ? 1 : 0) : quality === 2 ? (rng() < 0.25 ? 1 : 0) : 0;
     return Array(n).fill('prism');
   };
-  // 무작위 아이템 (접미사형). named가 있으면 그 이름/고정 2차 능력치를 쓴다.
-  const makeItem = (rng, { slot, quality, ilvl, named }) => {
-    slot = slot || pick(rng, SLOTS).id;
+  // 무작위 부위: 착용 칸 16개 중 하나 → 무기 칸이면 그 칸에 들어갈 무기 종류 중 하나.
+  // 내 직업과 상관없이 고른다 (판금 · 힘 · 방패도 나온다). 무기 종류가 많아도 무기만 쏟아지지 않게 칸을 먼저 고른다
+  const rollSlot = rng => { const e = pick(rng, EQUIP); return pick(rng, e.accepts); };
+  const iconFor = (rng, slot, armor, quality) => {
     const s = SLOT[slot];
-    let name, sec, icon = s.icon, effect = null;
-    if (named) {
-      name = named.name; sec = named.stats; icon = named.icon || icon; effect = named.effect || null; quality = named.quality ?? quality;
-    } else {
-      const suf = pick(rng, SUFFIXES);
-      name = `${suf.name} ${pick(rng, s.bases)}`; sec = suf.stats;
-      if (slot === 'staff' || slot === 'dagger') icon = slot === 'staff' ? pick(rng, ['eq_staff', 'eq_staff2']) : pick(rng, ['eq_dagger', 'eq_wand']);
-      else if (quality >= 3 && ['head', 'chest', 'shoulder', 'legs', 'hands', 'finger', 'neck', 'trinket', 'back'].includes(slot)) icon = s.icon + '2';
-    }
-    return { slot, quality, ilvl, name, icon, stats: rollStats(rng, slot, quality, ilvl, sec), sockets: rollSockets(rng, slot, quality), gems: [], enchant: null, effect };
+    if (armor && armor !== 'cloth') return `${s.icon}_${armor}`;
+    if (slot === 'staff') return pick(rng, ['eq_staff', 'eq_staff2']);
+    if (quality >= 3 && ['head', 'chest', 'shoulder', 'legs', 'hands', 'finger', 'neck', 'trinket', 'back'].includes(slot)) return s.icon + '2';
+    return s.icon;
   };
+  // 무작위 아이템 (접미사형). named가 있으면 그 이름/고정 2차 능력치(/방어구 종류 · 주 능력치)를 쓴다.
+  // armor · prim을 주면 그 방어구 종류 · 주 능력치로 만든다 (시뮬레이터 가상 장비)
+  const makeItem = (rng, { slot, quality, ilvl, named, armor, prim }) => {
+    slot = slot || (named && named.slot) || rollSlot(rng);
+    const s = SLOT[slot];
+    if (s.armored) armor = (named && named.armor) || armor || pick(rng, ARMOR_TYPES);
+    else armor = null;
+    let name, sec, icon, effect = null;
+    if (named) {
+      name = named.name; sec = named.stats; icon = named.icon || iconFor(rng, slot, armor, 0); effect = named.effect || null; quality = named.quality ?? quality;
+      prim = named.prim || prim || (s.prim && s.prim !== 'armor' && s.prim !== 'all' && !s.pair ? s.prim[0] : null);
+    } else {
+      const suf = pick(rng, SUFFIXES), bases = s.armored ? s.bases[armor] : s.bases;
+      name = `${suf.name} ${pick(rng, bases)}`; sec = suf.stats; icon = iconFor(rng, slot, armor, quality);
+    }
+    const it = { slot, quality, ilvl, name, icon, stats: rollStats(rng, slot, quality, ilvl, sec, rollPrims(rng, slot, armor, prim)), sockets: rollSockets(rng, slot, quality), gems: [], enchant: null, effect };
+    if (armor) it.armor = armor;
+    return it;
+  };
+  // 아이템 종류 표기 (툴팁 오른쪽): 방어구 종류 · 무기 종류
+  const typeName = it => { const s = SLOT[it.slot], a = armorOf(it); return a ? ARMOR[a].name : s.weapon ? s.name : ''; };
+  const handName = it => { const h = SLOT[it.slot].hand; return h === 'two' ? '양손' : h === 'one' ? '한손' : h === 'main' ? '주장비' : h === 'off' ? '보조장비' : SLOT[it.slot].name; };
 
   // 아이템 하나의 능력치 합 (보석 · 마법부여 포함)
   const itemTotals = it => {
@@ -146,6 +256,10 @@
     { name: '설퍼라스의 눈', slot: 'trinket', icon: 'eyeofsulfuras', stats: ['crit', 'mastery'], effect: { critMul: 0.2 }, effectText: '치명타 피해 +20%' },
     { name: '네파리안의 그림자 망토', slot: 'back', icon: 'eq_back2', stats: ['haste', 'vers'], effect: { dur: 0.15, speedMul: 0.06 }, effectText: '주문 지속시간 +15%, 이동 속도 +6%' },
     { name: '켈투자드의 서리 인장', slot: 'finger', icon: 'eq_finger2', stats: ['crit', 'haste'], effect: { proj: 1 }, effectText: '모든 투사체 주문의 투사체 +1' },
+    { name: '토리달, 별의 격노', slot: 'bow', icon: 'thoridal', stats: ['crit', 'haste'], effect: { haste: 0.06, critMul: 0.1 }, effectText: '가속 +6%, 치명타 피해 +10%' },
+    { name: '로크델라, 고대 수호자의 장궁', slot: 'bow', icon: 'rhokdelar', stats: ['crit', 'mastery'], effect: { proj: 1 }, effectText: '모든 투사체 주문의 투사체 +1' },
+    { name: '천둥분노, 바람추적자의 축복받은 검', slot: 'sword1h', icon: 'thunderfury', prim: 'agi', stats: ['haste', 'vers'], effect: { haste: 0.04, speedMul: 0.05 }, effectText: '가속 +4%, 이동 속도 +5%' },
+    { name: '설퍼라스, 라그나로스의 손', slot: 'mace2h', icon: 'sulfuras', stats: ['crit', 'vers'], effect: { critMul: 0.15, area: 0.05 }, effectText: '치명타 피해 +15%, 범위 +5%' },
   ];
   // 금고 전용
   const VAULT_ITEMS = [
@@ -157,11 +271,12 @@
   // ---------- 보석 ----------
   // 등급(1~4)별 수치. 다색 보석은 두 능력치에 나눔.
   const GEM_COLORS = {
-    red: { name: '루비', stats: { int: 1 }, icon: 'gem_red', label: '붉은' },
+    // main: 전문화의 주 능력치로 들어간다 (예전 지능 보석도 그대로 효과가 있도록 정의만 바꿈)
+    red: { name: '루비', stats: { main: 1 }, icon: 'gem_red', label: '붉은' },
     yellow: { name: '여명석', stats: { crit: 1.5 }, icon: 'gem_yellow', label: '노란' },
     blue: { name: '별사파이어', stats: { sta: 1.5 }, icon: 'gem_blue', label: '푸른' },
-    orange: { name: '귀족 토파즈', stats: { int: 0.5, haste: 0.75 }, icon: 'gem_orange', label: '주황' },
-    purple: { name: '밤의 눈', stats: { int: 0.5, sta: 0.75 }, icon: 'gem_purple', label: '보라' },
+    orange: { name: '귀족 토파즈', stats: { main: 0.5, haste: 0.75 }, icon: 'gem_orange', label: '주황' },
+    purple: { name: '밤의 눈', stats: { main: 0.5, sta: 0.75 }, icon: 'gem_purple', label: '보라' },
     green: { name: '탈라사이트', stats: { mastery: 0.75, vers: 0.75 }, icon: 'gem_green', label: '초록' },
   };
   const GEM_TIER = [null, { name: '조잡한', amt: 6, quality: 0 }, { name: '빛나는', amt: 9, quality: 1 }, { name: '찬란한', amt: 12, quality: 2 }, { name: '완벽한', amt: 16, quality: 3 }];
@@ -172,30 +287,34 @@
     GEMS[`${c}${tier}`] = { id: `${c}${tier}`, name: `${T.name} ${C.name}`, color: c, tier, quality: T.quality, icon: C.icon, stats: st };
   }
   // 얼개 보석 (머리 전용)
-  GEMS.meta1 = { id: 'meta1', name: '혼돈의 하늘불꽃 다이아몬드', color: 'meta', tier: 4, quality: 3, icon: 'gem_meta', stats: { int: 8 }, effect: { critMul: 0.06 }, effectText: '치명타 피해 +6%' };
+  GEMS.meta1 = { id: 'meta1', name: '혼돈의 하늘불꽃 다이아몬드', color: 'meta', tier: 4, quality: 3, icon: 'gem_meta', stats: { main: 8 }, effect: { critMul: 0.06 }, effectText: '치명타 피해 +6%' };
   GEMS.meta2 = { id: 'meta2', name: '은밀한 대지분노 다이아몬드', color: 'meta', tier: 4, quality: 3, icon: 'gem_meta', stats: { sta: 12 }, effect: { armor: 0.04 }, effectText: '받는 피해 -4%' };
   GEMS.meta3 = { id: 'meta3', name: '신비한 하늘불꽃 다이아몬드', color: 'meta', tier: 4, quality: 3, icon: 'gem_meta', stats: { haste: 12 }, effect: { haste: 0.03 }, effectText: '가속 +3%' };
   const canSocket = (socket, gemId) => { const g = GEMS[gemId]; return !!g && (socket === 'meta' ? g.color === 'meta' : g.color !== 'meta'); };
 
   // ---------- 마법부여 ----------
   // 부위별로 붙일 수 있는 종류가 정해져 있다 (와우와 같음). rank 1~3.
+  // 주 능력치는 main (전문화의 주 능력치로 들어감). id는 예전 그대로 둔다 (가방에 쌓인 마법부여서 호환)
+  const MELEE = WEAPONS.filter(w => !SLOT[w].ranged && SLOT[w].hand !== 'off');
   const ENCHANT_BASE = [
-    { id: 'head_arcanum', slots: ['head'], name: '집중의 비전 문장', stats: { int: 6, sta: 6 } },
-    { id: 'shoulder_inscription', slots: ['shoulder'], name: '마력의 인장', stats: { int: 5, crit: 6 } },
-    { id: 'back_int', slots: ['back'], name: '망토 - 상급 지능', stats: { int: 6 } },
+    { id: 'head_arcanum', slots: ['head'], name: '집중의 비전 문장', stats: { main: 6, sta: 6 } },
+    { id: 'shoulder_inscription', slots: ['shoulder'], name: '위력의 인장', stats: { main: 5, crit: 6 } },
+    { id: 'back_int', slots: ['back'], name: '망토 - 상급 능력치', stats: { main: 6 } },
     { id: 'back_speed', slots: ['back'], name: '망토 - 은신', stats: { vers: 8 } },
-    { id: 'chest_stats', slots: ['chest'], name: '가슴 - 최상급 능력치', stats: { int: 4, sta: 6 } },
-    { id: 'wrist_int', slots: ['wrist'], name: '손목 - 상급 지능', stats: { int: 6 } },
-    { id: 'hands_haste', slots: ['hands'], name: '장갑 - 주문 가속', stats: { haste: 10 } },
-    { id: 'hands_crit', slots: ['hands'], name: '장갑 - 냉기 주문 강화', stats: { crit: 10 } },
-    { id: 'legs_spellthread', slots: ['legs'], name: '황금 주문실', stats: { int: 7, sta: 7 } },
+    { id: 'chest_stats', slots: ['chest'], name: '가슴 - 최상급 능력치', stats: { main: 4, sta: 6 } },
+    { id: 'wrist_int', slots: ['wrist'], name: '손목 - 상급 능력치', stats: { main: 6 } },
+    { id: 'hands_haste', slots: ['hands'], name: '장갑 - 가속', stats: { haste: 10 } },
+    { id: 'hands_crit', slots: ['hands'], name: '장갑 - 정밀함', stats: { crit: 10 } },
+    { id: 'legs_spellthread', slots: ['legs'], name: '황금 주문실 · 장갑 보강', stats: { main: 7, sta: 7 } },
     { id: 'feet_speed', slots: ['feet'], name: '장화 - 미끄러운 발걸음', stats: { sta: 4 }, effect: { speedMul: 0.03 }, effectText: '이동 속도 +3%' },
     { id: 'feet_vers', slots: ['feet'], name: '장화 - 활력', stats: { vers: 9 } },
-    { id: 'finger_int', slots: ['finger'], name: '반지 - 주문력', stats: { int: 5 } },
+    { id: 'finger_int', slots: ['finger'], name: '반지 - 위력', stats: { main: 5 } },
     { id: 'finger_mastery', slots: ['finger'], name: '반지 - 특화', stats: { mastery: 9 } },
-    { id: 'weapon_power', slots: ['staff', 'dagger'], name: '무기 - 주문력', stats: { int: 12 } },
-    { id: 'weapon_soulfrost', slots: ['staff', 'dagger'], name: '무기 - 영혼서리', stats: { int: 8, crit: 8 } },
-    { id: 'offhand_int', slots: ['offhand'], name: '보조장비 - 지능', stats: { int: 6 } },
+    { id: 'weapon_power', slots: MELEE, name: '무기 - 위력', stats: { main: 12 } },
+    { id: 'weapon_soulfrost', slots: MELEE, name: '무기 - 영혼서리', stats: { main: 8, crit: 8 } },
+    { id: 'scope', slots: ['bow', 'gun', 'crossbow'], name: '조준경 - 정밀 조준경', stats: { main: 6, crit: 12 } },
+    { id: 'offhand_int', slots: ['offhand'], name: '보조장비 - 지능', stats: { main: 6 } },
+    { id: 'shield_sta', slots: ['shield'], name: '방패 - 상급 체력', stats: { sta: 12 } },
   ];
   const ENCHANT_RANK = [null, { name: '하급', mult: 1, quality: 1 }, { name: '상급', mult: 1.6, quality: 2 }, { name: '최상급', mult: 2.3, quality: 3 }];
   const ENCHANTS = {};
@@ -299,9 +418,10 @@
   };
 
   const ITEMS = {
-    CURRENCIES, QUALITY, STATS, SECONDARY, SLOTS, SLOT, EQUIP, SUFFIXES, LEGENDARIES, VAULT_ITEMS,
+    CURRENCIES, QUALITY, STATS, PRIMARY, SECONDARY, SLOTS, SLOT, EQUIP, WEAPONS, ARMORED, ARMOR, CLASS_GEAR, SPECS, SUFFIXES, LEGENDARIES, VAULT_ITEMS,
     GEMS, GEM_COLORS, ENCHANTS, ENCHANT_BASE, GACHA, QUESTS, VAULT, RESET,
-    diminish, derive, canEquip, canSocket, canEnchant, makeItem, itemTotals, sellPrice, disenchant, gachaRoll, gachaReward, periodKeys, weighted, pick,
+    diminish, derive, canEquip, canUse, canEquipFor, armorOf, armorSpec, specsOf, defaultSpec, specOf, primaryOf, typeName, handName,
+    canSocket, canEnchant, makeItem, itemTotals, sellPrice, disenchant, gachaRoll, gachaReward, periodKeys, weighted, pick,
     BAG_SIZE: 80,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = ITEMS;

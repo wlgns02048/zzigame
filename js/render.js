@@ -179,6 +179,7 @@ G.R = {
 
   drawZone(c, z) {
     const life = Math.min(1, z.life * 2, z.t * 4);
+    if (z.draw) return z.draw(c, z, life); // 직업 파일이 그리는 장판 (사냥꾼 덫 · 연발 사격 등)
     if (z.kind === 'blizzard') {
       c.save(); c.translate(z.x, z.y); c.scale(1, 0.75);
       const g = c.createRadialGradient(0, 0, 0, 0, 0, z.r);
@@ -550,6 +551,7 @@ G.R = {
     for (const pr of G.projs) {
       const a = Math.atan2(pr.vy, pr.vx), k = pr.kind;
       if (k === 'orb') { this.drawOrb(c, pr); continue; }
+      if (pr.draw) { pr.draw(c, pr, a); continue; } // 직업 파일이 그리는 투사체 (사냥꾼 화살 등)
       const map = { frostbolt: [S.bolt, '100,180,255', 44], frostfire: [S.boltFF, '210,110,255', 54], lance: [S.lance, '150,215,255', 30], icicle: [S.icicle, '150,215,255', 22],
         flurry: [S.flurry, '120,190,255', 30], spike: [S.spike, '120,200,255', 90], water: [S.water, '60,150,255', 34], splinter: [S.splinter, '190,110,255', 24],
         shadowbolt: [S.boltShadow, '150,60,240', 44], chaos: [S.boltChaos, '110,255,60', 58], haunt: [S.shadow, '110,130,255', 40], deathcoil: [S.boltCoil, '80,230,100', 44], firebolt: [S.boltFire, '255,130,40', 28] };

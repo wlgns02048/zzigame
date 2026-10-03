@@ -64,10 +64,31 @@
     n('affMastery', '고통의 정수', 'shadowembrace', 5, 1, 1, () => '지속 피해 +8%, 가속 +3%', { stat: st => { st.dotMul += 0.08; st.haste += 0.03; } }),
   ];
 
+  // 클래식 사격 특성 트리 이름 그대로
+  const HUNTER = [
+    n('lethalShots', '치명적인 사격', 'lethalshots', 0, 0, 5, r => `치명타 확률 +${r}%`, { stat: (st, r) => (st.crit += r * 0.01) }),
+    n('impSteady', '고정 사격 연마', 'steadyshot', 0, 1, 5, r => `고정 사격 시전 시간 -${r * 3}%`, { skill: (id, s, r) => { if (id === 'steadyshot') s.cast *= 1 - r * 0.03; } }),
+    n('efficiency', '효율', 'efficiency', 0, 2, 5, r => `신비한 사격 · 일제 사격 집중 소모 -${r * 3}%`, { stat: (st, r) => (st.focusCost = (st.focusCost || 0) + r * 0.03) }),
+    n('impAimed', '조준 사격 연마', 'aimedshot', 1, 0, 3, r => `조준 사격 시전 시간 -${r * 5}%`, { skill: (id, s, r) => { if (id === 'aimedshot') s.cast *= 1 - r * 0.05; } }),
+    n('mortalShots', '필사의 사격', 'mortalshots', 1, 1, 5, r => `치명타 피해 +${r * 6}%`, { stat: (st, r) => (st.critMul += r * 0.06) }),
+    n('hawkEye', '매의 눈', 'hawkeye', 1, 2, 2, r => `범위 +${r * 5}%`, { stat: (st, r) => (st.area += r * 0.05) }),
+    n('impArcane', '신비한 사격 연마', 'arcaneshot', 2, 0, 3, r => `신비한 사격 피해 +${r * 8}%`, { skill: (id, s, r) => { if (id === 'arcaneshot') s.dmg *= 1 + r * 0.08; } }),
+    n('rangedSpec', '원거리 무기 전문화', 'rangedspec', 2, 1, 5, r => `모든 피해 +${r * 2}%`, { stat: (st, r) => (st.dmg += r * 0.02) }),
+    n('impVolley', '연발 사격 연마', 'volley', 2, 2, 2, r => `연발 사격 피해 +${r * 15}%`, { skill: (id, s, r) => { if (id === 'volley') s.dmg *= 1 + r * 0.15; } }),
+    n('focusT', '집중 강화', 'focus', 3, 0, 2, r => `최대 집중 +${r * 10}`, { stat: (st, r) => (st.focusMax = (st.focusMax || 0) + r * 10) }),
+    n('carefulT', '신중한 조준 숙련', 'carefulaim', 3, 1, 3, r => `조준 사격 피해 +${r * 8}%`, { skill: (id, s, r) => { if (id === 'aimedshot') s.dmg *= 1 + r * 0.08; } }),
+    n('trapMastery', '덫 숙련', 'freezingtrap', 3, 2, 2, r => `얼음의 덫 · 결박의 사격 재사용 대기시간 -${r * 10}%`, { skill: (id, s, r) => { if (id === 'freezingtrap' || id === 'bindingshot') s.cd *= 1 - r * 0.1; } }),
+    n('aspectWild', '야생의 상 연마', 'turtle', 4, 0, 2, r => `받는 피해 -${r * 3}%`, { stat: (st, r) => (st.armor += r * 0.03) }),
+    n('impKill', '마무리 사격 연마', 'killshot', 4, 1, 2, r => `마무리 사격 피해 +${r * 15}%`, { skill: (id, s, r) => { if (id === 'killshot') s.dmg *= 1 + r * 0.15; } }),
+    n('survivalInstincts', '생존 본능', 'survivalinstincts', 4, 2, 1, () => '판 시작 시 최대 생명력 30%의 보호막', { req: 'aspectWild' }),
+    n('trueshotAura', '정조준 오라', 'trueshot', 5, 1, 1, () => '모든 피해 +6%, 가속 +3%', { stat: st => { st.dmg += 0.06; st.haste += 0.03; } }),
+  ];
+
   const TREES = {
     library: { name: '달라란 도서관', desc: '계정 공용 · 레벨업 선택지를 바꾸는 이 게임만의 특성', nodes: LIBRARY, maxPoints: 29, pointBase: 150, pointGrowth: 1.14 },
     mage: { name: '냉기 특성', desc: '냉기 마법사 직업 특성', nodes: MAGE, maxPoints: 31, pointBase: 80, pointGrowth: 1.12 },
     warlock: { name: '고통 특성', desc: '고통 흑마법사 직업 특성', nodes: WARLOCK, maxPoints: 31, pointBase: 80, pointGrowth: 1.12 },
+    hunter: { name: '사격 특성', desc: '사격 사냥꾼 직업 특성', nodes: HUNTER, maxPoints: 31, pointBase: 80, pointGrowth: 1.12 },
   };
   const ROW_POINTS = 5;
   const TALENTS = {

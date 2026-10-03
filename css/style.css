@@ -142,6 +142,8 @@ body.modal-open #raidWarn, body.modal-open #castbar { opacity: 0 !important; }
 .tt-desc { color: var(--wow-yellow); margin-top: 4px; }
 .tt-sub { color: #9da3ad; margin-top: 4px; font-size: 12px; }
 .tt-green { color: #1eff00; }
+.tt-red { color: #ff2020; }
+.tt-off { color: #7f7f7f; }
 b.v, .v { color: #fff; font-weight: 700; }
 
 /* ---------- 모달 ---------- */
@@ -325,6 +327,8 @@ select { cursor: pointer; }
 .bagItem img { width: 40px; height: 40px; } .bagItem.empty { box-shadow: 0 0 0 1px #1a1d25; cursor: default; }
 .bagItem i { position: absolute; right: 1px; bottom: 0; font-style: normal; font-size: 10px; font-weight: 700; color: #fff; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000; }
 .bagItem u { position: absolute; left: 1px; top: -2px; text-decoration: none; font-size: 10px; }
+.bagItem.noUse img { filter: sepia(1) saturate(4) hue-rotate(-40deg) brightness(0.6); }
+.specPick { display: flex; gap: 4px; align-items: center; margin-left: auto; color: #aaa; }
 .itemPanel { margin-top: 10px; padding: 10px; background: rgba(0,0,0,.35); border: 1px solid #3a2e14; border-radius: 6px; min-height: 80px; font-size: 13px; }
 .ipHead { font-weight: 700; display: flex; align-items: center; gap: 6px; font-size: 15px; } .ipHead img { width: 28px; height: 28px; }
 .ipBtns { margin: 6px 0; } .ipRow { display: flex; gap: 8px; align-items: center; margin: 4px 0; flex-wrap: wrap; } .ipRow select { font-size: 12px; padding: 3px; max-width: 260px; }
@@ -435,6 +439,7 @@ select { cursor: pointer; }
   .lbTop { flex-wrap: wrap; } .qBar { width: 180px; }
 }
 .bar.mana.shards .fill { background: linear-gradient(#c060ff, #5a1a9a); }
+.bar.mana.focus .fill { background: linear-gradient(#ffb04a, #d0640a 60%, #9a4400); }
 .lbLogo .beta { font-family: var(--font); font-size: 11px; font-weight: 900; letter-spacing: 1px; color: #000; background: linear-gradient(#ffd100, #e08a00); border-radius: 3px; padding: 1px 6px; margin-left: 8px; vertical-align: middle; text-shadow: none; box-shadow: 0 0 8px rgba(255,180,0,.6); }
 
 /* 주문 도감 */

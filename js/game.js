@@ -130,8 +130,8 @@ G.startRun = (cls, stage, diff) => {
     if (autos.length) G.P.learn(U.choice(autos).id);
   }
   // 직업 특성: 시작 보호막
-  const tr = G.Meta.tree(cls).ranks;
-  if (tr.iceBarrier || tr.darkPact) G.player.absorb = Math.round(G.player.maxHp * 0.3);
+  const tr = G.Meta.tree(G.Meta.specTree(cls)).ranks;
+  if (tr.iceBarrier || tr.darkPact || tr.survivalInstincts) G.player.absorb = Math.round(G.player.maxHp * 0.3);
   if (G.params.get('all')) for (const id in G.SKILLS) { const d = G.SKILLS[id]; if (d.cls === cls && (d.kind === 'auto' || d.kind === 'active') && !G.player.skills[id]) G.P.learn(id); }
   if (G.params.get('t')) G.t = +G.params.get('t');
   G.cam.x = 0; G.cam.y = 0;
@@ -142,7 +142,8 @@ G.startRun = (cls, stage, diff) => {
   const C = G.CLASSES[cls];
   document.querySelector('#playerFrame .portrait img').src = G.icon(C.icon);
   document.querySelector('#playerFrame .pfName').textContent = C.name;
-  document.querySelector('#playerFrame .bar.mana').classList.toggle('shards', cls === 'warlock');
+  const bar = document.querySelector('#playerFrame .bar.mana');
+  bar.classList.remove('shards', 'focus'); if (C.bar) bar.classList.add(C.bar);
   G.UI.el.raidWarn.classList.remove('show'); G.UI.warnT = 0;
 };
 

@@ -138,7 +138,8 @@ G.Lobby = {
   },
   renderChar(m) {
     const cls = this.curCls(), C = G.CLASSES[cls], eq = G.Meta.equipped(cls), I = IT();
-    const { tot } = G.Meta.gearTotals(cls), st = this.statSheet(cls);
+    const { tot } = G.Meta.gearTotals(cls), st = this.statSheet(cls), prim = G.Meta.primary(cls), specs = I.specsOf(cls), gear = I.CLASS_GEAR[cls];
+    const armorSpec = G.Meta.armorSpec(cls);
     const slot = e => {
       const it = eq[e.id];
       return `<div class="eqSlot ${this.selItem === (it && it.id) ? 'sel' : ''}" data-eq="${e.id}" ${it ? `data-item="${it.id}"` : ''} style="--qc:${it ? qcol(it.quality) : '#333'}">
@@ -151,26 +152,30 @@ G.Lobby = {
     const pct = v => (v * 100).toFixed(1) + '%';
     m.innerHTML = `<div class="charWrap">
       <div class="charHead">${this.chars().map(c => `<a href="#" data-cls="${c}" class="${c === cls ? 'on' : ''}" style="--cc:${G.CLASSES[c].color}"><img src="${G.icon(G.CLASSES[c].icon)}">${G.CLASSES[c].name}</a>`).join('')}
-        <span class="dim">평균 아이템 레벨 <b>${G.Meta.avgIlvl(cls)}</b></span></div>
+        <span class="dim">평균 아이템 레벨 <b>${G.Meta.avgIlvl(cls)}</b></span>
+        ${specs.length > 1 ? `<span class="specPick">전문화 ${specs.map(sp => `<button class="btn small ${G.Meta.spec(cls) === sp ? 'sel' : ''}" data-spec="${sp}">${I.SPECS[sp].name} (${I.STATS[I.SPECS[sp].primary].name})</button>`).join('')}</span>` : ''}</div>
       <div class="charBody">
         <div class="paper"><div class="eqCol">${I.EQUIP.slice(0, half).map(slot).join('')}</div><div class="eqCol">${I.EQUIP.slice(half).map(slot).join('')}</div></div>
         <div class="statBox"><h4>능력치</h4>
-          <div class="stl"><span>지능</span><b>${fmtNum(tot.int || 0)}</b></div><div class="stl"><span>체력</span><b>${fmtNum(tot.sta || 0)}</b></div>
+          <div class="stl"><span>${I.STATS[prim].name}</span><b>${fmtNum(Math.round(((tot[prim] || 0) + (tot.main || 0)) * (armorSpec ? 1.05 : 1)))}</b></div><div class="stl"><span>체력</span><b>${fmtNum(tot.sta || 0)}</b></div>
           <div class="stl"><span>치명타</span><b>${fmtNum(tot.crit || 0)}</b></div><div class="stl"><span>가속</span><b>${fmtNum(tot.haste || 0)}</b></div>
           <div class="stl"><span>특화</span><b>${fmtNum(tot.mastery || 0)}</b></div><div class="stl"><span>유연성</span><b>${fmtNum(tot.vers || 0)}</b></div>
           <h4>판 시작 시</h4>
-          <div class="stl"><span>주문력</span><b>${pct(st.dmg - 1)}</b></div><div class="stl"><span>최대 생명력</span><b>${Math.round(150 * st.hpMul + st.hpFlat)}</b></div>
+          <div class="stl"><span>${prim === 'int' ? '주문력' : '공격력'}</span><b>${pct(st.dmg - 1)}</b></div><div class="stl"><span>최대 생명력</span><b>${Math.round(150 * st.hpMul + st.hpFlat)}</b></div>
           <div class="stl"><span>치명타 확률</span><b>${pct(st.crit)}</b></div><div class="stl"><span>치명타 피해</span><b>${Math.round(st.critMul * 100)}%</b></div>
           <div class="stl"><span>가속</span><b>${pct(st.haste)}</b></div><div class="stl"><span>특화</span><b>${st.mastery.toFixed(1)}점</b></div>
           <div class="stl"><span>유연성</span><b>${pct(st.vers)}</b></div><div class="stl"><span>받는 피해 감소</span><b>${pct(Math.min(0.6, st.armor))}</b></div>
-          <div class="dim small">${C.masteryText || ''}<br>2차 능력치는 30%를 넘으면 효율이 줄어듭니다.</div>
+          <div class="dim small">${C.masteryText || ''}<br>2차 능력치는 30%를 넘으면 효율이 줄어듭니다.<br>
+            주 능력치: <b>${I.STATS[prim].name}</b> (${I.SPECS[G.Meta.spec(cls)].name} 전문화) · 다른 주 능력치는 적용되지 않습니다.<br>
+            착용: ${I.ARMOR[gear.armor].name} 이하 방어구${gear.dual ? ' · 쌍수 가능' : ''} ·
+            <span class="${armorSpec ? 'tt-green' : ''}">방어구 전문화 ${armorSpec ? '활성' : '비활성'}</span> (방어구 8부위를 모두 ${I.ARMOR[gear.armor].name}으로: 주 능력치 +5%)</div>
           <h4>소모품</h4><div class="stacks">${Object.entries(stacks.gem || {}).map(([g, n]) => `<span class="stk" data-tip="${esc(this.gemTip(g))}" style="--qc:${qcol(I.GEMS[g].quality)}"><img src="${G.icon(I.GEMS[g].icon)}"><i>${n}</i></span>`).join('')}
-            ${Object.entries(stacks.enchant || {}).map(([e, n]) => `<span class="stk" data-tip="${esc(this.enchTip(e))}" style="--qc:${qcol(I.ENCHANTS[e].quality)}"><img src="${G.icon(I.ENCHANTS[e].slots.includes('staff') ? 'enchant_weapon' : 'enchant')}"><i>${n}</i></span>`).join('') || '<span class="dim">보석 · 마법부여서가 없습니다</span>'}</div>
+            ${Object.entries(stacks.enchant || {}).map(([e, n]) => `<span class="stk" data-tip="${esc(this.enchTip(e))}" style="--qc:${qcol(I.ENCHANTS[e].quality)}"><img src="${G.icon(I.ENCHANTS[e].slots.some(s => I.SLOT[s].weapon) ? 'enchant_weapon' : 'enchant')}"><i>${n}</i></span>`).join('') || '<span class="dim">보석 · 마법부여서가 없습니다</span>'}</div>
         </div>
         <div class="bagBox"><h4>가방 <span class="dim">${bag.length} / ${I.BAG_SIZE}</span>
           <select id="bagSort"><option value="new">최근</option><option value="ilvl">아이템 레벨</option><option value="quality">품질</option></select>
           <button class="btn small" id="bagDE">일괄 분해</button></h4>
-          <div class="bagGrid">${sorted.map(it => `<div class="bagItem ${this.selItem === it.id ? 'sel' : ''}" data-item="${it.id}" style="--qc:${qcol(it.quality)}"><img src="${G.icon(it.icon)}"><i>${it.ilvl}</i>${it.locked ? '<u>🔒</u>' : ''}</div>`).join('')}
+          <div class="bagGrid">${sorted.map(it => `<div class="bagItem ${this.selItem === it.id ? 'sel' : ''} ${I.canUse(cls, it) ? '' : 'noUse'}" data-item="${it.id}" style="--qc:${qcol(it.quality)}"><img src="${G.icon(it.icon)}"><i>${it.ilvl}</i>${it.locked ? '<u>🔒</u>' : ''}</div>`).join('')}
             ${Array(Math.max(0, I.BAG_SIZE - bag.length)).fill('<div class="bagItem empty"></div>').join('')}</div>
           <div id="itemPanel" class="itemPanel">${this.itemPanel(cls)}</div>
         </div>
@@ -180,7 +185,8 @@ G.Lobby = {
     m.querySelectorAll('.charHead [data-cls]').forEach(a => (a.onclick = e => { e.preventDefault(); this.cls = a.dataset.cls; this.selItem = null; this.render(); }));
     // 툴팁은 ui.js의 mouseover 위임이 itemTipFor로 띄운다
     m.querySelectorAll('[data-item]').forEach(el => (el.onclick = () => { this.selItem = +el.dataset.item; this.render(); }));
-    $('bagDE').onclick = () => this.bulkDE();
+    $('bagDE').onclick = () => this.bulkDE(cls);
+    m.querySelectorAll('[data-spec]').forEach(b => (b.onclick = () => this.act(() => this.api('POST', '/api/characters/spec', { cls, spec: b.dataset.spec }), `${I.SPECS[b.dataset.spec].name} 전문화로 바꿨습니다.`)));
     this.bindItemPanel(cls);
   },
   findItem(id) { return this.pr().items.find(i => i.id === id); },
@@ -189,12 +195,12 @@ G.Lobby = {
     const it = this.selItem && this.findItem(this.selItem);
     if (!it) return '<div class="dim">아이템을 선택하세요. 마우스를 올리면 착용 중인 장비와 비교합니다.</div>';
     const I = IT(), stacks = this.pr().stacks;
-    const targets = I.EQUIP.filter(e => e.accepts.includes(it.slot));
+    const targets = I.EQUIP.filter(e => I.canEquipFor(cls, e.id, it));
     const gems = Object.keys(stacks.gem || {});
     const ench = Object.keys(stacks.enchant || {}).filter(e => I.canEnchant(it.slot, e));
     return `<div class="ipHead" style="color:${qcol(it.quality)}"><img src="${G.icon(it.icon)}"> ${esc(it.name)} <span class="dim">${it.ilvl}</span></div>
       <div class="ipBtns">
-        ${it.equip ? `<button class="btn small" data-act="unequip">해제</button>` : targets.map(t => `<button class="btn small" data-act="equip" data-slot="${t.id}">${t.name}에 착용</button>`).join('')}
+        ${it.equip ? `<button class="btn small" data-act="unequip">해제</button>` : targets.length ? targets.map(t => `<button class="btn small" data-act="equip" data-slot="${t.id}">${t.name}에 착용</button>`).join('') : `<span class="tt-red">${G.CLASSES[cls].className}은(는) 착용할 수 없습니다</span>`}
         <button class="btn small" data-act="lock">${it.locked ? '잠금 해제' : '잠금'}</button>
         ${it.equip ? '' : `<button class="btn small" data-act="sell" ${it.locked ? 'disabled' : ''}>판매 (${I.sellPrice(it)}골드)</button>
         <button class="btn small" data-act="de" ${it.locked ? 'disabled' : ''}>분해</button>`}
@@ -219,10 +225,12 @@ G.Lobby = {
     box.querySelectorAll('[data-socket]').forEach(sel => (sel.onchange = () => sel.value && this.act(() => this.api('POST', '/api/items/socket', { itemId: it.id, index: +sel.dataset.socket, gemId: sel.value }), '보석을 박았습니다.')));
     box.querySelectorAll('[data-ench]').forEach(sel => (sel.onchange = () => sel.value && this.act(() => this.api('POST', '/api/items/enchant', { itemId: it.id, enchantId: sel.value }), '마법부여했습니다.')));
   },
-  bulkDE() {
-    const q = prompt('이 품질 이하의 잠기지 않은 가방 아이템을 모두 분해합니다.\n0 일반 · 1 고급 · 2 희귀 · 3 영웅', '1');
+  bulkDE(cls) {
+    const q = prompt('이 품질 이하의 잠기지 않은 가방 아이템을 모두 분해합니다.\n0 일반 · 1 고급 · 2 희귀 · 3 영웅\n뒤에 x를 붙이면 내 캐릭터 누구도 착용할 수 없는 것만 (예: 3x)', '1');
     if (q === null) return;
-    const ids = this.pr().items.filter(i => !i.equip && !i.locked && i.quality <= +q).map(i => i.id).slice(0, 100);
+    const onlyNoUse = /x/i.test(q), lv = parseInt(q), I = IT(), mine = this.chars();
+    if (!(lv >= 0)) return;
+    const ids = this.pr().items.filter(i => !i.equip && !i.locked && i.quality <= lv && (!onlyNoUse || !mine.some(c => I.canUse(c, i)))).map(i => i.id).slice(0, 100);
     if (!ids.length) return G.UI.toast('분해할 아이템이 없습니다.');
     if (!confirm(`${ids.length}개를 분해할까요?`)) return;
     this.selItem = null;
@@ -231,16 +239,20 @@ G.Lobby = {
   gotText(got) { return Object.entries(got).map(([k, v]) => `${IT().CURRENCIES[k].name} ${v}`).join(', '); },
 
   // ---------- 툴팁 ----------
-  statLines(t) {
-    const S = IT().STATS;
-    return ['int', 'sta'].filter(k => t[k]).map(k => `<div>+${t[k]} ${S[k].name}</div>`).join('') +
-      IT().SECONDARY.filter(k => t[k]).map(k => `<div class="tt-green">+${t[k]} ${S[k].name}</div>`).join('');
+  // 주 능력치는 지금 전문화가 쓰는 것만 흰색, 나머지는 회색 (한밤 방식)
+  statLines(t, prim) {
+    const I = IT(), S = I.STATS;
+    const order = prim ? [prim].concat(I.PRIMARY.filter(k => k !== prim)) : I.PRIMARY;
+    return order.concat(['main', 'sta']).filter(k => t[k]).map(k => `<div class="${prim && I.PRIMARY.includes(k) && k !== prim ? 'tt-off' : ''}">+${t[k]} ${S[k].name}</div>`).join('') +
+      I.SECONDARY.filter(k => t[k]).map(k => `<div class="tt-green">+${t[k]} ${S[k].name}</div>`).join('');
   },
   itemTip(it, cls) {
     if (!it) return '';
-    const I = IT(), slotName = I.SLOT[it.slot].name;
-    let h = `<div class="tt-title" style="color:${qcol(it.quality)}">${esc(it.name)}</div><div class="tt-gold">아이템 레벨 ${it.ilvl}</div>
-      <div class="tt-row"><span>${slotName}</span><span>${I.QUALITY[it.quality].name}</span></div>${this.statLines(it.stats)}`;
+    const I = IT(), prim = cls && G.Meta.primary(cls), use = !cls || I.canUse(cls, it), type = I.typeName(it);
+    const where = I.SLOT[it.slot].weapon ? I.handName(it) : I.SLOT[it.slot].name;
+    let h = `<div class="tt-title" style="color:${qcol(it.quality)}">${esc(it.name)}</div><div class="tt-gold">아이템 레벨 ${it.ilvl} · ${I.QUALITY[it.quality].name}</div>
+      <div class="tt-row"><span>${where}</span><span class="${use ? '' : 'tt-red'}">${type}</span></div>${this.statLines(it.stats, prim)}`;
+    if (!use) h += `<div class="tt-red">${G.CLASSES[cls].className}은(는) 착용할 수 없습니다</div>`;
     if (it.effect) h += `<div class="tt-green">사용 효과 없음 · 착용 효과: ${this.effText(it)}</div>`;
     it.sockets.forEach((s, i) => { const g = it.gems[i] && I.GEMS[it.gems[i]]; h += `<div class="${g ? '' : 'dim'}">◆ ${g ? `${g.name} (${this.statText(g.stats)})${g.effectText ? ' · ' + g.effectText : ''}` : s === 'meta' ? '얼개 보석 홈' : '보석 홈'}</div>`; });
     if (it.enchant) { const e = I.ENCHANTS[it.enchant]; h += `<div class="tt-green">마법부여: ${e.name} (${this.statText(e.stats)}${e.effectText ? ', ' + e.effectText : ''})</div>`; }
@@ -262,8 +274,10 @@ G.Lobby = {
 
   // ===================== 특성 =====================
   renderTalent(m) {
-    const cls = this.curCls(), T = G.TALENTS;
-    if (!this.tree || (this.tree !== 'library' && !this.chars().includes(this.tree))) this.tree = cls;
+    const cls = this.curCls(), T = G.TALENTS, I = IT();
+    // 탭: 캐릭터마다 전문화별 특성 트리 (지금은 직업마다 전문화 하나)
+    const tabs = this.chars().flatMap(c => I.specsOf(c).map(sp => ({ tree: I.SPECS[sp].tree, cls: c }))).filter(x => T.TREES[x.tree]);
+    if (!this.tree || (this.tree !== 'library' && !tabs.some(x => x.tree === this.tree))) this.tree = G.Meta.specTree(cls);
     const tree = this.tree, def = T.TREES[tree], cur = G.Meta.tree(tree);
     if (!this.pending || this.pending.tree !== tree) this.pending = { tree, ranks: Object.assign({}, cur.ranks) };
     const ranks = this.pending.ranks, spent = T.spent(ranks), changed = JSON.stringify(ranks) !== JSON.stringify(cur.ranks);
@@ -278,7 +292,7 @@ G.Lobby = {
         <img src="${G.icon(n.icon)}"><i>${r}/${n.max}</i></div>`;
     };
     m.innerHTML = `<div class="talWrap">
-      <div class="talTabs">${this.chars().map(c => `<a href="#" data-tree="${c}" class="${tree === c ? 'on' : ''}"><img src="${G.icon(G.CLASSES[c].icon)}">${T.TREES[c].name}</a>`).join('')}
+      <div class="talTabs">${tabs.map(x => `<a href="#" data-tree="${x.tree}" class="${tree === x.tree ? 'on' : ''}"><img src="${G.icon(G.CLASSES[x.cls].icon)}">${T.TREES[x.tree].name}</a>`).join('')}
         <a href="#" data-tree="library" class="${tree === 'library' ? 'on' : ''}"><img src="${G.icon('library')}">달라란 도서관</a></div>
       <div class="talInfo"><h3>${def.name}</h3><div class="dim">${def.desc}. 포인트를 골드로 사서 배분합니다. 한 줄 아래로 가려면 그 위 줄들에 5점씩 필요합니다.</div>
         <div class="talPts">구매한 포인트 <b>${cur.bought}</b> / ${def.maxPoints} · 남은 포인트 <b>${free}</b></div>
