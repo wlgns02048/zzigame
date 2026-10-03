@@ -98,6 +98,7 @@ route('POST', '/api/auth/register', async req => {
   limit('reg:' + clientIp(req), 30, 3600000);
   const { username, password } = await readJson(req);
   if (!validName(username)) fail(400, '아이디는 2~16자의 한글/영문/숫자/_ 만 쓸 수 있습니다.');
+  if (/^게스트\d/.test(username)) fail(400, '게스트 이름과 헷갈리는 아이디는 쓸 수 없습니다.');
   if (!validPw(password)) fail(400, '비밀번호는 4~64자로 입력하세요.');
   if (db.prepare('SELECT 1 FROM users WHERE username = ?').get(username)) fail(409, '이미 사용 중인 아이디입니다.');
   return db.tx(() => {

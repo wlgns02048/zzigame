@@ -258,17 +258,21 @@ G.R = {
     for (const q of G.pets) this.drawWater(c, q);
     for (const im of G.images) if (im.draw) im.draw(c, im); else G.cls().drawBody(c, im.x, im.y, im.face, 0.5, true, im.t);
     this.drawPlayer(c);
-    // 체력바 (피해 입은 적, 정예)
+    // 머리 위 높이: 보스는 그림이 커서 실제 그림 윗끝에 맞춘다 (그리는 기준은 drawEnemy와 같음)
+    const headY = e => e.boss
+      ? Math.min(e.y - e.r * 2.6 * e.scale / 1.2, e.y + e.r * 0.85 + (e.def.fly ? -14 : 0) - G.Spr.enemy[e.id].n.height * e.scale * 0.94)
+      : e.y - e.r * 2.6 * e.scale / 1.2;
+    // 체력바 (피해 입은 적, 정예 · 보스는 이름표와 함께 항상)
     for (const e of list) {
-      if (e.boss || (e.hp >= e.maxHp && !e.elite)) continue;
-      const y = e.y - e.r * 2.6 * e.scale / 1.2 - 6;
-      if (e.elite) { this.drawEliteBar(c, e, y); continue; }
+      if (e.hp >= e.maxHp && !e.elite && !e.boss) continue;
+      const y = headY(e) - 6;
+      if (e.elite || e.boss) { this.drawNameBar(c, e, y); continue; }
       const w = Math.max(24, e.r * 2);
       c.fillStyle = '#000'; c.fillRect(e.x - w / 2 - 1, y - 1, w + 2, 6);
       c.fillStyle = e.elite ? '#e0a020' : '#c81e1e'; c.fillRect(e.x - w / 2, y, w * Math.max(0, e.hp / e.maxHp), 4);
     }
     // 지속 피해 아이콘 (체력바 위)
-    for (const e of list) if (e.dots || e.haunted > G.t) G.Dots.drawIcons(c, e, e.y - e.r * 2.6 * e.scale / 1.2 - 26 + (e.def.fly ? -10 : 0) - (e.elite ? 16 : 0));
+    for (const e of list) if (e.dots || e.haunted > G.t) G.Dots.drawIcons(c, e, headY(e) - 26 + (e.def.fly && !e.boss ? -10 : 0) - (e.elite || e.boss ? 16 : 0));
   },
 
   // 정예 표시 ① 발밑: 금색 이중 고리 + 돌아가는 가시 (덩치 큰 일반 적과 구분)
@@ -286,17 +290,18 @@ G.R = {
     }
     c.restore();
   },
-  // 정예 표시 ② 머리 위: 이름표 + 금테 체력바 (항상 보임)
-  drawEliteBar(c, e, y) {
-    const w = Math.max(56, e.r * 2.6), x = e.x - w / 2;
+  // 정예 표시 ② 머리 위: 이름표 + 금테 체력바 (항상 보임). 보스는 붉은 테 (화면 위 보스 프레임과 같은 색)
+  drawNameBar(c, e, y) {
+    const boss = e.boss, w = Math.max(boss ? 80 : 56, e.r * 2.6), x = e.x - w / 2;
+    const [dark, fill, rim] = boss ? ['#3a0c08', '#e0301e', '#ff6a4a'] : ['#3a2a08', '#ffb820', '#ffd25a'];
     c.fillStyle = '#000'; c.fillRect(x - 2, y - 2, w + 4, 9);
-    c.fillStyle = '#3a2a08'; c.fillRect(x, y, w, 5);
-    c.fillStyle = '#ffb820'; c.fillRect(x, y, w * Math.max(0, e.hp / e.maxHp), 5);
-    c.strokeStyle = '#ffd25a'; c.lineWidth = 1; c.strokeRect(x - 1.5, y - 1.5, w + 3, 8);
-    c.font = 'bold 12px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
-    const label = '정예 · ' + e.def.name;
+    c.fillStyle = dark; c.fillRect(x, y, w, 5);
+    c.fillStyle = fill; c.fillRect(x, y, w * Math.max(0, e.hp / e.maxHp), 5);
+    c.strokeStyle = rim; c.lineWidth = 1; c.strokeRect(x - 1.5, y - 1.5, w + 3, 8);
+    c.font = `bold ${boss ? 13 : 12}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+    const label = (boss ? '보스 · ' : '정예 · ') + e.def.name;
     c.lineWidth = 3; c.strokeStyle = '#000'; c.strokeText(label, e.x, y - 5);
-    c.fillStyle = '#ffd25a'; c.fillText(label, e.x, y - 5);
+    c.fillStyle = rim; c.fillText(label, e.x, y - 5);
     c.textAlign = 'left';
   },
 
