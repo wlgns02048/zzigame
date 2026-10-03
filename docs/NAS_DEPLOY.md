@@ -5,6 +5,7 @@
 | 브랜치 / 태그 | 내용 | 서비스 |
 |---|---|---|
 | `server` | 현재 서비스 버전 (베타) — 계정 · 스테이지 · 흑마법사 · 장비 · 가챠 · 랭킹 · 퀘스트 · 금고 | NAS Docker → `https://Godlovesyou.synology.me:10443` |
+| `v2.14.0` 태그 | 랭킹 한눈에 보기: `GET /api/rankings/overview`(스테이지마다 상위 3 · 참여 인원 · 내 순위) · 스테이지 카드 그리드 → 누르면 50위 표(50위 밖 내 순위 덧붙임, 응답에 `count` · `me`) · 필터를 버튼 묶음으로 · 보물 코볼트: 40초, 화면 가장자리 바로 밖(560~680)에 등장, 420 밖에선 45로 서성이고 안에선 플레이어 속도 70% + 3초마다 0.9초 숨 고르기 · 이동 불가를 `G.P.root(초, 이름, fx)`로 통일(기술 데이터 `fx`: web · frost · stun · shadow), 디버프에 실제 기술 이름 · 아이콘, 캐릭터 위 종류별 표시 + 남은 시간 고리 | — |
 | `v2.13.3` 태그 | 버프 칸: 생길 때의 남은 시간으로 순서 고정(긴 것이 오른쪽, 끝없는 버프 맨 오른쪽) · 칸을 버프마다 유지하고 생기고 사라진 칸만 넣고 뺌 · 나타남 애니메이션 · 3초 미만 깜빡임 | — |
 | `v2.13.2` 태그 | 보물 코볼트 위치 표시: 화면 안이면 머리 위 튀는 화살표 + 발밑 퍼지는 고리(화면 공간, 조명 위) · 화면 밖 화살표 1.5배 + 남은 초 | — |
 | `v2.13.1` 태그 | 흑마법사 적중음(어둠의 화살 · 유령 출몰 · 죽음의 고리) · 적중 고리 · 흑마법사 액션바 깜빡임 수정(classList.toggle에 undefined) · 판 중 브라우저 오른쪽 클릭 메뉴 막기 | — |
@@ -71,6 +72,7 @@ Pages는 서버를 돌릴 수 없으므로 공개 주소에서 열린 화면은 
 | `POST /api/gacha` | `{ kind: equip/enchant/gem, count: 1/10, premium }` |
 | `POST /api/runs/start` → `POST /api/runs/report` | 판 시작(개방 여부 검사) → 누적값 보고. 실제 경과 시간 · 처치/골드 상한 · 보스 수로 검증하고 이전 지급분과의 차액만 지급. 거부된 판은 서버 로그에 `run rejected ... reasons=` |
 | `GET /api/rankings` | `stage · difficulty · kind(clear/endless) · scope(week/all) · cls` |
+| `GET /api/rankings/overview` | `difficulty · kind · scope · cls` → 스테이지마다 `{ stage, count, top(3), me }` |
 | `POST /api/quests/claim` · `POST /api/vault/claim` | 퀘스트 보상 · 금고 선택 |
 | `GET/POST/PATCH/DELETE /api/suggestions…` | 건의사항 게시판 |
 

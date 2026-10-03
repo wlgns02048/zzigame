@@ -3,7 +3,7 @@
 // 등장 시점 · 출현 가중치는 스테이지 roster에 있다.
 // ranged.kind: 투사체 색 (shadow | frost | fire | holy | arcane)
 // skills (보스가 아닌 적): 바닥 경고가 뜨는 기술. G.Mob(js/enemies.js)이 쓴다. mul은 그 적의 근접 피해 배수, cd는 초.
-//   slam 제자리 원형 · blast 플레이어 위치 원형(root: 속박 초) · zones 플레이어 위치에 장판 · cone 부채꼴 숨결 · leap 플레이어 위치로 도약
+//   slam 제자리 원형 · blast 플레이어 위치 원형(root: 속박 초, fx: web · frost · stun · shadow — G.P.root) · zones 플레이어 위치에 장판 · cone 부채꼴 숨결 · leap 플레이어 위치로 도약
 //   blast · zones · leap은 플레이어가 움직이던 방향으로 앞질러 노린다 (G.Aim, js/enemies.js)
 // zones의 aim (보스 · 중간급 공통): lead 예측 지점(기본, n개면 그 주변에 흩뿌림) · wall 진행 방향을 가로막는 일렬 n개
 //   · ring 플레이어를 둘러싼 n개(틈 하나) · trail 0.35초 간격으로 플레이어를 쫓아 n개 · self 시전자 발밑 (중간급만, self: true와 같음)
@@ -15,7 +15,7 @@ G.ENEMIES = {
   gargoyle: { name: '가고일', hp: 26, speed: 150, dmg: 8, r: 13, xp: 2, icon: 'gargoyle', scale: 0.9, fly: true },
   necromancer: { name: '강령술사', hp: 48, speed: 72, dmg: 8, r: 14, xp: 4, icon: 'necromancer', scale: 1, ranged: { range: 280, cd: 2.8, dmg: 11, speed: 240 } },
   cryptfiend: { name: '지하 마귀', hp: 150, speed: 74, dmg: 16, r: 20, xp: 7, icon: 'cryptfiend', scale: 1,
-    skills: [{ type: 'blast', name: '거미줄 분사', cd: 12, r: 65, mul: 1.2, root: 1.2, color: '220,220,200' }] },
+    skills: [{ type: 'blast', name: '거미줄 분사', cd: 12, r: 65, mul: 1.2, root: 1.2, fx: 'web', color: '220,220,200' }] },
   abomination: { name: '누더기골렘', hp: 440, speed: 58, dmg: 24, r: 30, xp: 16, icon: 'abomination', scale: 1,
     skills: [{ type: 'slam', name: '짓밟기', cd: 8, r: 105, mul: 2 }, { type: 'zones', name: '역병 구름', cd: 14, r: 65, mul: 0.25, life: 6, color: '120,255,60' }] },
   spider: { name: '낙스라마스 거미', hp: 22, speed: 115, dmg: 6, r: 14, xp: 2, icon: 'spider', scale: 1 },
@@ -92,7 +92,7 @@ G.ENEMIES = {
   jandice: { name: '잔다이스 바로브', title: '바로브 가문', hp: 7000, speed: 85, dmg: 22, r: 32, xp: 200, icon: 'jandice', scale: 1, boss: true, glow: '255,120,255',
     move: 'kite', skills: [{ type: 'summon', name: '환영', cd: 11, id: 'student', n: 5 }, { type: 'teleport', name: '사라짐', cd: 8 }, { type: 'volley', name: '저주의 화살', cd: 6, n: 10, dmg: 12, speed: 200 }] },
   frostwhisper: { name: '라스 프로스트위스퍼', title: '리치', hp: 24000, speed: 80, dmg: 24, r: 32, xp: 400, icon: 'frostwhisper', scale: 1, boss: true, glow: '120,200,255',
-    move: 'kite', skills: [{ type: 'volley', name: '얼음 화살 일제 사격', cd: 4.5, n: 16, dmg: 14, speed: 210, kind: 'frost' }, { type: 'blast', name: '서리 고리', cd: 9, r: 100, dmg: 32, root: 1.6, color: '120,200,255' }] },
+    move: 'kite', skills: [{ type: 'volley', name: '얼음 화살 일제 사격', cd: 4.5, n: 16, dmg: 14, speed: 210, kind: 'frost' }, { type: 'blast', name: '서리 고리', cd: 9, r: 100, dmg: 32, root: 1.6, fx: 'frost', color: '120,200,255' }] },
   gandling: { name: '암흑스승 간들링', title: '스칼로맨스 교장', hp: 70000, speed: 84, dmg: 26, r: 32, xp: 0, icon: 'gandling', scale: 1, boss: true, glow: '80,255,120',
     move: 'kite', skills: [{ type: 'volley', name: '어둠의 화살 일제 사격', cd: 4.2, n: 16, dmg: 15, speed: 215 }, { type: 'portal', name: '어둠의 차원문', cd: 14 },
       { type: 'zones', name: '어둠의 웅덩이', cd: 10, n: 3, r: 75, dmg: 8, life: 9, color: '60,200,90' }, { type: 'summon', name: '해골 일으키기', cd: 14, id: 'skeleton', n: 10 }] },

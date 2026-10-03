@@ -467,6 +467,53 @@ G.R = {
     C.drawUnder(c, p);
     C.drawBody(c, p.x, p.y, p.face, 1, false);
     C.drawOver(c, p);
+    if (p.rootT > 0) this.drawRoot(c, p);
+  },
+  // 이동 불가 표시: 종류별 모양 + 발밑에 남은 시간 고리 (G.P.root)
+  drawRoot(c, p) {
+    const fx = p.rootFx || 'shadow', col = G.P.ROOT_FX[fx].color, t = G.t, f = Math.max(0, p.rootT / (p.rootMax || 1));
+    const x = p.x, y = p.y, fy = y + 12, fade = Math.min(1, p.rootT * 4);
+    c.save(); c.globalAlpha = fade;
+    // 발밑 남은 시간 고리 (줄어드는 호)
+    c.save(); c.translate(x, fy); c.scale(1, 0.42);
+    c.strokeStyle = 'rgba(0,0,0,0.6)'; c.lineWidth = 6; c.beginPath(); c.arc(0, 0, 30, 0, 7); c.stroke();
+    c.strokeStyle = `rgb(${col})`; c.lineWidth = 4; c.beginPath(); c.arc(0, 0, 30, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2); c.stroke();
+    c.restore();
+    c.strokeStyle = `rgba(${col},0.9)`; c.fillStyle = `rgba(${col},0.9)`;
+    if (fx === 'web') { // 몸을 감싼 거미줄: 바큇살 + 늘어진 고리
+      const cx = x, cy = y - 22;
+      c.lineWidth = 1.5; c.beginPath();
+      for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + 0.2; c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a) * 30, cy + Math.sin(a) * 36); }
+      c.stroke();
+      for (const r of [0.4, 0.7, 1]) {
+        c.beginPath();
+        for (let i = 0; i <= 8; i++) { const a = i / 8 * Math.PI * 2 + 0.2, rr = r * (i % 2 ? 0.9 : 1); const px = cx + Math.cos(a) * 30 * rr, py = cy + Math.sin(a) * 36 * rr; i ? c.lineTo(px, py) : c.moveTo(px, py); }
+        c.stroke();
+      }
+    } else if (fx === 'frost') { // 발을 묶은 얼음 결정
+      c.globalAlpha = fade * 0.85;
+      for (let i = 0; i < 7; i++) {
+        const a = Math.PI + i / 6 * Math.PI, bx = x + Math.cos(a) * 22, by = fy + Math.sin(a) * 6 + 2, h = 16 + (i % 3) * 7;
+        c.fillStyle = i % 2 ? 'rgba(200,240,255,0.85)' : 'rgba(120,200,255,0.8)';
+        c.beginPath(); c.moveTo(bx - 6, by); c.lineTo(bx + (i - 3) * 1.5, by - h); c.lineTo(bx + 6, by); c.closePath(); c.fill();
+        c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 1; c.stroke();
+      }
+    } else if (fx === 'stun') { // 머리 위를 도는 별
+      for (let i = 0; i < 3; i++) {
+        const a = t * 5 + i / 3 * Math.PI * 2, sx = x + Math.cos(a) * 22, sy = y - 46 + Math.sin(a) * 7;
+        c.beginPath();
+        for (let k = 0; k < 10; k++) { const r = k % 2 ? 3.5 : 8.5, b = k / 10 * Math.PI * 2 - Math.PI / 2; k ? c.lineTo(sx + Math.cos(b) * r, sy + Math.sin(b) * r) : c.moveTo(sx + Math.cos(b) * r, sy + Math.sin(b) * r); }
+        c.closePath(); c.fill(); c.strokeStyle = '#000'; c.lineWidth = 1; c.stroke();
+      }
+    } else { // 암흑 사슬: 몸을 도는 고리 두 개
+      c.lineWidth = 4; c.setLineDash([8, 4]); c.strokeStyle = `rgb(${col})`; c.shadowColor = `rgb(${col})`; c.shadowBlur = 8;
+      for (let i = 0; i < 2; i++) {
+        c.save(); c.translate(x, y - 14 - i * 16); c.scale(1, 0.35); c.lineDashOffset = (i ? 1 : -1) * t * 40;
+        c.beginPath(); c.arc(0, 0, 24, 0, 7); c.stroke(); c.restore();
+      }
+      c.setLineDash([]); c.shadowBlur = 0;
+    }
+    c.restore();
   },
 
   drawWater(c, q) {

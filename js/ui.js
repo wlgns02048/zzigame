@@ -173,7 +173,7 @@ G.UI = {
 
     // 버프
     const buffs = C.buffs(p);
-    if (p.rootT > 0) buffs.push(['freeze', p.rootT, '', '서리 폭발', '이동 불가', true]);
+    if (p.rootT > 0) buffs.push([G.P.ROOT_FX[p.rootFx || 'shadow'].icon, p.rootT, '', p.rootName || '속박', '이동 불가', true]);
     if (G.lustT > 0) buffs.push(['bloodlust', G.lustT, '', '피의 욕망', `게임 전체 속도 +${Math.round((G.LUST.speed - 1) * 100)}%`]);
     const sb = G.Events.buff; if (sb) { const S = G.SHRINES[sb.type]; buffs.push([S.icon, sb.t, '', S.name, S.desc]); }
     // 오른쪽부터 지속시간이 긴 순서 (끝없는 버프가 맨 오른쪽). 순서 기준은 버프가 생길 때의 남은 시간으로 고정해,

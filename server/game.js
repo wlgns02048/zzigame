@@ -455,23 +455,41 @@ module.exports = ({ db, route, fail, limit, readJson, STATIC_DIR, log }) => {
   }, { auth: true });
 
   // ---------- 랭킹 ----------
-  route('GET', '/api/rankings', async (req, u, url) => {
-    const stage = url.searchParams.get('stage'), difficulty = url.searchParams.get('difficulty') || 'normal';
+  // 필터 읽기 (스테이지 제외) — 단일 랭킹과 전체 요약이 같이 쓴다
+  const rankFilter = url => {
+    const difficulty = url.searchParams.get('difficulty') || 'normal';
     const kind = url.searchParams.get('kind') === 'endless' ? 'endless' : 'clear';
     const cls = url.searchParams.get('cls'), week = url.searchParams.get('scope') === 'week';
-    if (!STAGES[stage] || !DIFFICULTY[difficulty]) fail(400, '알 수 없는 스테이지입니다.');
+    if (!DIFFICULTY[difficulty]) fail(400, '알 수 없는 난이도입니다.');
     if (cls && !CLASSES.includes(cls)) fail(400, '알 수 없는 직업입니다.');
     const since = week ? Date.parse(ITEMS.periodKeys().weekly + 'T00:00:00Z') - ITEMS.RESET.tzOffsetH * 3600000 + ITEMS.RESET.weeklyHour * 3600000 : 0;
-    const where = `r.stage = ? AND r.difficulty = ? AND r.started_at >= ? AND r.status != 'rejected' ${cls ? 'AND r.cls = ?' : ''}`;
-    const args = [stage, difficulty, since].concat(cls ? [cls] : []);
-    // 사용자별 최고 기록 1개 (SQLite: min/max 집계 시 나머지 열은 그 행의 값)
-    const sql = kind === 'clear'
+    return { difficulty, kind, cls, since };
+  };
+  // 한 스테이지의 사용자별 최고 기록 1개씩, 순위 순 (SQLite: min/max 집계 시 나머지 열은 그 행의 값)
+  const rankRows = (stage, f, u, limit) => {
+    const where = `r.stage = ? AND r.difficulty = ? AND r.started_at >= ? AND r.status != 'rejected' ${f.cls ? 'AND r.cls = ?' : ''}`;
+    const args = [stage, f.difficulty, f.since].concat(f.cls ? [f.cls] : []);
+    const sql = f.kind === 'clear'
       ? `SELECT us.username, r.cls, r.ilvl, min(r.clear_t) AS value FROM runs r JOIN users us ON us.id = r.user_id
-         WHERE ${where} AND r.clear_t IS NOT NULL GROUP BY r.user_id ORDER BY value ASC LIMIT 50`
+         WHERE ${where} AND r.clear_t IS NOT NULL GROUP BY r.user_id ORDER BY value ASC${limit ? ' LIMIT ' + limit : ''}`
       : `SELECT us.username, r.cls, r.ilvl, max(r.endless_lv) AS value FROM runs r JOIN users us ON us.id = r.user_id
-         WHERE ${where} AND r.endless_lv > 0 GROUP BY r.user_id ORDER BY value DESC LIMIT 50`;
-    const rows = db.prepare(sql).all(...args);
-    return { rows: rows.map((r, i) => ({ rank: i + 1, username: r.username, cls: r.cls, ilvl: r.ilvl, value: r.value, me: !!u && r.username.toLowerCase() === u.info.username.toLowerCase() })) };
+         WHERE ${where} AND r.endless_lv > 0 GROUP BY r.user_id ORDER BY value DESC${limit ? ' LIMIT ' + limit : ''}`;
+    const me = u && u.info.username.toLowerCase();
+    return db.prepare(sql).all(...args).map((r, i) => ({ rank: i + 1, username: r.username, cls: r.cls, ilvl: r.ilvl, value: r.value, me: !!me && r.username.toLowerCase() === me }));
+  };
+  route('GET', '/api/rankings', async (req, u, url) => {
+    const stage = url.searchParams.get('stage'), f = rankFilter(url);
+    if (!STAGES[stage]) fail(400, '알 수 없는 스테이지입니다.');
+    const all = rankRows(stage, f, u), mine = all.find(r => r.me);
+    return { rows: all.slice(0, 50), count: all.length, me: mine && mine.rank > 50 ? mine : null };
+  });
+  // 전체 스테이지 요약: 스테이지마다 상위 3명 · 참여 인원 · 내 순위
+  route('GET', '/api/rankings/overview', async (req, u, url) => {
+    const f = rankFilter(url);
+    return { stages: Object.keys(STAGES).map(stage => {
+      const all = rankRows(stage, f, u);
+      return { stage, count: all.length, top: all.slice(0, 3), me: all.find(r => r.me) || null };
+    }) };
   });
 
   // ---------- 퀘스트 ----------

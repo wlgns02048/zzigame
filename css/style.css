@@ -386,10 +386,41 @@ select { cursor: pointer; }
 .vOpt img { width: 48px; height: 48px; } .vOpt small { color: #888; } .vOpt.picked { box-shadow: 0 0 16px var(--qc); }
 
 /* 랭킹 */
-.rankFilters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.rankWrap { display: flex; flex-direction: column; gap: 8px; }
+.rankFilters { display: flex; gap: 8px 14px; flex-wrap: wrap; }
+.rkSeg { display: flex; border: 1px solid #333; border-radius: 4px; overflow: hidden; }
+.rkSeg a { display: flex; align-items: center; gap: 5px; padding: 5px 11px; color: #aaa; text-decoration: none; font-size: 13px; border-left: 1px solid #333; }
+.rkSeg a:first-child { border-left: 0; }
+.rkSeg a img { width: 18px; height: 18px; }
+.rkSeg a:hover { color: #fff; background: rgba(255,255,255,.04); }
+.rkSeg a.on { color: var(--wow-yellow); background: rgba(255,209,0,.12); }
+.rkGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.rkCard { display: flex; flex-direction: column; gap: 4px; padding: 10px; background: rgba(0,0,0,.35); border: 1px solid #2c2416; border-radius: 6px; cursor: pointer; transition: border-color .12s, transform .12s; }
+.rkCard:hover { border-color: #ffd100; transform: translateY(-2px); }
+.rkCard.mine { border-color: #6b5420; }
+.rkCardHead { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+.rkCardHead img { width: 34px; height: 34px; border: 1px solid #000; box-shadow: 0 0 0 1px #6b5420; }
+.rkCardHead b { display: block; color: var(--wow-yellow); font-size: 15px; }
+.rkCardHead small { color: #8a93a6; font-size: 12px; }
+.rkRow { display: flex; align-items: center; gap: 6px; font-size: 13px; padding: 2px 4px; border-radius: 3px; }
+.rkRow.me { background: rgba(255,209,0,.1); }
+.rkName { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rkCls { width: 18px; height: 18px; border: 1px solid #000; }
+.rkVal { font-variant-numeric: tabular-nums; min-width: 50px; text-align: right; }
+.rkMedal { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; font-size: 11px; font-weight: 900; color: #1a1206; box-shadow: 0 0 0 1px #000; }
+.rkMedal.r1 { background: linear-gradient(#ffe680, #d9a400); }
+.rkMedal.r2 { background: linear-gradient(#f0f0f0, #9aa0a8); }
+.rkMedal.r3 { background: linear-gradient(#f0b080, #a0582a); }
+.rkEmpty { color: #666; font-size: 13px; padding: 14px 0; text-align: center; }
+.rkMine { margin-top: auto; padding-top: 6px; border-top: 1px solid #2a2a2a; font-size: 12px; color: #ccc; }
+.rkMine b { color: var(--wow-yellow); }
+.rkHead { display: flex; align-items: center; gap: 8px; font-size: 17px; color: var(--wow-yellow); }
+.rkHead .btn.small { margin: 0 8px 0 0; }
+.rkHead img { width: 30px; height: 30px; border: 1px solid #000; }
 .rankTable { border-collapse: collapse; min-width: 560px; font-size: 14px; }
 .rankTable th, .rankTable td { padding: 5px 12px; border-bottom: 1px solid #222; text-align: left; }
 .rankTable tr.me td { background: rgba(255,209,0,.08); color: var(--wow-yellow); }
+.rankTable tr.gap td { color: #555; text-align: center; padding: 0; }
 
 /* 레벨업 카드 · 종료 화면 */
 .card .cacts { position: absolute; right: 10px; top: 8px; display: flex; gap: 6px; }

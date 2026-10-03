@@ -94,6 +94,14 @@ G.P = {
 
   // 지속 회복용: 숫자를 띄우지 않음
   healSilent(v) { const p = G.player; if (!p.dead && v > 0) p.hp = Math.min(p.maxHp, p.hp + v); },
+  // 이동 불가 (적 기술). fx: web 거미줄 · frost 얼음 · stun 기절 · shadow 암흑 사슬 — 디버프 아이콘과 캐릭터 위 표시가 달라진다
+  ROOT_FX: { web: { icon: 'spider', color: '235,235,220' }, frost: { icon: 'freeze', color: '130,210,255' }, stun: { icon: 'shadowfury', color: '255,220,90' }, shadow: { icon: 'fear', color: '190,110,255' } },
+  root(sec, name, fx = 'shadow') {
+    const p = G.player; if (p.dead) return;
+    if (p.rootT > 0 && p.rootT >= sec) return; // 더 긴 속박이 걸려 있으면 그대로
+    p.rootT = p.rootMax = sec; p.rootName = name; p.rootFx = this.ROOT_FX[fx] ? fx : 'shadow';
+    G.fx.text(p.x, p.y - 50, name + '!', `rgb(${this.ROOT_FX[p.rootFx].color})`, 20, true);
+  },
   heal(v) {
     const p = G.player; if (p.dead) return;
     const h = Math.min(p.maxHp - p.hp, v); if (h <= 0) return;

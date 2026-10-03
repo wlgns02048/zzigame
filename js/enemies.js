@@ -47,7 +47,15 @@ G.Enemy = {
       // 공포: 플레이어에게서 도망 (flee는 늘 도망치는 적 — 보물 코볼트)
       if (e.fearT > 0 || e.flee) {
         if (e.fearT > 0) e.fearT -= dt;
-        const fx = e.x - p.x, fy = e.y - p.y, fd = Math.hypot(fx, fy) || 1, fs = e.speed * 0.8 * (1 - e.slowAmt);
+        const fx = e.x - p.x, fy = e.y - p.y, fd = Math.hypot(fx, fy) || 1;
+        let fs = e.speed * 0.8;
+        // 보물 코볼트: 쫓아가면 반드시 따라잡을 수 있게 — 멀면 느릿느릿, 가까우면 내 이동 속도의 70%로 달아나고 3초쯤 달리면 잠깐 숨을 고른다
+        if (e.goblin) {
+          if (e.restT > 0) { e.restT -= dt; fs = 0; }
+          else if (fd > 420) fs = 45;
+          else { fs = Math.min(fs, p.stats.speed * 0.7); if ((e.runT = (e.runT || 0) + dt) > 3) { e.runT = U.rand(-0.6, 0.4); e.restT = 0.9; } }
+        }
+        fs *= 1 - e.slowAmt;
         e.x += fx / fd * fs * dt; e.y += fy / fd * fs * dt; e.face = fx > 0 ? 1 : -1;
         continue;
       }
@@ -251,7 +259,7 @@ G.Mob = {
       case 'blast': { // 속박이 붙어 있어 덜 앞지른다
         const { x, y } = G.Aim.at(T + 0.2, G.Aim.lead(e, 0.7));
         G.Tele.add({ tag: s.name, x, y, r: s.r, max: T + 0.2, owner: e, color: col, onBoom: k => {
-          if (playerIn(k.x, k.y, s.r + p.r)) { G.hurtPlayer(dmg, e); if (s.root) p.rootT = s.root; }
+          if (playerIn(k.x, k.y, s.r + p.r)) { G.hurtPlayer(dmg, e); if (s.root) G.P.root(s.root, s.name, s.fx); }
           G.fx.ring(k.x, k.y, 10, s.r, 0.35, col, 6, 0.25); G.Audio.play('shadow', 0.4);
         } });
         e.mcast.max = T + 0.2;
@@ -347,7 +355,7 @@ G.Boss = {
         ai.blast = 10 * f;
         const { x, y } = G.Aim.at(1.5, G.Aim.lead(e, 0.6));
         G.Tele.add({ tag: '서리 폭발', x, y, r: 90, max: 1.5, color: '90,180,255', onBoom: k => {
-          if (playerIn(k.x, k.y, 90 + p.r)) { G.hurtPlayer(30); p.rootT = 1.6; G.fx.text(p.x, p.y - 50, '서리 폭발!', '#7fd4ff', 20, true); }
+          if (playerIn(k.x, k.y, 90 + p.r)) { G.hurtPlayer(30); G.P.root(1.6, '서리 폭발', 'frost'); }
           G.fx.ring(k.x, k.y, 10, 90, 0.4, '150,210,255', 8, 0.3); G.fx.shards(k.x, k.y, 20, 260); G.Audio.play('freeze');
         } });
         this.cast(e, '서리 폭발', 1.5, null);
@@ -451,7 +459,7 @@ G.Boss = {
       case 'slam':
         G.Tele.add({ x: e.x, y: e.y, r: s.r, max: 1.2, follow: e, color: glow });
         this.cast(e, s.name, 1.2, () => {
-          if (playerIn(e.x, e.y, s.r + p.r)) { G.hurtPlayer(s.dmg * dm); if (s.root) p.rootT = s.root; }
+          if (playerIn(e.x, e.y, s.r + p.r)) { G.hurtPlayer(s.dmg * dm); if (s.root) G.P.root(s.root, s.name, s.fx || 'stun'); }
           G.fx.ring(e.x, e.y, 20, s.r, 0.4, glow, 8, 0.25); G.fx.wave(e.x, e.y, s.r * 1.15, glow); G.fx.shake(10); G.Audio.play('explode', 1, e.x);
         });
         break;
@@ -480,7 +488,7 @@ G.Boss = {
       case 'blast': {
         const { x, y } = G.Aim.at(1.5, G.Aim.lead(e, 0.6));
         G.Tele.add({ tag: s.name, x, y, r: s.r, max: 1.5, color: s.color || glow, onBoom: k => {
-          if (playerIn(k.x, k.y, s.r + p.r)) { G.hurtPlayer(s.dmg * dm); if (s.root) { p.rootT = s.root; G.fx.text(p.x, p.y - 50, s.name + '!', '#d090ff', 20, true); } }
+          if (playerIn(k.x, k.y, s.r + p.r)) { G.hurtPlayer(s.dmg * dm); if (s.root) G.P.root(s.root, s.name, s.fx); }
           G.fx.ring(k.x, k.y, 10, s.r, 0.4, s.color || glow, 8, 0.3); G.Audio.play('shadow');
         } });
         this.cast(e, s.name, 1.5, null);

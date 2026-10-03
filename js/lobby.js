@@ -8,7 +8,7 @@ const fmtNum = n => Math.floor(n).toLocaleString();
 
 G.Lobby = {
   tab: 'stage', codexCls: 'mage', cls: null, stage: 'deadmines', diff: 'normal', selItem: null, tree: null, pending: null,
-  rank: { stage: 'deadmines', difficulty: 'normal', kind: 'clear', scope: 'week', cls: '' }, bagSort: 'new',
+  rank: { stage: '', difficulty: 'normal', kind: 'clear', scope: 'week', cls: '' }, bagSort: 'new',
 
   TABS: [
     ['stage', '출정', 'portal'], ['char', '캐릭터', 'bag'], ['talent', '특성', 'talents'], ['shop', '상점', 'gacha_equip'],
@@ -412,32 +412,58 @@ G.Lobby = {
     m.querySelectorAll('[data-cdx]').forEach(a => (a.onclick = e => { e.preventDefault(); this.codexCls = a.dataset.cdx; this.render(); }));
   },
 
+  // 기본은 모든 스테이지를 카드로 한눈에 (상위 3명 · 참여 인원 · 내 순위), 카드를 누르면 그 스테이지의 50위까지
   async renderRanking(m) {
-    const R = this.rank, S = SD().STAGES;
+    const R = this.rank, S = SD().STAGES, stage = S[R.stage] ? S[R.stage] : null;
+    const seg = (k, opts) => `<div class="rkSeg">${opts.map(([v, label, icon]) =>
+      `<a href="#" data-rk="${k}" data-v="${v}" class="${R[k] === v ? 'on' : ''}">${icon ? `<img src="${G.icon(icon)}">` : ''}${label}</a>`).join('')}</div>`;
     m.innerHTML = `<div class="rankWrap"><div class="rankFilters">
-      <select id="rkStage">${Object.values(S).sort((a, b) => a.order - b.order).map(s => `<option value="${s.id}">${s.name}</option>`).join('')}</select>
-      <select id="rkDiff"><option value="normal">일반</option><option value="heroic">영웅</option></select>
-      <select id="rkKind"><option value="clear">최단 클리어</option><option value="endless">엔드리스 최고 단계</option></select>
-      <select id="rkScope"><option value="week">이번 주</option><option value="all">전체</option></select>
-      <select id="rkCls"><option value="">모든 직업</option>${Object.values(G.CLASSES).map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select></div>
-      <div class="dim small" id="rkNote"></div>
-      <div id="rkTable" class="dim">불러오는 중…</div></div>`;
-    for (const [id, k] of [['rkStage', 'stage'], ['rkDiff', 'difficulty'], ['rkKind', 'kind'], ['rkScope', 'scope'], ['rkCls', 'cls']]) {
-      $(id).value = R[k]; $(id).onchange = e => { R[k] = e.target.value; this.render(); };
-    }
-    // 순위 기준 안내 (늦게 다시 깬다고 순위가 오르지 않는다)
-    $('rkNote').textContent = R.kind === 'clear'
-      ? '순위 기준: 이 스테이지를 가장 빨리 클리어한 시간. 사람마다 최고 기록 하나만 올라가며, 더 빨리 깨야 순위가 오릅니다.'
-      : '순위 기준: 클리어 후 엔드리스로 도달한 가장 높은 단계. 사람마다 최고 기록 하나만 올라갑니다.';
+      ${seg('difficulty', [['normal', '일반'], ['heroic', '영웅']])}
+      ${seg('kind', [['clear', '최단 클리어'], ['endless', '엔드리스 최고 단계']])}
+      ${seg('scope', [['week', '이번 주'], ['all', '전체 기간']])}
+      ${seg('cls', [['', '모든 직업']].concat(Object.values(G.CLASSES).map(c => [c.id, c.name, c.icon])))}</div>
+      <div class="dim small">${R.kind === 'clear'
+        ? '순위 기준: 가장 빨리 클리어한 시간. 사람마다 최고 기록 하나만 올라가며, 더 빨리 깨야 순위가 오릅니다.'
+        : '순위 기준: 클리어 후 엔드리스로 도달한 가장 높은 단계. 사람마다 최고 기록 하나만 올라갑니다.'}</div>
+      ${stage ? `<div class="rkHead"><a href="#" id="rkBack" class="btn small">← 모든 스테이지</a><img src="${G.icon(stage.icon)}"><b>${stage.name}</b></div>` : ''}
+      <div id="rkBody" class="dim">불러오는 중…</div></div>`;
+    m.querySelectorAll('[data-rk]').forEach(a => (a.onclick = e => { e.preventDefault(); R[a.dataset.rk] = a.dataset.v; this.render(); }));
+    if (stage) $('rkBack').onclick = e => { e.preventDefault(); R.stage = ''; this.render(); };
+    const val = v => R.kind === 'clear' ? U.fmtTime(v) : v + '단계';
+    const medal = n => `<span class="rkMedal r${n}">${n}</span>`;
+    const who = x => `<span class="rkName">${esc(x.username)}</span><img class="rkCls" src="${G.icon(G.CLASSES[x.cls].icon)}" data-tip="${G.CLASSES[x.cls].name} · 아이템 레벨 ${x.ilvl}">`;
     try {
-      const q = new URLSearchParams(Object.entries(R).filter(([, v]) => v)).toString();
+      const q = new URLSearchParams(Object.entries(R).filter(([k, v]) => v && (stage || k !== 'stage'))).toString();
+      const body = () => $('rkBody');
+      if (!stage) {
+        const r = await this.api('GET', '/api/rankings/overview?' + q);
+        if (!body()) return;
+        const byId = Object.fromEntries(r.stages.map(s => [s.stage, s]));
+        const card = s => {
+          const d = byId[s.id] || { count: 0, top: [], me: null };
+          return `<div class="rkCard ${d.me ? 'mine' : ''}" data-stage="${s.id}">
+            <div class="rkCardHead"><img src="${G.icon(s.icon)}"><div><b>${s.name}</b><small>${s.type === 'raid' ? '공격대' : '던전'} · ${d.count}명 참여</small></div></div>
+            ${d.top.length ? d.top.map(x => `<div class="rkRow ${x.me ? 'me' : ''}">${medal(x.rank)}${who(x)}<b class="rkVal">${val(x.value)}</b></div>`).join('')
+              : '<div class="rkEmpty">아직 기록이 없습니다</div>'}
+            <div class="rkMine">${d.me ? `내 순위 <b>${d.me.rank}위</b> / ${d.count}명 · ${val(d.me.value)}` : `<span class="dim">${G.Net.user ? '내 기록 없음' : '로그인하면 내 순위가 보입니다'}</span>`}</div></div>`;
+        };
+        body().className = '';
+        body().innerHTML = SD().CHAPTERS.map(ch => {
+          const list = Object.values(S).filter(s => s.chapter === ch.id).sort((a, b) => a.order - b.order);
+          return list.length ? `<h3 class="cdxH">${ch.name}</h3><div class="rkGrid">${list.map(card).join('')}</div>` : '';
+        }).join('');
+        body().querySelectorAll('[data-stage]').forEach(c => (c.onclick = () => { R.stage = c.dataset.stage; G.Audio.play('click'); this.render(); }));
+        return;
+      }
       const r = await this.api('GET', '/api/rankings?' + q);
-      const t = $('rkTable'); if (!t) return;
-      t.className = '';
-      t.innerHTML = r.rows.length ? `<table class="rankTable"><tr><th>순위</th><th>이름</th><th>직업</th><th>아이템 레벨</th><th>${R.kind === 'clear' ? '클리어 시간' : '단계'}</th></tr>
-        ${r.rows.map(x => `<tr class="${x.me ? 'me' : ''}"><td>${x.rank}</td><td>${esc(x.username)}</td><td style="color:${G.CLASSES[x.cls].color}">${G.CLASSES[x.cls].name}</td><td>${x.ilvl}</td><td><b>${R.kind === 'clear' ? U.fmtTime(x.value) : x.value + '단계'}</b></td></tr>`).join('')}</table>`
+      if (!body()) return;
+      const row = x => `<tr class="${x.me ? 'me' : ''}"><td>${x.rank <= 3 ? medal(x.rank) : x.rank}</td><td>${esc(x.username)}</td><td style="color:${G.CLASSES[x.cls].color}">${G.CLASSES[x.cls].name}</td><td>${x.ilvl}</td><td><b>${val(x.value)}</b></td></tr>`;
+      body().className = '';
+      body().innerHTML = r.rows.length ? `<div class="dim small">${r.count}명 참여${r.count > 50 ? ' · 50위까지 표시' : ''}</div>
+        <table class="rankTable"><tr><th>순위</th><th>이름</th><th>직업</th><th>아이템 레벨</th><th>${R.kind === 'clear' ? '클리어 시간' : '단계'}</th></tr>
+        ${r.rows.map(row).join('')}${r.me ? `<tr class="gap"><td colspan="5">⋯</td></tr>${row(r.me)}` : ''}</table>`
         : '<div class="dim">아직 기록이 없습니다.</div>';
-    } catch (e) { const t = $('rkTable'); if (t) t.textContent = e.message; }
+    } catch (e) { const t = $('rkBody'); if (t) t.textContent = e.message; }
   },
 
   // ---------- 패치노트 (js/data/patchnotes.js) ----------
